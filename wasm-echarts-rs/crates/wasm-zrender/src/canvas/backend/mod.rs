@@ -97,6 +97,10 @@ pub trait CanvasContext {
 
 /// Painter 使用的离屏 Canvas 后端
 pub trait CanvasBackend: CanvasContext {
+    fn create(width: u32, height: u32) -> Result<Self, BackendError>
+    where
+        Self: Sized;
+
     fn width(&self) -> u32;
     fn height(&self) -> u32;
     fn clear(&mut self);

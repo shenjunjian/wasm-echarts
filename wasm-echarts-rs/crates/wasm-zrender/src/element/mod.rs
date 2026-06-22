@@ -1,9 +1,13 @@
 //! Element 基类：变换、dirty bit
 
 pub mod constants;
+pub mod ec_data;
+pub mod state;
 pub mod transform;
 
 pub use constants::{REDRAW_BIT, SHAPE_CHANGED_BIT, STYLE_CHANGED_BIT};
+pub use ec_data::EcData;
+pub use state::{ElementStates, PathStylePatch, STATE_EMPHASIS, STATE_NORMAL, STATE_SELECT};
 pub use transform::Transform;
 
 use crate::core::matrix::Matrix;

@@ -199,6 +199,10 @@ impl CanvasContext for VlConvertBackend {
 }
 
 impl CanvasBackend for VlConvertBackend {
+    fn create(width: u32, height: u32) -> Result<Self, BackendError> {
+        Self::new(width, height)
+    }
+
     fn width(&self) -> u32 {
         self.ctx.width()
     }

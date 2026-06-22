@@ -1,7 +1,7 @@
 //! Path 图元
 
 use crate::core::bbox::BoundingRect;
-use crate::element::{ElementBase, SHAPE_CHANGED_BIT};
+use crate::element::{EcData, ElementBase, ElementStates, SHAPE_CHANGED_BIT};
 use crate::graphic::displayable::DisplayableProps;
 use crate::graphic::path_proxy::PathProxy;
 use crate::graphic::shapes::Shape;
@@ -13,6 +13,11 @@ pub struct Path {
     pub displayable: DisplayableProps,
     pub shape: Shape,
     pub style: PathStyle,
+    pub ec_data: EcData,
+    pub silent: bool,
+    /// clipPath 引用（paths 数组中的索引）
+    pub clip_path: Option<usize>,
+    pub states: ElementStates,
     path_proxy: PathProxy,
     bbox: Option<BoundingRect>,
 }
@@ -24,6 +29,10 @@ impl Path {
             displayable: DisplayableProps::default(),
             shape,
             style,
+            ec_data: EcData::default(),
+            silent: false,
+            clip_path: None,
+            states: ElementStates::default(),
             path_proxy: PathProxy::new(),
             bbox: None,
         }
@@ -34,11 +43,31 @@ impl Path {
         self
     }
 
+    pub fn with_ec_data(mut self, ec_data: EcData) -> Self {
+        self.ec_data = ec_data;
+        self
+    }
+
+    pub fn with_clip_path(mut self, clip_index: usize) -> Self {
+        self.clip_path = Some(clip_index);
+        self
+    }
+
     pub fn with_transform(mut self, x: f64, y: f64) -> Self {
         self.base.transform_state.x = x;
         self.base.transform_state.y = y;
         self.base.mark_redraw();
         self
+    }
+
+    pub fn use_state(&mut self, state_name: &str) {
+        self.states.use_state(&mut self.style, state_name);
+        self.base.mark_redraw();
+    }
+
+    pub fn use_states(&mut self, state_names: &[&str]) {
+        self.states.use_states(&mut self.style, state_names);
+        self.base.mark_redraw();
     }
 
     pub fn path_proxy(&self) -> &PathProxy {
@@ -97,6 +126,17 @@ impl Path {
             x,
             y,
         )
+    }
+
+    /// 几何命中：填充或描边
+    pub fn hit_test(&mut self, x: f64, y: f64) -> bool {
+        if self.style.has_fill() && self.contains(x, y) {
+            return true;
+        }
+        if self.style.has_stroke() && self.contains_stroke(x, y) {
+            return true;
+        }
+        false
     }
 }
 

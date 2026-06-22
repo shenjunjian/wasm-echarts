@@ -1,14 +1,20 @@
 //! Storage：场景图 + displayList
 
+mod timsort;
+
 use crate::element::REDRAW_BIT;
 use crate::graphic::displayable::normalize_z;
 use crate::graphic::group::{ChildRef, Group};
 use crate::graphic::path::Path;
+use timsort::sort_display_list;
 
 #[derive(Debug, Clone)]
 pub struct DisplayItem {
     pub path_index: usize,
     pub sort_key: (f64, f64, f64),
+    /// 从根到当前节点的 clipPath 链
+    pub clip_chain: Vec<usize>,
+    pub zlevel: f64,
 }
 
 pub struct Storage {
@@ -68,6 +74,10 @@ impl Storage {
         &mut self.paths[index]
     }
 
+    pub fn path(&self, index: usize) -> &Path {
+        &self.paths[index]
+    }
+
     pub fn paths(&self) -> &[Path] {
         &self.paths
     }
@@ -93,9 +103,9 @@ impl Storage {
         self.display_list.clear();
         let roots = self.roots.clone();
         for root in roots {
-            self.update_and_add(&root, None);
+            self.update_and_add(&root, None, Vec::new());
         }
-        self.display_list.sort_by(|a, b| {
+        sort_display_list(&mut self.display_list, |a, b| {
             a.sort_key
                 .0
                 .partial_cmp(&b.sort_key.0)
@@ -116,7 +126,12 @@ impl Storage {
         self.display_dirty = false;
     }
 
-    fn update_and_add(&mut self, child: &ChildRef, parent_transform: Option<&[f32; 6]>) {
+    fn update_and_add(
+        &mut self,
+        child: &ChildRef,
+        parent_transform: Option<&[f32; 6]>,
+        mut clip_chain: Vec<usize>,
+    ) {
         match *child {
             ChildRef::Group(gi) => {
                 let group_dirty = self.groups[gi].base.dirty;
@@ -133,11 +148,16 @@ impl Storage {
                             ChildRef::Path(pi) => self.paths[pi].base.dirty |= REDRAW_BIT,
                         }
                     }
-                    self.update_and_add(&c, Some(&transform));
+                    self.update_and_add(&c, Some(&transform), clip_chain.clone());
                 }
                 self.groups[gi].base.dirty = 0;
             }
             ChildRef::Path(pi) => {
+                let clip_path = self.paths[pi].clip_path;
+                if let Some(clip_idx) = clip_path {
+                    clip_chain.push(clip_idx);
+                }
+
                 let path = &mut self.paths[pi];
                 path.base.update_transform(parent_transform);
                 normalize_z(&mut path.displayable);
@@ -146,10 +166,13 @@ impl Storage {
                     path.displayable.z,
                     path.displayable.z2,
                 );
+                let zlevel = path.displayable.zlevel;
                 path.ensure_path();
                 self.display_list.push(DisplayItem {
                     path_index: pi,
                     sort_key,
+                    clip_chain,
+                    zlevel,
                 });
             }
         }

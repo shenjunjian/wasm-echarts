@@ -4,7 +4,7 @@ use crate::canvas::backend::{BackendError, CanvasContext};
 use crate::canvas::helper::{apply_fill_style, apply_stroke_style};
 use crate::core::bbox::BoundingRect;
 use crate::element::REDRAW_BIT;
-use crate::graphic::path::Path;
+use crate::storage::Storage;
 
 pub struct BrushScope {
     pub view_width: f64,
@@ -20,77 +20,99 @@ impl BrushScope {
     }
 }
 
-pub fn brush(ctx: &mut dyn CanvasContext, path: &mut Path, scope: &BrushScope) -> Result<(), BackendError> {
-    if !path.should_be_painted(scope.view_width, scope.view_height) {
-        path.base.dirty &= !REDRAW_BIT;
+pub fn brush(
+    ctx: &mut dyn CanvasContext,
+    storage: &mut Storage,
+    path_index: usize,
+    scope: &BrushScope,
+) -> Result<(), BackendError> {
+    if !storage.path_mut(path_index).should_be_painted(scope.view_width, scope.view_height) {
+        storage.path_mut(path_index).base.dirty &= !REDRAW_BIT;
         return Ok(());
     }
 
-    path.ensure_path();
+    storage.path_mut(path_index).ensure_path();
 
+    if let Some(clip_idx) = storage.path(path_index).clip_path {
+        apply_clip_path(ctx, storage, clip_idx)?;
+    }
+
+    let transform = *storage.path(path_index).base.transform();
     ctx.save();
-    ctx.set_transform(path.base.transform());
+    ctx.set_transform(&transform);
 
-    let mut has_fill = path.style.has_fill();
-    let mut has_stroke = path.style.has_stroke();
-
-    let bbox = path
+    let bbox = storage
+        .path_mut(path_index)
         .bounding_rect()
         .cloned()
         .unwrap_or_else(|| BoundingRect::new(0.0, 0.0, scope.view_width, scope.view_height));
 
-    if let Some(shadow) = &path.style.shadow {
+    let shadow = storage.path(path_index).style.shadow.clone();
+    let has_fill = storage.path(path_index).style.has_fill();
+    let has_stroke = storage.path(path_index).style.has_stroke();
+    let line_width = storage.path(path_index).style.line_width;
+    let stroke_first = storage.path(path_index).style.stroke_first;
+
+    if let Some(shadow) = &shadow {
         if shadow.is_active() && (has_fill || has_stroke) {
             ctx.draw_shadow(
-                path.path_proxy(),
-                path.base.transform(),
+                storage.path(path_index).path_proxy(),
+                &transform,
                 shadow,
                 has_fill,
                 has_stroke,
-                path.style.line_width,
+                line_width,
             )?;
         }
     }
 
-    if has_fill {
-        has_fill = apply_fill_style(ctx, &path.style.fill, &bbox)?;
-        if has_fill {
-            ctx.set_global_alpha(path.style.effective_fill_opacity());
+    let mut draw_fill = has_fill;
+    let mut draw_stroke = has_stroke;
+
+    if draw_fill {
+        let fill = storage.path(path_index).style.fill.clone();
+        draw_fill = apply_fill_style(ctx, &fill, &bbox)?;
+        if draw_fill {
+            let alpha = storage.path(path_index).style.effective_fill_opacity();
+            ctx.set_global_alpha(alpha);
         }
     }
 
-    if has_stroke {
-        has_stroke = apply_stroke_style(ctx, &path.style.stroke, &bbox)?;
-        if has_stroke {
-            ctx.set_line_width(path.style.line_width);
-            ctx.set_line_cap(path.style.line_cap);
-            ctx.set_line_join(path.style.line_join);
-            if let Some(dash) = &path.style.line_dash {
+    if draw_stroke {
+        let stroke = storage.path(path_index).style.stroke.clone();
+        draw_stroke = apply_stroke_style(ctx, &stroke, &bbox)?;
+        if draw_stroke {
+            let style = &storage.path(path_index).style;
+            ctx.set_line_width(style.line_width);
+            ctx.set_line_cap(style.line_cap);
+            ctx.set_line_join(style.line_join);
+            if let Some(dash) = &style.line_dash {
                 ctx.set_line_dash(dash.clone());
-                ctx.set_line_dash_offset(path.style.line_dash_offset);
+                ctx.set_line_dash_offset(style.line_dash_offset);
             }
-            ctx.set_global_alpha(path.style.effective_stroke_opacity());
+            ctx.set_global_alpha(style.effective_stroke_opacity());
         }
     }
 
-    if path.style.stroke_first {
-        if has_stroke {
+    let path = storage.path(path_index);
+    if stroke_first {
+        if draw_stroke {
             ctx.begin_path();
             path.path_proxy().replay(ctx);
             ctx.stroke();
         }
-        if has_fill {
+        if draw_fill {
             ctx.begin_path();
             path.path_proxy().replay(ctx);
             ctx.fill();
         }
     } else {
-        if has_fill {
+        if draw_fill {
             ctx.begin_path();
             path.path_proxy().replay(ctx);
             ctx.fill();
         }
-        if has_stroke {
+        if draw_stroke {
             ctx.begin_path();
             path.path_proxy().replay(ctx);
             ctx.stroke();
@@ -99,27 +121,41 @@ pub fn brush(ctx: &mut dyn CanvasContext, path: &mut Path, scope: &BrushScope) -
 
     ctx.restore();
 
-    path.base.dirty = 0;
+    storage.path_mut(path_index).base.dirty = 0;
     Ok(())
 }
 
-pub fn brush_single(ctx: &mut dyn CanvasContext, path: &mut Path, scope: &BrushScope) -> Result<(), BackendError> {
-    brush(ctx, path, scope)
+fn apply_clip_path(
+    ctx: &mut dyn CanvasContext,
+    storage: &mut Storage,
+    clip_idx: usize,
+) -> Result<(), BackendError> {
+    storage.path_mut(clip_idx).ensure_path();
+    let transform = *storage.path(clip_idx).base.transform();
+    ctx.save();
+    ctx.set_transform(&transform);
+    ctx.begin_path();
+    storage.path(clip_idx).path_proxy().replay(ctx);
+    ctx.clip();
+    ctx.restore();
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::canvas::backend::{CanvasBackend, VlConvertBackend};
+    use crate::graphic::path::Path;
     use crate::graphic::shapes::{RectShape, Shape};
     use crate::graphic::style::{FillStrokeStyle, PathStyle, ShadowStyle};
 
     #[test]
     fn brush_with_shadow_and_gradient() {
+        let mut storage = Storage::new();
         let mut backend = VlConvertBackend::new(120, 80).unwrap();
         backend.clear();
 
-        let mut path = Path::new(
+        let idx = storage.create_path(Path::new(
             Shape::Rect(RectShape {
                 x: 20.0,
                 y: 15.0,
@@ -136,10 +172,10 @@ mod tests {
                 }),
                 ..Default::default()
             },
-        );
+        ));
 
         let scope = BrushScope::new(120.0, 80.0);
-        brush(&mut backend, &mut path, &scope).unwrap();
+        brush(&mut backend, &mut storage, idx, &scope).unwrap();
         let rgba = backend.get_rgba();
         assert!(rgba.chunks(4).any(|px| px[3] > 0));
     }
