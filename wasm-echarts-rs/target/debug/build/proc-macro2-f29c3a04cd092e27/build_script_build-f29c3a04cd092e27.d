@@ -1,0 +1,5 @@
+E:\wasm-echarts\wasm-echarts-rs\target\debug\build\proc-macro2-f29c3a04cd092e27\build_script_build-f29c3a04cd092e27.d: C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\proc-macro2-1.0.106\build.rs
+
+E:\wasm-echarts\wasm-echarts-rs\target\debug\build\proc-macro2-f29c3a04cd092e27\build_script_build-f29c3a04cd092e27.exe: C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\proc-macro2-1.0.106\build.rs
+
+C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\proc-macro2-1.0.106\build.rs:

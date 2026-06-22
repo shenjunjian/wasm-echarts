@@ -1,0 +1,87 @@
+<!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<script src="lib/simpleRequire.js"></script>
+	<script src="lib/config.js"></script>
+	<script src="lib/jquery.min.js"></script>
+	<script src="lib/facePrint.js"></script>
+	<script src="lib/testHelper.js"></script>
+	<!-- <script src="ut/lib/canteen.js"></script> -->
+	<link rel="stylesheet" href="lib/reset.css"/>
+</head>
+<body>
+<style>
+</style>
+
+
+<div id="main0"></div>
+<div id="main1"></div>
+<div id="main2"></div>
+
+
+<script>
+    require([
+        "echarts"
+    ], function (echarts) {
+        const data = {
+            nodes: [
+                {name: "A"}, {name: "A-out-0", depth: 1}, {name: "A-out-1", depth: 1}, {name: "A-out-2", depth: 1},
+                {name: "A-out-3", depth: 1}, {name: "A-to-B-1"}, {name: "A-to-B-2"}, {name: "A-to-B-3"}, {name: "B"}, {name: "B-in-1", depth: 1},
+                {name: "B-in-2", depth: 1}, {name: "A-to-C-1"}, {name: "A-to-C-2"}, {name: "A-to-C-3"}, {name: "C"}
+            ], links: [
+                {source: "A", target: "A-out-0", value: 1}, {source: "A", target: "A-out-1", value: 2},
+                {source: "A", target: "A-out-2", value: 3}, {source: "A", target: "A-out-3", value: 30},
+                {source: "A", target: "A-to-B-1", value: 3}, {source: "A", target: "A-to-B-2", value: 7},
+                {source: "A", target: "A-to-B-3", value: 9}, {source: "A", target: "A-to-C-1", value: 3},
+				{source: "A", target: "A-to-C-2", value: 7}, {source: "A", target: "A-to-C-3", value: 9},
+                {source: "A-to-B-1", target: "B", value: 3}, {source: "A-to-B-2", target: "B", value: 7},
+                {source: "A-to-B-3", target: "B", value: 9}, {source: "B-in-1", target: "B", value: 1},
+                {source: "B-in-2", target: "B", value: 2},
+				{source: "A-to-C-1", target: "C", value: 1}, {source: "A-to-C-2", target: "C", value: 7},
+				{source: "A-to-C-3", target: "C", value: 9}
+            ]
+        };
+        const chart0 = testHelper.create(echarts, "main0", {
+            title: "Default behaviour, sort: 'desc', has links crossing over each other",
+            option: {series: [{type: "sankey", data: data.nodes, links: data.links, sort: "desc"}]}
+        });
+        window.addEventListener("resize", chart0.resize);
+
+        const chart1 = testHelper.create(echarts, "main1", {
+            title: "Suggested workaround, layoutIterations: 0, has all levels aligned to the top",
+            option: {series: [{type: "sankey", data: data.nodes, links: data.links, layoutIterations: 0}]}
+        });
+        window.addEventListener("resize", chart1.resize);
+
+        const chart2 = testHelper.create(echarts, "main2", {
+            title: "sort: null preserves input node order while still optimising the layout",
+            option: {series: [{type: "sankey", data: data.nodes, links: data.links, sort: null}]}
+        });
+        window.addEventListener("resize", chart2.resize);
+
+    });
+</script>
+
+
+</body>
+</html>

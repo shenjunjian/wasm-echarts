@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+
+
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <script src="lib/simpleRequire.js"></script>
+        <script src="lib/config.js"></script>
+        <script src="lib/jquery.min.js"></script>
+        <script src="lib/facePrint.js"></script>
+        <script src="lib/testHelper.js"></script>
+        <!-- <script src="ut/lib/canteen.js"></script> -->
+        <link rel="stylesheet" href="lib/reset.css" />
+    </head>
+    <body>
+        <style>
+        </style>
+
+
+
+        <div id="main0"></div>
+        <div id="main1"></div>
+        <div id="main2"></div>
+        <div id="main3"></div>
+
+
+
+
+
+
+        <script>
+        require([
+            'echarts',
+        ], function (echarts) {
+            var _ctx = {
+                yAxisStartValue: {
+                    value: -200,
+                    values: ['NOT_SET', -200, 200]
+                },
+                yAxisMin: {
+                    value: -150,
+                    values: ['NOT_SET', -150]
+                },
+                stack: {
+                    value: false,
+                    values: [false, true]
+                }
+            };
+
+            function createOption() {
+                var option = {
+                    xAxis: {
+                        type: 'category',
+                        data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                        axisLine: {
+                            onZero: false
+                        }
+                    },
+                    yAxis: {
+                        type: 'value',
+                    },
+                    tooltip: {},
+                    legend: {},
+                    series: [{
+                        name: 'A',
+                        itemStyle: {opacity: 0.8, borderWidth: 2, borderColor: '#000'},
+                        data: [-120, 200, 150, 80, 70, 110, 130],
+                        type: 'bar',
+                    }, {
+                        name: 'B',
+                        itemStyle: {opacity: 0.8, borderWidth: 2, borderColor: '#000'},
+                        data: [-140, 220, 250, 180, 170, 10, 30],
+                        type: 'bar',
+                    }]
+                };
+                if (_ctx.yAxisStartValue.value !== 'NOT_SET') {
+                    option.yAxis.startValue = _ctx.yAxisStartValue.value;
+                }
+                if (_ctx.yAxisMin.value !== 'NOT_SET') {
+                    option.yAxis.min = _ctx.yAxisMin.value;
+                }
+                if (_ctx.stack.value) {
+                    option.series[0].stack = option.series[1].stack = 'a';
+                }
+                return option;
+            }
+            function updateChart() {
+                chart.setOption(createOption(), {notMerge: true});
+            }
+
+            var chart = testHelper.create(echarts, 'main0', {
+                title: [
+                    `min/max of axis has higher priority over startValue`,
+                    `The starting value of bars should be yAxis.min`,
+                ],
+                option: createOption(),
+                inputsStyle: 'compact',
+                inputs: testHelper.createInputsSimply(_ctx, updateChart),
+            });
+        });
+        </script>
+
+
+        <script>
+        require([
+            'echarts',
+        ], function (echarts) {
+            var option;
+            var startValue0 = -200;
+            var ymin = -300;
+            var ymax = 300;
+            option = {
+                dataZoom:[{
+                    type: 'slider',
+                    yAxisIndex:[0],
+                    right: 20
+                }],
+                tooltip: {},
+                xAxis: {
+                    type: 'category',
+                    data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    axisLine: {
+                        onZero: false
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    startValue: startValue0,
+                    min: ymin,
+                    max: ymax
+                },
+                series: [{
+                    data: [-120, 200, 150, 80, 70, 110, 130],
+                    type: 'bar',
+                }]
+            };
+
+            var chart = testHelper.create(echarts, 'main1', {
+                title: [
+                    `startValue should work well with dataZoom,`,
+                    `here startValue = ${startValue0}, yAxis.min = ${ymin}, yAxis.max = ${ymax}`,
+                ],
+                option: option
+            });
+        });
+        </script>
+
+
+
+        <script>
+        require([
+            'echarts',
+        ], function (echarts) {
+            var _ctx = {
+                radiusAxisStartValue: {
+                    value: -140,
+                    values: ['NOT_SET', -140, -30, 100]
+                },
+                radiusAxisMin: {
+                    value: 'NOT_SET',
+                    values: ['NOT_SET', -150]
+                },
+                radiusAxisMax: {
+                    value: 'NOT_SET',
+                    values: ['NOT_SET', -90]
+                },
+            };
+
+            function createOption() {
+                var radiusMin = -120;
+                var option = {
+                    angleAxis: {
+                        type: "category",
+                        data: ["  0-30", " 30-60", " 60-90", " 90-120", "120-150", "150-180", "180-210", "210-240", "240-270", "270-300", "300-330", "330-360"],
+                    },
+                    radiusAxis: {
+                        scale: true,
+                    },
+                    tooltip: {},
+                    legend: {
+                        left: 10,
+                        top: 'middle',
+                        orient: 'vertical',
+                        selected: {B: false}
+                    },
+                    polar: {},
+                    series: [{
+                        name: 'A',
+                        type: 'bar',
+                        color: "#F53700",
+                        itemStyle: {opacity: 0.7},
+                        coordinateSystem: "polar",
+                        data: [-95,-110,-105,-115,-110,-120,-90,-98,-100,-110,-92,-107]
+                    }, {
+                        name: 'B',
+                        type: 'bar',
+                        color: "#00735F",
+                        itemStyle: {opacity: 0.7},
+                        coordinateSystem: "polar",
+                        data: [-15,-10,5,15,30,-100,-50,-8,10,15,-42,-17]
+                    }]
+                };
+                if (_ctx.radiusAxisStartValue.value !== 'NOT_SET') {
+                    option.radiusAxis.startValue = _ctx.radiusAxisStartValue.value;
+                }
+                if (_ctx.radiusAxisMin.value !== 'NOT_SET') {
+                    option.radiusAxis.min = _ctx.radiusAxisMin.value;
+                }
+                if (_ctx.radiusAxisMax.value !== 'NOT_SET') {
+                    option.radiusAxis.max = _ctx.radiusAxisMax.value;
+                }
+                return option;
+            }
+            function updateChart() {
+                chart.setOption(createOption(), {notMerge: true});
+            }
+
+            var chart = testHelper.create(echarts, 'main2', {
+                title: [
+                    `polar bars startValue`,
+                ],
+                option: createOption(),
+                inputsStyle: 'compact',
+                inputs: testHelper.createInputsSimply(_ctx, updateChart)
+            });
+        });
+        </script>
+
+
+
+        <script>
+        require([
+            'echarts',
+            // 'map/js/china',
+            // './data/nutrients.json'
+        ], function (echarts) {
+            var option;
+            var startValue0 = -3;
+            option = {
+                polar: {
+                    radius: [30, '80%']
+                },
+                radiusAxis: {
+                    max: 4,
+                    startValue: startValue0,
+                },
+                angleAxis: {
+                    type: 'category',
+                    data: ['a', 'b', 'c', 'd'],
+                    startAngle: 75
+                },
+                tooltip: {},
+                legend: {left: 10, top: 'middle'},
+                series: {
+                    name: 'A',
+                    type: 'bar',
+                    data: [2, 1.2, 2.4, 3.6],
+                    coordinateSystem: 'polar',
+                    itemStyle: {opacity: 0.7},
+                    label: {
+                        show: true,
+                        position: 'middle',
+                        formatter: '{b}: {c}'
+                    }
+                },
+                backgroundColor: '#fff',
+            };
+
+            var chart = testHelper.create(echarts, 'main3', {
+                title: [
+                    `The starting value of polar bars should be ${startValue0}`,
+                ],
+                option: option
+            });
+        });
+        </script>
+
+    </body>
+</html>
+

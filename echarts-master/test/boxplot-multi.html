@@ -1,0 +1,377 @@
+
+<!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <script src="lib/simpleRequire.js"></script>
+        <script src="lib/config.js"></script>
+        <script src="lib/jquery.min.js"></script>
+        <script src="lib/facePrint.js"></script>
+        <script src="lib/testHelper.js"></script>
+        <link rel="stylesheet" href="lib/reset.css" />
+    </head>
+    <body>
+        <style>
+        </style>
+
+        <div id="main_multi_category_axis"></div>
+        <div id="main_multi_time_axis"></div>
+
+
+        <script>
+
+            var chart;
+            var data;
+
+            require([
+                'echarts'
+            ], function (echarts) {
+
+                function makeOption(layout) {
+                    sourceData = [];
+                    for (var seriesIndex = 0; seriesIndex < 3; seriesIndex++) {
+                        var seriesData = [];
+                        for (var i = 0; i < 18; i++) {
+                            var cate = [];
+                            for (var j = 0; j < 100; j++) {
+                                cate.push(Math.random() * 200);
+                            }
+                            seriesData.push(cate);
+                        }
+                        sourceData.push(seriesData);
+                    }
+
+                    var categoryAxis = {
+                        type: 'category',
+                        boundaryGap: true,
+                        nameGap: 30,
+                        splitArea: {
+                            show: true
+                        },
+                        splitLine: {
+                            show: false
+                        }
+                    };
+                    var valueAxis = {
+                        type: 'value',
+                        name: 'Value',
+                        splitArea: {
+                            show: false
+                        }
+                    };
+
+                    return {
+                        dataset: [{
+                            source: sourceData[0]
+                        }, {
+                            source: sourceData[1]
+                        }, {
+                            source: sourceData[2]
+                        }, {
+                            fromDatasetIndex: 0,
+                            transform: {
+                                type: 'boxplot',
+                                config: {
+                                    itemNameFormatter: function (params) {
+                                        return 'expr ' + params.value;
+                                    }
+                                }
+                            }
+                        }, {
+                            fromDatasetIndex: 1,
+                            transform: {
+                                type: 'boxplot',
+                                config: {
+                                    itemNameFormatter: function (params) {
+                                        return 'expr ' + params.value;
+                                    }
+                                }
+                            }
+                        }, {
+                            fromDatasetIndex: 2,
+                            transform: {
+                                type: 'boxplot',
+                                config: {
+                                    itemNameFormatter: function (params) {
+                                        return 'expr ' + params.value;
+                                    }
+                                }
+                            }
+                        }],
+                        legend: {
+                            top: 10
+                        },
+                        tooltip: {
+                            trigger: 'axis',
+                            axisPointer: {
+                                type: 'shadow'
+                            }
+                        },
+                        grid: {
+                            left: '10%',
+                            top: 80,
+                            right: '10%',
+                            bottom: 100
+                        },
+                        xAxis: layout === 'horizontal' ? categoryAxis : valueAxis,
+                        yAxis: layout === 'vertical' ? categoryAxis : valueAxis,
+                        dataZoom: [
+                            {
+                                type: 'inside',
+                                start: 0,
+                                end: 20
+                            },
+                            {
+                                show: true,
+                                height: 20,
+                                type: 'slider',
+                                bottom: 50,
+                                xAxisIndex: layout === 'horizontal' ? [0] : [],
+                                yAxisIndex: layout === 'horizontal' ? [] : [0],
+                                start: 0,
+                                end: 20
+                            }
+                        ],
+                        series: [
+                            {
+                                name: 'category0',
+                                type: 'boxplot',
+                                itemStyle: {
+                                    color: '#a32',
+                                    borderColor: '#429',
+                                    borderWidth: 3
+                                },
+                                datasetIndex: 3
+                            },
+                            {
+                                name: 'category1',
+                                type: 'boxplot',
+                                datasetIndex: 4
+                            },
+                            {
+                                name: 'category2',
+                                type: 'boxplot',
+                                datasetIndex: 5
+                            }
+                        ]
+                    };
+                }
+
+                var myChart = testHelper.create(echarts, 'main_multi_category_axis', {
+                    title: [
+                        'Multiple boxplots on a category axis',
+                    ],
+                    option: makeOption('horizontal'),
+                    height: 500,
+                });
+
+            });
+
+        </script>
+
+
+
+
+        <script>
+
+            var chart;
+            var data;
+
+            require([
+                'echarts'
+            ], function (echarts) {
+
+                const _ctx = {
+                    layout: 'horizontal',
+                };
+
+                function makeOption() {
+                    sourceData = [];
+                    for (var seriesIndex = 0; seriesIndex < 3; seriesIndex++) {
+                        var seriesData = [];
+                        for (var i = 0; i < 18; i++) {
+                            var data = [];
+                            for (var j = 0; j < 100; j++) {
+                                data.push(Math.random() * 200);
+                            }
+                            seriesData.push(data);
+                        }
+                        sourceData.push(seriesData);
+                    }
+
+                    var timeAxis = {
+                        type: 'time',
+                        splitArea: {
+                            show: true
+                        },
+                        splitLine: {
+                            show: false
+                        }
+                    };
+                    var valueAxis = {
+                        type: 'value',
+                        splitArea: {
+                            show: false
+                        }
+                    };
+
+                    var baseTime = 1772297677640;
+                    function itemNameFormatter(params) {
+                        var time = baseTime + params.value * 3600 * 24 * 1000;
+                        var timeStr = echarts.time.format(time, '{yyyy}-{MM}-{dd}');
+                        return timeStr;
+                    }
+
+                    return {
+                        dataset: [{
+                            source: sourceData[0]
+                        }, {
+                            source: sourceData[1]
+                        }, {
+                            source: sourceData[2]
+                        }, {
+                            fromDatasetIndex: 0,
+                            transform: {
+                                type: 'boxplot',
+                                config: {
+                                    itemNameFormatter: itemNameFormatter
+                                }
+                            }
+                        }, {
+                            fromDatasetIndex: 1,
+                            transform: {
+                                type: 'boxplot',
+                                config: {
+                                    itemNameFormatter: itemNameFormatter
+                                }
+                            }
+                        }, {
+                            fromDatasetIndex: 2,
+                            transform: {
+                                type: 'boxplot',
+                                config: {
+                                    itemNameFormatter: itemNameFormatter
+                                }
+                            }
+                        }],
+                        legend: {
+                            top: 10
+                        },
+                        tooltip: {
+                            trigger: 'axis',
+                            axisPointer: {
+                                type: 'shadow'
+                            }
+                        },
+                        grid: {
+                            left: '10%',
+                            top: 80,
+                            right: '10%',
+                            bottom: 100
+                        },
+                        xAxis: _ctx.layout === 'horizontal' ? timeAxis : valueAxis,
+                        yAxis: _ctx.layout === 'vertical' ? timeAxis : valueAxis,
+                        dataZoom: [
+                            {
+                                type: 'inside',
+                                start: 0,
+                                end: 20,
+                                xAxisIndex: _ctx.layout === 'horizontal' ? [0] : [],
+                                yAxisIndex: _ctx.layout === 'horizontal' ? [] : [0],
+                            },
+                            {
+                                show: true,
+                                type: 'slider',
+                                ...(function () {
+                                    if (_ctx.layout === 'horizontal') {
+                                        return {
+                                            height: 20,
+                                            bottom: 50,
+                                        };
+                                    }
+                                    else {
+                                        return {
+                                            width: 20,
+                                            right: 10,
+                                        };
+                                    }
+                                }),
+                                xAxisIndex: _ctx.layout === 'horizontal' ? [0] : [],
+                                yAxisIndex: _ctx.layout === 'horizontal' ? [] : [0],
+                                start: 0,
+                                end: 20
+                            }
+                        ],
+                        series: [
+                            {
+                                name: 'ser_a',
+                                type: 'boxplot',
+                                itemStyle: {
+                                    color: '#a32',
+                                    borderColor: '#429',
+                                    borderWidth: 3
+                                },
+                                datasetIndex: 3
+                            },
+                            {
+                                name: 'ser_b',
+                                type: 'boxplot',
+                                datasetIndex: 4
+                            },
+                            {
+                                name: 'ser_c',
+                                type: 'boxplot',
+                                datasetIndex: 5
+                            }
+                        ]
+                    };
+                }
+
+                function updateChart() {
+                    chart.setOption(makeOption());
+                }
+
+                var chart = testHelper.create(echarts, 'main_multi_time_axis', {
+                    title: [
+                        'Multiple boxplots on a time axis',
+                    ],
+                    option: makeOption(),
+                    height: 500,
+                    inputsStyle: 'compact',
+                    inputs: [{
+                        type: 'select',
+                        text: 'layout:',
+                        values: [_ctx.layout, 'vertical'],
+                        onchange() {
+                            _ctx.layout = this.value;
+                            updateChart();
+                        }
+                    }]
+                });
+
+            });
+
+        </script>
+
+
+    </body>
+</html>

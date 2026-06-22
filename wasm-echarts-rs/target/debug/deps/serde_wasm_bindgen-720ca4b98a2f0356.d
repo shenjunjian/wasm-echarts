@@ -1,0 +1,9 @@
+E:\wasm-echarts\wasm-echarts-rs\target\debug\deps\serde_wasm_bindgen-720ca4b98a2f0356.d: C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-wasm-bindgen-0.6.5\src\lib.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-wasm-bindgen-0.6.5\src\de.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-wasm-bindgen-0.6.5\src\error.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-wasm-bindgen-0.6.5\src\ser.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-wasm-bindgen-0.6.5\src\../README.md
+
+E:\wasm-echarts\wasm-echarts-rs\target\debug\deps\libserde_wasm_bindgen-720ca4b98a2f0356.rmeta: C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-wasm-bindgen-0.6.5\src\lib.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-wasm-bindgen-0.6.5\src\de.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-wasm-bindgen-0.6.5\src\error.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-wasm-bindgen-0.6.5\src\ser.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-wasm-bindgen-0.6.5\src\../README.md
+
+C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-wasm-bindgen-0.6.5\src\lib.rs:
+C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-wasm-bindgen-0.6.5\src\de.rs:
+C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-wasm-bindgen-0.6.5\src\error.rs:
+C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-wasm-bindgen-0.6.5\src\ser.rs:
+C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-wasm-bindgen-0.6.5\src\../README.md:
