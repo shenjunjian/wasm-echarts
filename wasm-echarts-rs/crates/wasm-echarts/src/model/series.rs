@@ -2,6 +2,8 @@
 pub enum SeriesType {
     Line,
     Bar,
+    Pie,
+    Scatter,
     Other,
 }
 
@@ -10,6 +12,8 @@ impl SeriesType {
         match s {
             "line" => SeriesType::Line,
             "bar" => SeriesType::Bar,
+            "pie" => SeriesType::Pie,
+            "scatter" => SeriesType::Scatter,
             _ => SeriesType::Other,
         }
     }
@@ -18,6 +22,7 @@ impl SeriesType {
 #[derive(Debug, Clone)]
 pub struct DataPoint {
     pub value: f64,
+    pub x_value: Option<f64>,
     pub name: Option<String>,
     pub raw_index: usize,
 }

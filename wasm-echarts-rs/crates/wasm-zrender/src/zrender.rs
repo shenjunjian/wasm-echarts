@@ -179,6 +179,21 @@ mod tests {
     }
 
     #[test]
+    fn text_render_outputs_pixels() {
+        use crate::graphic::text::{Text, TextStyle};
+        let mut zr = ZRenderer::new(120, 60).unwrap();
+        zr.storage.create_text(
+            Text::new("wasm", 10.0, 30.0).with_style(TextStyle {
+                fill: "#333".into(),
+                font_size: 14.0,
+                ..Default::default()
+            }),
+        );
+        let rgba = zr.refresh().unwrap();
+        assert!(rgba.chunks(4).any(|px| px[3] > 0 && px[0] < 250));
+    }
+
+    #[test]
     fn storage_painter_refresh_outputs_rgba() {
         let mut zr = ZRenderer::new(320, 160).unwrap();
         build_test_scene(&mut zr.storage);

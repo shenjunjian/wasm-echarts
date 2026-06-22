@@ -6,6 +6,7 @@ use crate::element::REDRAW_BIT;
 use crate::graphic::displayable::normalize_z;
 use crate::graphic::group::{ChildRef, Group};
 use crate::graphic::path::Path;
+use crate::graphic::text::Text;
 use timsort::sort_display_list;
 
 #[derive(Debug, Clone)]
@@ -20,6 +21,7 @@ pub struct DisplayItem {
 pub struct Storage {
     groups: Vec<Group>,
     paths: Vec<Path>,
+    texts: Vec<Text>,
     roots: Vec<ChildRef>,
     display_list: Vec<DisplayItem>,
     display_dirty: bool,
@@ -36,6 +38,7 @@ impl Storage {
         Self {
             groups: Vec::new(),
             paths: Vec::new(),
+            texts: Vec::new(),
             roots: Vec::new(),
             display_list: Vec::new(),
             display_dirty: true,
@@ -53,6 +56,12 @@ impl Storage {
         let idx = self.paths.len();
         self.paths.push(path);
         self.display_dirty = true;
+        idx
+    }
+
+    pub fn create_text(&mut self, text: Text) -> usize {
+        let idx = self.texts.len();
+        self.texts.push(text);
         idx
     }
 
@@ -82,6 +91,10 @@ impl Storage {
         &self.paths
     }
 
+    pub fn texts(&self) -> &[Text] {
+        &self.texts
+    }
+
     pub fn mark_all_dirty(&mut self) {
         self.display_dirty = true;
         for g in &mut self.groups {
@@ -89,6 +102,9 @@ impl Storage {
         }
         for p in &mut self.paths {
             p.base.mark_redraw();
+        }
+        for t in &mut self.texts {
+            t.base.mark_redraw();
         }
     }
 

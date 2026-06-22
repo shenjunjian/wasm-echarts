@@ -5,6 +5,7 @@ pub mod line;
 pub mod polygon;
 pub mod polyline;
 pub mod rect;
+pub mod sector;
 
 use crate::graphic::path_proxy::PathProxy;
 
@@ -13,6 +14,7 @@ pub use line::{LineShape, build_line_path};
 pub use polygon::{PolygonShape, build_polygon_path};
 pub use polyline::{PolylineShape, build_polyline_path};
 pub use rect::{RectShape, build_rect_path};
+pub use sector::{SectorShape, build_sector_path};
 
 #[derive(Debug, Clone)]
 pub enum Shape {
@@ -21,6 +23,7 @@ pub enum Shape {
     Line(LineShape),
     Polygon(PolygonShape),
     Polyline(PolylineShape),
+    Sector(SectorShape),
 }
 
 impl Shape {
@@ -31,6 +34,7 @@ impl Shape {
             Shape::Line(s) => build_line_path(ctx, s),
             Shape::Polygon(s) => build_polygon_path(ctx, s, true),
             Shape::Polyline(s) => build_polyline_path(ctx, s),
+            Shape::Sector(s) => build_sector_path(ctx, s),
         }
     }
 }

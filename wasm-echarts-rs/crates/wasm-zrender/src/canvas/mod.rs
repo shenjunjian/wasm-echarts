@@ -7,5 +7,6 @@ pub mod helper;
 pub mod image;
 pub mod layer;
 pub mod painter;
+pub mod text_brush;
 
 pub use image::draw_image_rgba;

@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 use crate::canvas::backend::CanvasBackend;
 use crate::canvas::brush::{BrushScope, brush};
 use crate::canvas::layer::Layer;
+use crate::canvas::text_brush::{brush_text, text_sort_key};
 use crate::core::types::RgbaBuffer;
 use crate::storage::Storage;
 
@@ -61,6 +62,7 @@ impl<B: CanvasBackend> Painter<B> {
                 brush(ctx, storage, path_index, scope)?;
             }
         }
+        brush_all_texts(ctx, storage)?;
         Ok(self.base_layer.backend().get_rgba())
     }
 
@@ -96,12 +98,34 @@ impl<B: CanvasBackend> Painter<B> {
             composite_layer(&mut self.base_layer, layer)?;
         }
 
+        let ctx = self.base_layer.backend_mut() as &mut dyn crate::canvas::backend::CanvasContext;
+        brush_all_texts(ctx, storage)?;
+
         Ok(self.base_layer.backend().get_rgba())
     }
 }
 
 fn zlevel_to_key(zlevel: f64) -> i64 {
     (zlevel * 1000.0).round() as i64
+}
+
+fn brush_all_texts(
+    ctx: &mut dyn crate::canvas::backend::CanvasContext,
+    storage: &Storage,
+) -> Result<(), crate::canvas::backend::BackendError> {
+    if storage.texts().is_empty() {
+        return Ok(());
+    }
+    let mut order: Vec<usize> = (0..storage.texts().len()).collect();
+    order.sort_by(|a, b| {
+        text_sort_key(&storage.texts()[*a])
+            .partial_cmp(&text_sort_key(&storage.texts()[*b]))
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    for idx in order {
+        brush_text(ctx, &storage.texts()[idx])?;
+    }
+    Ok(())
 }
 
 fn composite_layer<B: CanvasBackend>(

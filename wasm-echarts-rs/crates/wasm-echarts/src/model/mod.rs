@@ -83,6 +83,7 @@ impl GlobalModel {
             .unwrap_or_default();
 
         let y_axis = y_axis.with_data_range(compute_value_extent(&series));
+        let x_axis = apply_x_extent(x_axis, &series);
 
         Self {
             width,
@@ -94,6 +95,19 @@ impl GlobalModel {
             series,
             data_zoom,
         }
+    }
+
+    pub fn has_cartesian_series(&self) -> bool {
+        self.series.iter().any(|s| {
+            matches!(
+                s.series_type,
+                SeriesType::Line | SeriesType::Bar | SeriesType::Scatter
+            )
+        })
+    }
+
+    pub fn has_pie_series(&self) -> bool {
+        self.series.iter().any(|s| s.series_type == SeriesType::Pie)
     }
 
     pub fn visible_category_range(&self) -> (usize, usize) {
@@ -219,6 +233,27 @@ fn parse_y_axis(value: Option<&OptionValue>) -> AxisModel {
     }
 }
 
+fn apply_x_extent(mut x_axis: AxisModel, series: &[SeriesModel]) -> AxisModel {
+    if x_axis.axis_type != AxisType::Value {
+        return x_axis;
+    }
+    let (min, max) = compute_x_extent(series);
+    x_axis.with_data_range((min, max))
+}
+
+fn compute_x_extent(series: &[SeriesModel]) -> (f64, f64) {
+    let mut min = f64::INFINITY;
+    let mut max = f64::NEG_INFINITY;
+    for s in series {
+        for (i, p) in s.data.iter().enumerate() {
+            let x = p.x_value.unwrap_or(i as f64);
+            min = min.min(x);
+            max = max.max(x);
+        }
+    }
+    pad_extent(min, max)
+}
+
 fn compute_value_extent(series: &[SeriesModel]) -> (f64, f64) {
     let mut min = f64::INFINITY;
     let mut max = f64::NEG_INFINITY;
@@ -228,6 +263,10 @@ fn compute_value_extent(series: &[SeriesModel]) -> (f64, f64) {
             max = max.max(p.value);
         }
     }
+    pad_extent(min, max)
+}
+
+fn pad_extent(min: f64, max: f64) -> (f64, f64) {
     if !min.is_finite() || !max.is_finite() {
         return (0.0, 100.0);
     }
@@ -258,5 +297,32 @@ mod tests {
         let grid = parse_grid(Some(&OptionValue::Object(m)), 400.0, 300.0);
         assert!((grid.x - 40.0).abs() < 0.01);
         assert!((grid.width - 340.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn scatter_x_extent() {
+        use crate::model::series::{DataPoint, SeriesModel, SeriesType};
+        let series = vec![SeriesModel {
+            index: 0,
+            name: "s".into(),
+            series_type: SeriesType::Scatter,
+            data: vec![
+                DataPoint {
+                    value: 10.0,
+                    x_value: Some(1.0),
+                    name: None,
+                    raw_index: 0,
+                },
+                DataPoint {
+                    value: 20.0,
+                    x_value: Some(9.0),
+                    name: None,
+                    raw_index: 1,
+                },
+            ],
+        }];
+        let (min, max) = compute_x_extent(&series);
+        assert!(min < 1.0);
+        assert!(max > 9.0);
     }
 }

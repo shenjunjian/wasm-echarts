@@ -3,6 +3,7 @@ use crate::core::matrix::{self, Matrix};
 use crate::core::types::RgbaBuffer;
 use crate::graphic::path_proxy::PathProxy;
 use crate::graphic::style::ShadowStyle;
+use crate::graphic::text::{TextAlign, TextBaseline};
 use std::sync::Arc;
 use vl_convert_canvas2d::{
     ArcParams, Canvas2dContext, CanvasGradient, CanvasImageDataRef, CanvasPattern,
@@ -195,6 +196,36 @@ impl CanvasContext for VlConvertBackend {
             self.ctx.width() as f32,
             self.ctx.height() as f32,
         )
+    }
+
+    fn set_font(&mut self, font: &str) {
+        let _ = self.ctx.set_font(font);
+    }
+
+    fn set_text_align(&mut self, align: TextAlign) {
+        use vl_convert_canvas2d::TextAlign as Va;
+        let a = match align {
+            TextAlign::Left => Va::Left,
+            TextAlign::Center => Va::Center,
+            TextAlign::Right => Va::Right,
+        };
+        self.ctx.set_text_align(a);
+    }
+
+    fn set_text_baseline(&mut self, baseline: TextBaseline) {
+        use vl_convert_canvas2d::TextBaseline as Vb;
+        let b = match baseline {
+            TextBaseline::Top => Vb::Top,
+            TextBaseline::Middle => Vb::Middle,
+            TextBaseline::Bottom => Vb::Bottom,
+            TextBaseline::Alphabetic => Vb::Alphabetic,
+        };
+        self.ctx.set_text_baseline(b);
+    }
+
+    fn fill_text(&mut self, text: &str, x: f32, y: f32) -> Result<(), BackendError> {
+        self.ctx.fill_text(text, x, y);
+        Ok(())
     }
 }
 

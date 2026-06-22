@@ -153,6 +153,7 @@ fn estimate_bbox(shape: &Shape) -> BoundingRect {
         }
         Shape::Polygon(s) => bbox_from_points(&s.points),
         Shape::Polyline(s) => bbox_from_points(&s.points),
+        Shape::Sector(s) => BoundingRect::new(s.cx - s.r, s.cy - s.r, s.r * 2.0, s.r * 2.0),
     }
 }
 

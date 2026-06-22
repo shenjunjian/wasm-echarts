@@ -245,6 +245,13 @@ class EChartsWasmChart {
     };
   }
 
+  /**
+   * @param {number} [iterations=30]
+   */
+  benchmark(iterations = 30) {
+    return this._wasm.benchmark_render(iterations);
+  }
+
   dispose() {
     if (this._disposed) return;
     this._disposed = true;

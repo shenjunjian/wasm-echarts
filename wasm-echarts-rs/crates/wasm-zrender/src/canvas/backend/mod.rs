@@ -16,6 +16,7 @@ use crate::core::matrix::Matrix;
 use crate::core::types::RgbaBuffer;
 use crate::graphic::path_proxy::PathProxy;
 use crate::graphic::style::ShadowStyle;
+use crate::graphic::text::{TextAlign, TextBaseline};
 
 /// 后端错误
 #[derive(Debug, thiserror::Error)]
@@ -93,6 +94,11 @@ pub trait CanvasContext {
         let _ = (path, transform, shadow, fill, stroke, line_width);
         Ok(())
     }
+
+    fn set_font(&mut self, font: &str);
+    fn set_text_align(&mut self, align: TextAlign);
+    fn set_text_baseline(&mut self, baseline: TextBaseline);
+    fn fill_text(&mut self, text: &str, x: f32, y: f32) -> Result<(), BackendError>;
 }
 
 /// Painter 使用的离屏 Canvas 后端

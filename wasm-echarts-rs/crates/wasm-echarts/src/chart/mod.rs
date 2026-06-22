@@ -1,8 +1,19 @@
+mod axis;
 mod bar;
 mod line;
+#[cfg(feature = "chart-pie")]
+mod pie;
+#[cfg(feature = "chart-scatter")]
+mod scatter;
 
+#[cfg(feature = "chart-bar")]
 pub use bar::render_bar_series;
+#[cfg(feature = "chart-line")]
 pub use line::render_line_series;
+#[cfg(feature = "chart-pie")]
+pub use pie::render_pie_series;
+#[cfg(feature = "chart-scatter")]
+pub use scatter::render_scatter_series;
 
 use wasm_zrender::{
     ChildRef, FillStrokeStyle, LineShape, Path, PathStyle, Shape, ZRenderer,
@@ -10,7 +21,7 @@ use wasm_zrender::{
 
 use crate::coord::Cartesian2D;
 use crate::interaction::InteractionState;
-use crate::model::GlobalModel;
+use crate::model::{GlobalModel, SeriesType};
 use crate::option::OptionModel;
 use crate::visual::VisualContext;
 
@@ -23,24 +34,39 @@ pub fn render_components(
     let group = zr.storage.create_group();
     let coord = Cartesian2D::new(model);
     let visual = VisualContext::new(option, model);
-
-    render_grid_frame(zr, group, model);
-    render_split_lines(zr, group, model, &coord);
-
     let (zoom_start, zoom_end) = model.visible_category_range();
+
+    if model.has_cartesian_series() {
+        render_grid_frame(zr, group, model);
+        render_split_lines(zr, group, model, &coord);
+        axis::render_axis_labels(zr, group, model, &coord, zoom_start, zoom_end);
+    }
+
     for series in &model.series {
         match series.series_type {
-            crate::model::SeriesType::Line => {
+            #[cfg(feature = "chart-line")]
+            SeriesType::Line => {
                 render_line_series(zr, group, model, &coord, &visual, series, zoom_start, zoom_end);
             }
-            crate::model::SeriesType::Bar => {
+            #[cfg(feature = "chart-bar")]
+            SeriesType::Bar => {
                 render_bar_series(zr, group, model, &coord, &visual, series, zoom_start, zoom_end);
+            }
+            #[cfg(feature = "chart-pie")]
+            SeriesType::Pie => {
+                render_pie_series(zr, group, model, &visual, series);
+            }
+            #[cfg(feature = "chart-scatter")]
+            SeriesType::Scatter => {
+                render_scatter_series(zr, group, model, &coord, &visual, series);
             }
             _ => {}
         }
     }
 
-    render_axis_pointer(zr, group, model, &coord, interaction);
+    if model.has_cartesian_series() {
+        render_axis_pointer(zr, group, model, &coord, interaction);
+    }
 
     zr.storage.add_root(ChildRef::Group(group));
 }
@@ -51,7 +77,6 @@ fn render_grid_frame(zr: &mut ZRenderer, group: usize, model: &GlobalModel) {
     };
 
     let g = model.grid;
-    // 左边 Y 轴
     let y_axis = zr.storage.create_path(Path::new(
         Shape::Line(LineShape {
             x1: g.x,
@@ -67,7 +92,6 @@ fn render_grid_frame(zr: &mut ZRenderer, group: usize, model: &GlobalModel) {
             ..Default::default()
         },
     ));
-    // 底边 X 轴
     let x_axis = zr.storage.create_path(Path::new(
         Shape::Line(LineShape {
             x1: g.x,

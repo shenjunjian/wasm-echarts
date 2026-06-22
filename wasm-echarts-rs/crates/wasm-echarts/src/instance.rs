@@ -256,6 +256,19 @@ impl EChartsInstance {
         self.option.clear();
         self.interaction = InteractionState::default();
     }
+
+    /// 阶段 7：基准测试 setOption 管线 + refresh 平均耗时（毫秒）
+    pub fn benchmark_render(&mut self, iterations: u32) -> f64 {
+        if self.option.is_empty() || iterations == 0 {
+            return 0.0;
+        }
+        let start = js_sys::Date::now();
+        for _ in 0..iterations {
+            self.render_and_apply_states();
+            let _ = self.zr.refresh();
+        }
+        (js_sys::Date::now() - start) / iterations as f64
+    }
 }
 
 impl EChartsInstance {

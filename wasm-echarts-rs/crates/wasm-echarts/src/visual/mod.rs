@@ -103,6 +103,7 @@ fn parse_data_point(item: &OptionValue, index: usize) -> Option<DataPoint> {
     match item {
         OptionValue::Number(n) => Some(DataPoint {
             value: *n,
+            x_value: None,
             name: None,
             raw_index: index,
         }),
@@ -111,15 +112,18 @@ fn parse_data_point(item: &OptionValue, index: usize) -> Option<DataPoint> {
             let name = obj.get("name").and_then(|v| v.as_str()).map(str::to_string);
             Some(DataPoint {
                 value,
+                x_value: None,
                 name,
                 raw_index: index,
             })
         }
         OptionValue::Array(pair) if pair.len() >= 2 => {
+            let x = pair[0].as_f64().or_else(|| pair[0].as_str().and_then(|s| s.parse().ok()));
             let value = pair[1].as_f64()?;
             let name = pair[0].as_str().map(str::to_string);
             Some(DataPoint {
                 value,
+                x_value: x,
                 name,
                 raw_index: index,
             })
