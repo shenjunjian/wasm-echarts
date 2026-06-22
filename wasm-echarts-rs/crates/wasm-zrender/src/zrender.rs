@@ -52,7 +52,7 @@ mod tests {
     use crate::graphic::group::ChildRef;
     use crate::graphic::path::Path;
     use crate::graphic::shapes::{CircleShape, LineShape, PolygonShape, RectShape, Shape};
-    use crate::graphic::style::PathStyle;
+    use crate::graphic::style::{FillStrokeStyle, PathStyle};
 
     fn build_test_scene(storage: &mut Storage) {
         let group = storage.create_group();
@@ -65,7 +65,7 @@ mod tests {
                 height: 60.0,
             }),
             PathStyle {
-                fill: Some("#5470c6".to_string()),
+                fill: FillStrokeStyle::color("#5470c6"),
                 ..Default::default()
             },
         ));
@@ -78,8 +78,8 @@ mod tests {
                     r: 40.0,
                 }),
                 PathStyle {
-                    fill: Some("rgba(145, 204, 117, 0.8)".to_string()),
-                    stroke: Some("#ee6666".to_string()),
+                    fill: FillStrokeStyle::color("rgba(145, 204, 117, 0.8)"),
+                    stroke: FillStrokeStyle::color("#ee6666"),
                     line_width: 3.0,
                     ..Default::default()
                 },
@@ -99,9 +99,10 @@ mod tests {
                 percent: 1.0,
             }),
             PathStyle {
-                fill: None,
-                stroke: Some("#333".to_string()),
+                fill: FillStrokeStyle::none(),
+                stroke: FillStrokeStyle::color("#333"),
                 line_width: 2.0,
+                line_dash: Some(vec![6.0, 4.0]),
                 ..Default::default()
             },
         ));
@@ -111,7 +112,7 @@ mod tests {
                 points: vec![(240.0, 30.0), (300.0, 60.0), (270.0, 100.0)],
             }),
             PathStyle {
-                fill: Some("#fac858".to_string()),
+                fill: FillStrokeStyle::color("#fac858"),
                 ..Default::default()
             },
         ));
@@ -130,5 +131,15 @@ mod tests {
         let rgba = zr.refresh().unwrap();
         assert_eq!(rgba.len(), 320 * 160 * 4);
         assert!(rgba.chunks(4).any(|px| px[3] > 0));
+    }
+
+    #[test]
+    fn path_contains_hit_test() {
+        let mut zr = ZRenderer::new(320, 160).unwrap();
+        build_test_scene(&mut zr.storage);
+        let rect_path = 0usize;
+        let path = zr.storage.path_mut(rect_path);
+        assert!(path.contains(70.0, 50.0));
+        assert!(!path.contains(5.0, 5.0));
     }
 }

@@ -29,6 +29,10 @@ impl PathProxy {
         self.commands.clear();
     }
 
+    pub fn commands(&self) -> &[PathCmd] {
+        &self.commands
+    }
+
     pub fn move_to(&mut self, x: f32, y: f32) {
         self.commands.push(PathCmd::MoveTo(x, y));
     }
@@ -49,8 +53,8 @@ impl PathProxy {
         self.commands.push(PathCmd::Arc(params));
     }
 
-    pub fn rect(&mut self, params: RectParams) {
-        self.commands.push(PathCmd::Rect(params));
+    pub fn rect(&mut self, params: &RectParams) {
+        self.commands.push(PathCmd::Rect(*params));
     }
 
     pub fn close_path(&mut self) {

@@ -11,7 +11,9 @@ pub mod zrender;
 
 pub use canvas::backend::{BackendError, CanvasBackend, CanvasContext, VlConvertBackend};
 pub use canvas::demo::render_demo_shapes;
+pub use canvas::draw_image_rgba;
 pub use canvas::painter::Painter;
+pub use contain::{contain, contain_stroke};
 pub use graphic::*;
 pub use storage::Storage;
 pub use zrender::ZRenderer;

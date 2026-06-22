@@ -1,8 +1,12 @@
-use super::{BackendError, CanvasBackend, CanvasContext};
+use super::{BackendError, CanvasBackend, CanvasContext, ShadowPass};
 use crate::core::matrix::{self, Matrix};
 use crate::core::types::RgbaBuffer;
+use crate::graphic::path_proxy::PathProxy;
+use crate::graphic::style::ShadowStyle;
+use std::sync::Arc;
 use vl_convert_canvas2d::{
-    ArcParams, Canvas2dContext, CubicBezierParams, QuadraticBezierParams, RectParams,
+    ArcParams, Canvas2dContext, CanvasGradient, CanvasImageDataRef, CanvasPattern,
+    CubicBezierParams, QuadraticBezierParams, RectParams,
 };
 
 /// 基于 vl-convert-canvas2d 的 Canvas 2D 后端
@@ -48,6 +52,34 @@ impl CanvasContext for VlConvertBackend {
     fn set_stroke_style(&mut self, color: &str) -> Result<(), BackendError> {
         self.ctx
             .set_stroke_style(color)
+            .map_err(|e| BackendError::Canvas(e.to_string()))
+    }
+
+    fn set_fill_style_gradient(&mut self, gradient: CanvasGradient) {
+        self.ctx.set_fill_style_gradient(gradient);
+    }
+
+    fn set_stroke_style_gradient(&mut self, gradient: CanvasGradient) {
+        self.ctx.set_stroke_style_gradient(gradient);
+    }
+
+    fn set_fill_style_pattern(&mut self, pattern: Arc<CanvasPattern>) {
+        self.ctx.set_fill_style_pattern(pattern);
+    }
+
+    fn set_stroke_style_pattern(&mut self, pattern: Arc<CanvasPattern>) {
+        self.ctx.set_stroke_style_pattern(pattern);
+    }
+
+    fn create_pattern(
+        &self,
+        data: &[u8],
+        width: u32,
+        height: u32,
+        repetition: &str,
+    ) -> Result<Arc<CanvasPattern>, BackendError> {
+        self.ctx
+            .create_pattern(data, width, height, repetition)
             .map_err(|e| BackendError::Canvas(e.to_string()))
     }
 
@@ -113,6 +145,56 @@ impl CanvasContext for VlConvertBackend {
 
     fn clip(&mut self) {
         self.ctx.clip();
+    }
+
+    fn draw_image_rgba(
+        &mut self,
+        data: &[u8],
+        width: u32,
+        height: u32,
+        dx: f32,
+        dy: f32,
+        dw: f32,
+        dh: f32,
+    ) -> Result<(), BackendError> {
+        let image = CanvasImageDataRef {
+            data,
+            width,
+            height,
+        };
+        self.ctx
+            .draw_image_data_scaled(&image, dx, dy, dw, dh);
+        Ok(())
+    }
+
+    fn draw_shadow(
+        &mut self,
+        path: &PathProxy,
+        transform: &Matrix,
+        shadow: &ShadowStyle,
+        fill: bool,
+        stroke: bool,
+        line_width: f32,
+    ) -> Result<(), BackendError> {
+        let rgba = ShadowPass::render(
+            self.ctx.width(),
+            self.ctx.height(),
+            path,
+            transform,
+            shadow,
+            fill,
+            stroke,
+            line_width,
+        )?;
+        self.draw_image_rgba(
+            &rgba,
+            self.ctx.width(),
+            self.ctx.height(),
+            0.0,
+            0.0,
+            self.ctx.width() as f32,
+            self.ctx.height() as f32,
+        )
     }
 }
 

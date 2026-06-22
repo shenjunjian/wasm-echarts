@@ -11,7 +11,7 @@ pub struct RectShape {
 }
 
 pub fn build_rect_path(ctx: &mut PathProxy, shape: &RectShape) {
-    ctx.rect(RectParams {
+    ctx.rect(&RectParams {
         x: shape.x as f32,
         y: shape.y as f32,
         width: shape.width as f32,

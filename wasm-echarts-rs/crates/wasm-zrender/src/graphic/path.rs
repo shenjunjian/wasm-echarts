@@ -75,6 +75,29 @@ impl Path {
             bbox.as_ref(),
         )
     }
+
+    /// 填充命中检测（全局坐标）
+    pub fn contains(&mut self, x: f64, y: f64) -> bool {
+        self.ensure_path();
+        crate::contain::contain_with_transform(
+            self.path_proxy(),
+            self.base.transform(),
+            x,
+            y,
+        )
+    }
+
+    /// 描边命中检测（全局坐标）
+    pub fn contains_stroke(&mut self, x: f64, y: f64) -> bool {
+        self.ensure_path();
+        crate::contain::contain_stroke_with_transform(
+            self.path_proxy(),
+            self.base.transform(),
+            self.style.line_width,
+            x,
+            y,
+        )
+    }
 }
 
 fn estimate_bbox(shape: &Shape) -> BoundingRect {

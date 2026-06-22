@@ -963,7 +963,10 @@ dependencies = [
 name = "wasm-zrender"
 version = "0.1.0"
 dependencies = [
+ "csscolorparser",
+ "kurbo",
  "thiserror",
+ "tiny-skia",
  "vl-convert-canvas2d",
 ]
 

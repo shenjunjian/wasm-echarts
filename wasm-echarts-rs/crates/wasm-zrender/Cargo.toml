@@ -6,3 +6,6 @@ edition = "2021"
 [dependencies]
 vl-convert-canvas2d = "2.0.0-rc1"
 thiserror = "2"
+tiny-skia = "0.11.4"
+kurbo = "0.13"
+csscolorparser = "0.7"

@@ -10,6 +10,9 @@ pub mod style;
 pub use displayable::{DisplayableProps, displayable_compare, normalize_z};
 pub use group::{ChildRef, Group};
 pub use path::Path;
-pub use path_proxy::PathProxy;
+pub use path_proxy::{PathCmd, PathProxy};
 pub use shapes::*;
-pub use style::PathStyle;
+pub use style::{
+    ColorStop, FillStrokeStyle, LinearGradientStyle, PathStyle, PatternStyle, RadialGradientStyle,
+    ShadowStyle,
+};
