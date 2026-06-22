@@ -15,7 +15,7 @@ echarts 的 wasm 移植版本。 目的是快速将echarts的options选项绘制
 5. api对齐：
    . 只支持 canvas 模式即可，不需要支持 svg 模式。
    . 这个库重点是实现canvas绘制，如果遇到动画api， 直接让它执行完毕，不需要中间过程。如果遇到处理dom元素相关的，也可以忽略它。
-   . 
+
 
 
 
