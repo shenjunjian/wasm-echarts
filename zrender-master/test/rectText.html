@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <script src="./lib/testHelper.js"></script>
+    <script src="../dist/zrender.js"></script>
+    <script src="data/text.js"></script>
+    <style>
+        html {
+            font-family: Arial;
+            font-size: 14px;
+            counter-reset: control-item;
+        }
+        .control {
+            position: fixed;
+            width: 220px;
+            bottom: 0;
+            top: 0;
+            right: 0;
+            z-index: 99999;
+            font-family: Arial, Helvetica, sans-serif;
+            padding: 10px;
+            padding-top: 0;
+            background: #dee;
+            box-shadow: 0 0 5px #888;
+            font-size: 12px;
+            overflow: auto;
+        }
+        .control-block, .control-state-block {
+            padding-left: 5px;
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        .control-block::before {
+            counter-increment: control-item;
+            content: "" counter(control-item) " ";
+            position: absolute;
+            font-size: 10px;
+            left: -7px;
+            top: 2px;
+        }
+        button {
+            margin: 2px;
+            font-size: 10px;
+        }
+        .storage-key {
+            color: #888;
+        }
+        #storage-container {
+            padding: 5px 0;
+        }
+        label {
+            padding-left: 5px;
+            padding-right: 5px;
+        }
+        #state-area {
+            position: sticky;
+            top: 0;
+            background-color: #dee;
+            padding-top: 10px;
+            z-index: 9999;
+            margin-left: -8px;
+        }
+    </style>
+</head>
+<body>
+
+    <script>
+        var _updaters = {};
+    </script>
+
+    STATE are stored to URL hash to enable to compare <br>
+    SVG renderer and Canvas renderer in <a href="-cases.html">-cases.html</a>.
+
+    <div class="control">
+
+        <div id="state-area" class="control-state-block">
+            STATE: <br>
+            <div id="storage-container"></div>
+        </div>
+
+
+
+        <div class="control-block">
+            <label>text.rotation:</label>
+            <button onclick="startTextRotation();">Start</button>
+            <button onclick="stopTextRotation();">Stop</button>
+            <button onclick="updateToURL('textRotation', 0.5 * Math.PI);">0.5 * Math.PI</button>
+            <button onclick="updateToURL('textRotation', 0.1 * Math.PI);">0.1 * Math.PI</button>
+            <button onclick="updateToURL('textRotation', -0.3 * Math.PI);">-0.3 * Math.PI</button>
+            <button onclick="updateToURL('textRotation', Math.PI);">Math.PI</button>
+            <button onclick="updateToURL('textRotation', Math.PI / 2);">Math.PI / 2</button>
+            <button onclick="updateToURL('textRotation', Math.PI * 3 / 2);">Math.PI * 3 / 2</button>
+            <button onclick="updateToURL('textRotation', Math.PI * 2);">Math.PI * 2</button>
+            <button onclick="removeToURL('textRotation');">Remove</button>
+            <script>
+            _updaters.textRotation = function () {
+                var textRotation = _storage.textRotation;
+                for (var i = 0; i < _shapes1.length; i++) {
+                    var shape = _shapes1[i];
+                    shape.getTextContent().attr({
+                        rotation: textRotation
+                    });
+                }
+                for (var i = 0; i < _shapes2.length; i++) {
+                    var shape = _shapes2[i];
+                    shape.getTextContent().attr({
+                        rotation: clone(textRotation)
+                    });
+                }
+            };
+            </script>
+        </div>
+
+
+        <div class="control-block">
+            <label>textConfig.rotation (expect higher precedence):</label>
+            <button onclick="updateToURL('textConfigRotation', 0.5 * Math.PI);">0.5 * Math.PI</button>
+            <button onclick="updateToURL('textConfigRotation', 0.1 * Math.PI);">0.1 * Math.PI</button>
+            <button onclick="updateToURL('textConfigRotation', -0.3 * Math.PI);">-0.3 * Math.PI</button>
+            <button onclick="updateToURL('textConfigRotation', Math.PI);">Math.PI</button>
+            <button onclick="updateToURL('textConfigRotation', Math.PI / 2);">Math.PI / 2</button>
+            <button onclick="updateToURL('textConfigRotation', Math.PI * 3 / 2);">Math.PI * 3 / 2</button>
+            <button onclick="updateToURL('textConfigRotation', Math.PI * 2);">Math.PI * 2</button>
+            <button onclick="removeToURL('textConfigRotation');">Remove</button>
+            <script>
+            _updaters.textConfigRotation = function () {
+                var textConfigRotation = _storage.textConfigRotation;
+                for (var i = 0; i < _shapes1.length; i++) {
+                    var shape = _shapes1[i];
+                    shape.setTextConfig({
+                        rotation: textConfigRotation
+                    });
+                }
+                for (var i = 0; i < _shapes2.length; i++) {
+                    var shape = _shapes2[i];
+                    shape.setTextConfig({
+                        rotation: textConfigRotation
+                    });
+                }
+            };
+            </script>
+        </div>
+
+        <!-- <div class="control-block">
+            <label>textOrigin:</label>
+            <button onclick="updateToURL('textOrigin', 'center');">'center'</button>
+            <button onclick="updateToURL('textOrigin', [150, 70]);">[150, 70] (right-bottom-corner)</button>
+            <button onclick="removeToURL('textOrigin');">Remove</button>
+            <script>
+            _updaters.textOrigin = function () {
+                var textOrigin = _storage.textOrigin;
+
+                for (var i = 0; i < _shapes1.length; i++) {
+                    var shape = _shapes1[i];
+                    shape.getTextContent().attr({
+                        originX: textOrigin ? textOrigin[0] : 0,
+                        originY: textOrigin ? textOrigin[1] : 0
+                    });
+                }
+                for (var i = 0; i < _shapes2.length; i++) {
+                    var shape = _shapes2[i];
+                    shape.getTextContent().attr({
+                        originX: textOrigin ? textOrigin[0] : 0,
+                        originY: textOrigin ? textOrigin[1] : 0
+                    });
+                }
+            };
+            </script>
+        </div> -->
+
+        <div class="control-block">
+            <label>text.style.backgroundColor:</label>
+            <button onclick="updateToURL('hasBg', 1);">Add</button>
+            <button onclick="removeToURL('hasBg');">Remove</button>
+            <script>
+            _updaters.hasBg = function () {
+                var hasBg = _storage.hasBg;
+                for (var i = 0; i < _shapes1.length; i++) {
+                    var shape = _shapes1[i];
+                    shape.getTextContent().attr({
+                        style: {
+                            borderRadius: 3,
+                            backgroundColor: 'rgba(0, 255, 0, 0.3)',
+                            borderColor: '#191933',
+                            borderWidth: 2,
+                            boxShadowBlur: 5,
+                            boxShadowColor: '#1099ee',
+                            boxShadowOffsetX: 2,
+                            boxShadowOffsetY: 5
+                        }
+                    });
+                }
+                for (var i = 0; i < _shapes2.length; i++) {
+                    var shape = _shapes2[i];
+                    shape.getTextContent().attr({
+                        style: {
+                            borderRadius: 8,
+                            backgroundColor: 'rgba(0, 255, 0, 0.3)',
+                            borderColor: '#191933',
+                            borderWidth: 2,
+                            boxShadowBlur: 5,
+                            boxShadowColor: '#1099ee',
+                            boxShadowOffsetX: 2,
+                            boxShadowOffsetY: 5
+                        }
+                    });
+                }
+            };
+            </script>
+        </div>
+
+        <div class="control-block">
+            <label>textConfig.distance(default 5):</label>
+            <button onclick="updateToURL('textDistance', 15);">15</button>
+            <button onclick="updateToURL('textDistance', 0);">0</button>
+            <button onclick="updateToURL('textDistance', -1);">-1</button>
+            <button onclick="updateToURL('textDistance', -20);">-20</button>
+            <button onclick="removeToURL('textDistance');">Remove</button>
+            <script>
+            _updaters.textDistance = function () {
+                var dist = _storage.textDistance;
+                for (var i = 0; i < _shapes1.length; i++) {
+                    var shape = _shapes1[i];
+                    shape.setTextConfig({
+                        distance: dist
+                    });
+                }
+                for (var i = 0; i < _shapes2.length; i++) {
+                    var shape = _shapes2[i];
+                    shape.setTextConfig({
+                        distance: dist
+                    });
+                }
+            };
+            </script>
+        </div>
+
+        <div class="control-block">
+            <label>textConfig.position:</label>
+            <button onclick="updateToURL('textPosition', [10, 20]);">[10, 20]</button>
+            <button onclick="updateToURL('textPosition', [-10, -20]);">[-10, -20]</button>
+            <button onclick="removeToURL('textPosition');">Remove</button>
+            <script>
+            _updaters.textPosition = function () {
+                var textPosition = _storage.textPosition;
+                for (var i = 0; i < _shapes1.length; i++) {
+                    var shape = _shapes1[i];
+                    shape.setTextConfig({
+                        position: clone(textPosition)
+                    });
+                }
+                for (var i = 0; i < _shapes2.length; i++) {
+                    var shape = _shapes2[i];
+                    shape.setTextConfig({
+                        position: clone(textPosition)
+                    });
+                }
+            };
+            </script>
+        </div>
+
+
+        <div class="control-block">
+            <label>textConfig.offset:</label>
+            <button onclick="updateToURL('textOffset', [15, 25]);">[15, 25]</button>
+            <button onclick="updateToURL('textOffset', [-15, -25]);">[-15, -25]</button>
+            <button onclick="removeToURL('textOffset');">Remove</button>
+            <script>
+            _updaters.textOffset = function () {
+                var textOffset = _storage.textOffset;
+                for (var i = 0; i < _shapes1.length; i++) {
+                    var shape = _shapes1[i];
+                    shape.setTextConfig({
+                        offset: clone(textOffset)
+                    });
+                }
+                for (var i = 0; i < _shapes2.length; i++) {
+                    var shape = _shapes2[i];
+                    shape.setTextConfig({
+                        offset: clone(textOffset)
+                    });
+                }
+            };
+            </script>
+        </div>
+
+
+        <div class="control-block">
+            <label>text.x, text.y (should no effect):</label>
+            <button onclick="updateToURL('textXY', [15, 25]);">[15, 25]</button>
+            <button onclick="updateToURL('textXY', [-15, -25]);">[-15, -25]</button>
+            <button onclick="removeToURL('textXY');">Remove</button>
+            <script>
+            _updaters.textXY = function () {
+                var textXY = _storage.textXY;
+                for (var i = 0; i < _shapes1.length; i++) {
+                    var shape = _shapes1[i];
+                    var textContent = shape.getTextContent();
+                    textContent.x = textXY[0];
+                    textContent.y = textXY[1];
+                }
+                for (var i = 0; i < _shapes2.length; i++) {
+                    var shape = _shapes2[i];
+                    var textContent = shape.getTextContent();
+                    textContent.x = textXY[0];
+                    textContent.y = textXY[1];
+                }
+            };
+            </script>
+        </div>
+
+
+
+        <div class="control-block">
+            <label>text.scaleX, text.scaleY:</label>
+            <button onclick="updateToURL('textScaleXY', [2, 0.5]);">[2, 0.5]</button>
+            <button onclick="updateToURL('textScaleXY', [0.5, 2]);">[0.5, 2]</button>
+            <button onclick="removeToURL('textScaleXY');">Remove</button>
+            <script>
+            _updaters.textScaleXY = function () {
+                var textScaleXY = _storage.textScaleXY;
+                for (var i = 0; i < _shapes1.length; i++) {
+                    var shape = _shapes1[i];
+                    var textContent = shape.getTextContent();
+                    textContent.scaleX = textScaleXY[0];
+                    textContent.scaleY = textScaleXY[1];
+                }
+                for (var i = 0; i < _shapes2.length; i++) {
+                    var shape = _shapes2[i];
+                    var textContent = shape.getTextContent();
+                    textContent.scaleX = textScaleXY[0];
+                    textContent.scaleY = textScaleXY[1];
+                }
+            };
+            </script>
+        </div>
+
+
+
+        <div class="control-block">
+            <label>textConfig.local:</label>
+            <button onclick="updateToURL('textConfigLocal', true);">true</button>
+            <button onclick="updateToURL('textConfigLocal', false);">false</button>
+            <button onclick="removeToURL('textConfigLocal');">Remove</button>
+            <script>
+            _updaters.textConfigLocal = function () {
+                var textConfigLocal = _storage.textConfigLocal;
+                for (var i = 0; i < _shapes1.length; i++) {
+                    var shape = _shapes1[i];
+                    shape.setTextConfig({
+                        local: textConfigLocal
+                    });
+                }
+                for (var i = 0; i < _shapes2.length; i++) {
+                    var shape = _shapes2[i];
+                    shape.setTextConfig({
+                        local: textConfigLocal
+                    });
+                }
+            };
+            </script>
+        </div>
+
+
+        <div class="control-block">
+            <label>mainGroup.scale:</label>
+            <button onclick="updateToURL('mainGroupScale', [1.5, 0.5]);">[1.5, 0.5]</button>
+            <button onclick="updateToURL('mainGroupScale', [0.5, 1.5]);">[0.5, 1.5]</button>
+            <button onclick="removeToURL('mainGroupScale');">Remove</button>
+            <script>
+            _updaters.mainGroupScale = function () {
+                var mainGroupScale = _storage.mainGroupScale;
+                _mainGroup1.scaleX = mainGroupScale[0];
+                _mainGroup1.scaleY = mainGroupScale[1];
+                _mainGroup2.scaleX = mainGroupScale[0];
+                _mainGroup2.scaleY = mainGroupScale[1];
+            };
+            </script>
+        </div>
+
+
+        <div class="control-block">
+            <label>padding:</label>
+            <button onclick="updateToURL('padding', [10, 20, 30, 40]);">[10, 20, 30, 40]</button>
+            <button onclick="updateToURL('padding', 5);">5</button>
+            <button onclick="updateToURL('padding', 10);">10</button>
+            <button onclick="updateToURL('padding', [10, 0]);">[10, 0]</button>
+            <button onclick="updateToURL('padding', [0, 10]);">[0, 10]</button>
+            <button onclick="updateToURL('padding', 50);">50</button>
+            <button onclick="removeToURL('padding');">Remove</button>
+            <script>
+            _updaters.padding = function () {
+                for (var i = 0; i < _shapes1.length; i++) {
+                    var shape = _shapes1[i];
+                    shape.getTextContent().attr({
+                        style: {
+                            padding: clone(_storage.padding),
+                        }
+                    });
+                }
+                for (var i = 0; i < _shapes2.length; i++) {
+                    var shape = _shapes2[i];
+                    shape.getTextContent().attr({
+                        style: {
+                            padding: clone(_storage.padding),
+                        }
+                    });
+                }
+            };
+            </script>
+        </div>
+
+
+
+        <div class="control-block">
+            <label>text.style.borderColor/Width:</label>
+            <button onclick="updateToURL('textStyleBorder', true);">show</button>
+            <button onclick="removeToURL('textStyleBorder');">Remove</button>
+            <script>
+            _updaters.textStyleBorder = function () {
+                var textStyleBorder = _storage.textStyleBorder;
+                if (textStyleBorder) {
+                    for (var i = 0; i < _shapes1.length; i++) {
+                        var shape = _shapes1[i];
+                        shape.getTextContent().attr({
+                            style: {
+                                borderColor: 'rgba(80,80,80)',
+                                borderWidth: 1,
+                            }
+                        });
+                    }
+                    for (var i = 0; i < _shapes2.length; i++) {
+                        var shape = _shapes2[i];
+                        shape.getTextContent().attr({
+                            style: {
+                                borderColor: 'rgba(80,80,80)',
+                                borderWidth: 1,
+                            }
+                        });
+                    }
+                }
+            };
+            </script>
+        </div>
+
+
+
+        <div class="control-block">
+            <label>textAlign:</label>
+            <button onclick="updateToURL('textAlign', 'left');">'left'</button>
+            <button onclick="updateToURL('textAlign', 'center');">'center'</button>
+            <button onclick="updateToURL('textAlign', 'right');">'right'</button>
+            <button onclick="removeToURL('textAlign');">Remove</button>
+            <script>
+            _updaters.textAlign = function () {
+                var textAlign = _storage.textAlign;
+                for (var i = 0; i < _shapes1.length; i++) {
+                    var shape = _shapes1[i];
+                    shape.getTextContent().attr({
+                        style: {
+                            align: textAlign
+                        }
+                    });
+                }
+                for (var i = 0; i < _shapes2.length; i++) {
+                    var shape = _shapes2[i];
+                    shape.getTextContent().attr({
+                        style: {
+                            align: textAlign
+                        }
+                    });
+                }
+            };
+            </script>
+        </div>
+
+        <div class="control-block">
+            <label>verticalAlign:</label>
+            <button onclick="updateToURL('verticalAlign', 'top');">'top'</button>
+            <button onclick="updateToURL('verticalAlign', 'middle');">'middle'</button>
+            <button onclick="updateToURL('verticalAlign', 'bottom');">'bottom'</button>
+            <button onclick="removeToURL('verticalAlign');">Remove</button>
+            <script>
+            _updaters.verticalAlign = function (verticalAlign) {
+                var verticalAlign = _storage.verticalAlign;
+                for (var i = 0; i < _shapes1.length; i++) {
+                    var shape = _shapes1[i];
+                    shape.getTextContent().attr({
+                        style: {
+                            verticalAlign: verticalAlign
+                        }
+                    });
+                }
+                for (var i = 0; i < _shapes2.length; i++) {
+                    var shape = _shapes2[i];
+                    shape.getTextContent().attr({
+                        style: {
+                            verticalAlign: verticalAlign
+                        }
+                    });
+                }
+            };
+            </script>
+        </div>
+<!--
+        <div class="control-block">
+            <label>transformText:</label>
+            <button onclick="updateToURL('transformText', true);">Enable</button>
+            <button onclick="removeToURL('transformText');">Remove</button>
+            <script>
+            </script>
+        </div> -->
+
+        <div class="control-block">
+            <label>Add '\n' at char index 3 (only for plain text rect):</label>
+            <button onclick="updateToURL('addLineBreak', true);">Add</button>
+            <button onclick="removeToURL('addLineBreak');">Remove</button>
+            <script>
+            _updaters.addLineBreak = function () {
+                var verticalAlign = _storage.verticalAlign;
+                for (var i = 0; i < _shapes1.length; i++) {
+                    var shape = _shapes1[i];
+                    var text = shape.__zr_test_text;
+                    text = text.substr(0, 3) + '\n' + text.substr(3, text.length - 1);
+                    shape.getTextContent().attr({
+                        style: {
+                            text: text
+                        }
+                    });
+                }
+            };
+            </script>
+        </div>
+
+
+        <div class="control-block">
+            <label>text string:</label>
+            <button onclick="updateToURL('textStringType', 'long_text_en');">long text EN</button>
+            <button onclick="updateToURL('textStringType', 'long_text_zh');">long text ZH</button>
+            <button onclick="updateToURL('textStringType', 'short_text_zh');">short text ZH</button>
+            <button onclick="updateToURL('textStringType', 'medium_text_en');">medium text EN</button>
+            <button onclick="removeToURL('textStringType');">Remove</button>
+            <script>
+            _updaters.textStringType = function () {
+                var textStringType = _storage.textStringType;
+
+                var plainStrMap = {
+                    short_text_zh: '中文',
+                    long_text_en: LARGE_TEXT_EN,
+                    long_text_zh: LARGE_TEXT_ZH,
+                    medium_text_en: 'The result of two rectangles intersection is commonly referred to as the intersection rectangle or simply the intersecting region',
+                };
+
+                function getRichText(textStringType, posText) {
+                    var richStrMap = {
+                        short_text_zh: ['{j|' + posText + '}',
+                            '我是 Rect Text, textDistance: 20',
+                            '整体的 textAlign verticalAlign 取默认值'
+                        ].join('\n'),
+                        long_text_en: ['{j|' + posText + '}',
+                            'This is non token text: ',
+                            LARGE_TEXT_EN
+                        ].join('\n'),
+                        long_text_zh: ['{j|' + posText + '}',
+                            'This is non token text: ',
+                            LARGE_TEXT_ZH
+                        ].join('\n'),
+                        medium_text_en: ['{j|' + posText + '}',
+                            'This is non token text: ',
+                            'The result of two rectangles intersection is commonly referred to as the intersection rectangle or simply the intersecting region',
+                        ].join('\n')
+                    };
+                    return richStrMap[textStringType || 'short_text_zh'];
+                }
+
+                var plainStr = plainStrMap[textStringType || 'short_text_zh'];
+                for (var i = 0; i < _shapes1.length; i++) {
+                    var shape = _shapes1[i];
+                    var pos = (shape.textConfig || {}).position || '';
+                    shape.getTextContent().setStyle({
+                        text: '[' + pos + '] ' + plainStr
+                    });
+                }
+                for (var i = 0; i < _shapes2.length; i++) {
+                    var shape = _shapes2[i];
+                    var pos = (shape.textConfig || {}).position || '';
+                    shape.getTextContent().setStyle({
+                        text: getRichText(textStringType, pos)
+                    });
+                }
+            };
+            </script>
+        </div>
+
+
+        <div class="control-block">
+            <label>text.style.overflow:</label>
+            <button onclick="updateToURL('styleOverflow', 'break');">break</button>
+            <button onclick="updateToURL('styleOverflow', 'breakAll');">breakAll</button>
+            <button onclick="updateToURL('styleOverflow', 'truncate');">truncate</button>
+            <button onclick="updateToURL('styleOverflow', 'none');">none</button>
+            <button onclick="removeToURL('styleOverflow');">Remove</button>
+            <script>
+            _updaters.styleOverflow = function () {
+                var styleOverflow = _storage.styleOverflow;
+                for (var i = 0; i < _shapes1.length; i++) {
+                    var shape = _shapes1[i];
+                    shape.getTextContent().setStyle({
+                        overflow: styleOverflow
+                    });
+                }
+                for (var i = 0; i < _shapes2.length; i++) {
+                    var shape = _shapes2[i];
+                    shape.getTextContent().setStyle({
+                        overflow: styleOverflow
+                    });
+                }
+            };
+            </script>
+        </div>
+
+
+        <div class="control-block">
+            <label>text.style.lineOverflow:</label>
+            <button onclick="updateToURL('styleLineOverflow', {val: 'truncate'});">truncate</button>
+            <button onclick="updateToURL('styleLineOverflow', {val: undefined});">undefined</button>
+            <button onclick="removeToURL('styleLineOverflow');">Remove</button>
+            <script>
+            _updaters.styleLineOverflow = function () {
+                var styleLineOverflow = (_storage.styleLineOverflow || {}).val;
+                for (var i = 0; i < _shapes1.length; i++) {
+                    var shape = _shapes1[i];
+                    shape.getTextContent().setStyle({
+                        lineOverflow: styleLineOverflow
+                    });
+                }
+                for (var i = 0; i < _shapes2.length; i++) {
+                    var shape = _shapes2[i];
+                    shape.getTextContent().setStyle({
+                        lineOverflow: styleLineOverflow
+                    });
+                }
+            };
+            </script>
+        </div>
+
+
+        <div class="control-block">
+            <label>Use clipPath on host:</label>
+            <button onclick="updateToURL('useClipPath', true);">true</button>
+            <button onclick="removeToURL('useClipPath');">Remove</button>
+            <script>
+            _updaters.useClipPath = function () {
+                var useClipPath = _storage.useClipPath;
+                for (var i = 0; i < _shapes1.length; i++) {
+                    var shape = _shapes1[i];
+                    shape.setClipPath(new zrender.Rect({
+                        shape: clone(shape.shape),
+                    }));
+                }
+                for (var i = 0; i < _shapes2.length; i++) {
+                    var shape = _shapes2[i];
+                    shape.setClipPath(new zrender.Rect({
+                        shape: clone(shape.shape),
+                    }));
+                }
+            };
+            </script>
+        </div>
+
+
+
+        <div class="control-block">
+            <label>textConfig.autoOverflowArea:</label>
+            <button onclick="updateToURL('autoOverflowArea', true);">true</button>
+            <button onclick="updateToURL('autoOverflowArea', false);">false</button>
+            <button onclick="removeToURL('autoOverflowArea');">Remove</button>
+            <script>
+            _updaters.autoOverflowArea = function () {
+                var autoOverflowArea = _storage.autoOverflowArea;
+                for (var i = 0; i < _shapes1.length; i++) {
+                    var shape = _shapes1[i];
+                    shape.setTextConfig({
+                        autoOverflowArea: autoOverflowArea
+                    });
+                }
+                for (var i = 0; i < _shapes2.length; i++) {
+                    var shape = _shapes2[i];
+                    shape.setTextConfig({
+                        autoOverflowArea: autoOverflowArea
+                    });
+                }
+            };
+            </script>
+        </div>
+
+
+    </div>
+
+
+    <div id="main1" style="width:1000px;height:700px;"></div>
+    <div id="main2" style="width:1500px;height:2800px;margin:0;"></div>
+
+
+    <script type="text/javascript">
+        var clone = zrender.util.clone;
+        var encodeHTML = testHelper.encodeHTML;
+        var _timer;
+        var _storage = {};
+        var _shapes2 = [];
+        var _shapes1 = [];
+        var _mainGroup2 = null;
+        var _mainGroup1 = null;
+        var _rotating = false;
+
+
+        function init() {
+            initBase();
+            testHelper.initURLStorage(updateView);
+        }
+
+        function initBase() {
+            var posList = [
+                'left', 'right', 'top', 'bottom',
+                'inside',
+                'insideTop', 'insideLeft', 'insideRight', 'insideBottom',
+                'insideTopLeft', 'insideTopRight', 'insideBottomLeft', 'insideBottomRight'
+            ];
+
+            var zr1 = zrender.init(document.getElementById('main1'), {
+                renderer: window.__ZRENDER__DEFAULT__RENDERER__
+            });
+
+            var colorList = ['rgb(166,125,199)', 'rgb(99,208,231)', 'rgb(127,13,18)', 'rgb(196,218,254)', 'rgb(116,28,234)', 'rgb(220,67,53)', 'rgb(177,109,195)', 'rgb(114,13,248)', 'rgb(44,22,38)', 'rgb(177,12,58)', 'rgb(26,186,147)', 'rgb(5,128,95)', 'rgb(207,83,94)', 'rgb(49,224,93)', 'rgb(160,90,197)', 'rgb(88,110,61)', 'rgb(34,225,94)', 'rgb(81,60,33)', 'rgb(108,191,246)', 'rgb(166,243,64)', 'rgb(237,207,144)', 'rgb(250,112,250)', 'rgb(118,219,14)', 'rgb(152,43,56)', 'rgb(37,111,223)', 'rgb(102,56,236)', 'rgb(111,194,18)', 'rgb(10,113,55)', 'rgb(251,157,98)', 'rgb(240,167,84)', 'rgb(21,226,186)', 'rgb(50,171,73)', 'rgb(234,22,252)', 'rgb(14,210,77)', 'rgb(69,20,220)', 'rgb(192,140,232)', 'rgb(148,176,108)', 'rgb(2,102,73)', 'rgb(111,161,146)', 'rgb(57,136,151)', 'rgb(182,62,176)', 'rgb(36,123,2)', 'rgb(138,233,232)', 'rgb(61,35,66)', 'rgb(208,204,232)', 'rgb(106,252,106)', 'rgb(143,58,78)', 'rgb(96,175,68)', 'rgb(186,123,21)', 'rgb(216,19,203)'];
+            var colorIdx = 0;
+            function getColor() {
+                var color = colorList[colorIdx];
+                colorIdx = (colorIdx + 1) % colorList.length;
+                return color;
+            }
+
+            _mainGroup1 = new zrender.Group();
+            zr1.add(_mainGroup1);
+            zrender.util.each(posList, function (textPos, idx) {
+                var text = textPos + '中文';
+                var shape = new zrender.Rect({
+                    position: [(idx % 3) * 220, 120 * Math.floor(idx / 3)],
+                    scale: [1, 1],
+                    style: {
+                        // fill: zrender.color.random(),
+                        fill: getColor(),
+                    },
+                    textContent: new zrender.Text({
+                        style: {
+                            text: text
+                        }
+                    }),
+                    textConfig: {
+                        position: textPos
+                    },
+                    __zr_test_text: text,
+                    shape: {
+                        x: 100,
+                        y: 50,
+                        width: 150,
+                        height: 70
+                    }
+                });
+                _mainGroup1.add(shape);
+                _shapes1.push(shape);
+            });
+
+            var zr2 = zrender.init(document.getElementById('main2'), {
+                renderer: window.__ZRENDER__DEFAULT__RENDERER__
+            });
+
+            _mainGroup2 = new zrender.Group();
+            zr2.add(_mainGroup2);
+            zrender.util.each(posList, function (textPos, idx) {
+                var text = textPos;
+
+                var shape = new zrender.Rect({
+                    position: [(idx % 2) * 300, 150 * Math.floor(idx / 2)],
+                    style: {
+                        fill: '#eeaaff'
+                    },
+                    textContent: new zrender.Text({
+                        style: {
+                            text: [
+                                '{j|' + text + '}',
+                                '我是 Rect Text, textDistance: 20',
+                                '整体的 textAlign verticalAlign 取默认值'
+                            ].join('\n'),
+                            fill: 'red',
+                            font: '10px Arial',
+                            rich: {
+                                j: {
+                                    font: '16px Arial',
+                                    fill: '#922889',
+                                    verticalAlign: 'top'
+                                }
+                            }
+                        }
+                    }),
+                    textConfig: {
+                        position: textPos
+                    },
+                    shape: {
+                        x: 220,
+                        y: 100,
+                        width: 150,
+                        height: 100
+                    }
+                });
+                _mainGroup2.add(shape);
+                _shapes2.push(shape);
+            });
+        }
+
+        window.updateToURL = function (key, value) {
+            testHelper.updateToHash(key, clone(value));
+        };
+
+        window.removeToURL = function (key) {
+            // key with undefined value will be removed after JSON.stringify();
+            testHelper.updateToHash(key, void 0);
+            // force reload whether search is changed.
+            location.reload();
+        };
+
+        function updateView() {
+            updateStorage();
+            updateStorageView();
+
+            for (var updaterName in _updaters) {
+                if (_updaters.hasOwnProperty(updaterName)) {
+                    // Do not set attr, test the default cases.
+                    if (!_storage.hasOwnProperty(updaterName)) {
+                        continue;
+                    }
+                    _updaters[updaterName]();
+                }
+            }
+
+            nextRotate();
+        }
+
+        function updateStorage() {
+            _storage = testHelper.getAllFromHash();
+        }
+
+        function updateStorageView() {
+            var html = [];
+            for (var key in _storage) {
+                if (_storage.hasOwnProperty(key)) {
+                    html.push(
+                        '<span class="storage-key">' + encodeHTML(key) + '</span>:&nbsp;&nbsp;'
+                        + encodeHTML(JSON.stringify(_storage[key]))
+                    );
+                }
+            }
+            var dom = document.getElementById('storage-container');
+            dom.innerHTML = html.join('<br>');
+        }
+
+        function nextRotate() {
+            if (_rotating) {
+                setTimeout(function () {
+                    var textRotation = _storage.textRotation || 0;
+                    textRotation += 0.01;
+                    textRotation %= Math.PI * 2;
+                    testHelper.updateToHash('textRotation', textRotation);
+                }, 50);
+            }
+        }
+
+        function startTextRotation() {
+            _rotating = true;
+            nextRotate();
+        };
+
+        function stopTextRotation() {
+            _rotating = false;
+        };
+
+
+        init();
+
+
+    </script>
+
+
+</body>
+</html>
