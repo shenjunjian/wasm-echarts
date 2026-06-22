@@ -3,4 +3,3 @@
 pub mod bbox;
 pub mod matrix;
 pub mod types;
-pub mod util;

@@ -1,0 +1,14 @@
+E:\wasm-echarts\wasm-echarts-rs\target\wasm32-unknown-unknown\release\deps\serde-352f7c3a7f67bdb0.d: C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-1.0.228\src\lib.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-1.0.228\src\integer128.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-1.0.228\src\private\mod.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-1.0.228\src\private\de.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-1.0.228\src\private\ser.rs E:\wasm-echarts\wasm-echarts-rs\target\wasm32-unknown-unknown\release\build\serde-379afed3f74a7da6\out/private.rs
+
+E:\wasm-echarts\wasm-echarts-rs\target\wasm32-unknown-unknown\release\deps\libserde-352f7c3a7f67bdb0.rlib: C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-1.0.228\src\lib.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-1.0.228\src\integer128.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-1.0.228\src\private\mod.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-1.0.228\src\private\de.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-1.0.228\src\private\ser.rs E:\wasm-echarts\wasm-echarts-rs\target\wasm32-unknown-unknown\release\build\serde-379afed3f74a7da6\out/private.rs
+
+E:\wasm-echarts\wasm-echarts-rs\target\wasm32-unknown-unknown\release\deps\libserde-352f7c3a7f67bdb0.rmeta: C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-1.0.228\src\lib.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-1.0.228\src\integer128.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-1.0.228\src\private\mod.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-1.0.228\src\private\de.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-1.0.228\src\private\ser.rs E:\wasm-echarts\wasm-echarts-rs\target\wasm32-unknown-unknown\release\build\serde-379afed3f74a7da6\out/private.rs
+
+C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-1.0.228\src\lib.rs:
+C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-1.0.228\src\integer128.rs:
+C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-1.0.228\src\private\mod.rs:
+C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-1.0.228\src\private\de.rs:
+C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\serde-1.0.228\src\private\ser.rs:
+E:\wasm-echarts\wasm-echarts-rs\target\wasm32-unknown-unknown\release\build\serde-379afed3f74a7da6\out/private.rs:
+
+# env-dep:OUT_DIR=E:\\wasm-echarts\\wasm-echarts-rs\\target\\wasm32-unknown-unknown\\release\\build\\serde-379afed3f74a7da6\\out

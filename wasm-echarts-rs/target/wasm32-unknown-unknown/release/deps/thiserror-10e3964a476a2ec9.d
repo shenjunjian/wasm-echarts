@@ -1,0 +1,14 @@
+E:\wasm-echarts\wasm-echarts-rs\target\wasm32-unknown-unknown\release\deps\thiserror-10e3964a476a2ec9.d: C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\thiserror-2.0.18\src\lib.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\thiserror-2.0.18\src\aserror.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\thiserror-2.0.18\src\display.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\thiserror-2.0.18\src\var.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\thiserror-2.0.18\src\private.rs E:\wasm-echarts\wasm-echarts-rs\target\wasm32-unknown-unknown\release\build\thiserror-7709ae61155b411f\out/private.rs
+
+E:\wasm-echarts\wasm-echarts-rs\target\wasm32-unknown-unknown\release\deps\libthiserror-10e3964a476a2ec9.rlib: C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\thiserror-2.0.18\src\lib.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\thiserror-2.0.18\src\aserror.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\thiserror-2.0.18\src\display.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\thiserror-2.0.18\src\var.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\thiserror-2.0.18\src\private.rs E:\wasm-echarts\wasm-echarts-rs\target\wasm32-unknown-unknown\release\build\thiserror-7709ae61155b411f\out/private.rs
+
+E:\wasm-echarts\wasm-echarts-rs\target\wasm32-unknown-unknown\release\deps\libthiserror-10e3964a476a2ec9.rmeta: C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\thiserror-2.0.18\src\lib.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\thiserror-2.0.18\src\aserror.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\thiserror-2.0.18\src\display.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\thiserror-2.0.18\src\var.rs C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\thiserror-2.0.18\src\private.rs E:\wasm-echarts\wasm-echarts-rs\target\wasm32-unknown-unknown\release\build\thiserror-7709ae61155b411f\out/private.rs
+
+C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\thiserror-2.0.18\src\lib.rs:
+C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\thiserror-2.0.18\src\aserror.rs:
+C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\thiserror-2.0.18\src\display.rs:
+C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\thiserror-2.0.18\src\var.rs:
+C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\thiserror-2.0.18\src\private.rs:
+E:\wasm-echarts\wasm-echarts-rs\target\wasm32-unknown-unknown\release\build\thiserror-7709ae61155b411f\out/private.rs:
+
+# env-dep:OUT_DIR=E:\\wasm-echarts\\wasm-echarts-rs\\target\\wasm32-unknown-unknown\\release\\build\\thiserror-7709ae61155b411f\\out

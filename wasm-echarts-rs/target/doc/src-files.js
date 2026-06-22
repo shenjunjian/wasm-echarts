@@ -1,0 +1,2 @@
+createSrcSidebar('[["vl_convert_canvas2d",["",[["context",[],["drawing.rs","image_ops.rs","mod.rs","path_ops.rs","text_rendering.rs","transform.rs"]]],["arc.rs","dom_matrix.rs","drawing_state.rs","error.rs","font_config.rs","font_parser.rs","geometry.rs","gradient.rs","lib.rs","path2d.rs","pattern.rs","pattern_cache.rs","style.rs","text.rs"]]]]');
+//{"start":19,"fragment_lengths":[326]}

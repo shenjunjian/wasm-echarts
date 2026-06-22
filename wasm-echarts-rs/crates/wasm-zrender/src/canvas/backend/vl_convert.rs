@@ -1,6 +1,9 @@
-use super::{BackendError, CanvasBackend};
+use super::{BackendError, CanvasBackend, CanvasContext};
+use crate::core::matrix::{self, Matrix};
 use crate::core::types::RgbaBuffer;
-use vl_convert_canvas2d::{ArcParams, Canvas2dContext, RectParams};
+use vl_convert_canvas2d::{
+    ArcParams, Canvas2dContext, CubicBezierParams, QuadraticBezierParams, RectParams,
+};
 
 /// 基于 vl-convert-canvas2d 的 Canvas 2D 后端
 pub struct VlConvertBackend {
@@ -9,22 +12,31 @@ pub struct VlConvertBackend {
 
 impl VlConvertBackend {
     pub fn new(width: u32, height: u32) -> Result<Self, BackendError> {
-        let ctx = Canvas2dContext::new(width, height).map_err(|e| BackendError::Canvas(e.to_string()))?;
+        let ctx =
+            Canvas2dContext::new(width, height).map_err(|e| BackendError::Canvas(e.to_string()))?;
         Ok(Self { ctx })
     }
 }
 
-impl CanvasBackend for VlConvertBackend {
-    fn width(&self) -> u32 {
-        self.ctx.width()
+impl CanvasContext for VlConvertBackend {
+    fn save(&mut self) {
+        self.ctx.save();
     }
 
-    fn height(&self) -> u32 {
-        self.ctx.height()
+    fn restore(&mut self) {
+        self.ctx.restore();
     }
 
-    fn clear(&mut self) {
-        self.ctx.reset();
+    fn set_transform(&mut self, m: &Matrix) {
+        self.ctx.set_transform(matrix::to_dom_matrix(m));
+    }
+
+    fn reset_transform(&mut self) {
+        self.ctx.reset_transform();
+    }
+
+    fn set_global_alpha(&mut self, alpha: f32) {
+        self.ctx.set_global_alpha(alpha);
     }
 
     fn set_fill_style(&mut self, color: &str) -> Result<(), BackendError> {
@@ -41,6 +53,85 @@ impl CanvasBackend for VlConvertBackend {
 
     fn set_line_width(&mut self, width: f32) {
         self.ctx.set_line_width(width);
+    }
+
+    fn set_line_dash(&mut self, segments: Vec<f32>) {
+        self.ctx.set_line_dash(segments);
+    }
+
+    fn set_line_dash_offset(&mut self, offset: f32) {
+        self.ctx.set_line_dash_offset(offset);
+    }
+
+    fn set_line_cap(&mut self, cap: vl_convert_canvas2d::LineCap) {
+        self.ctx.set_line_cap(cap);
+    }
+
+    fn set_line_join(&mut self, join: vl_convert_canvas2d::LineJoin) {
+        self.ctx.set_line_join(join);
+    }
+
+    fn begin_path(&mut self) {
+        self.ctx.begin_path();
+    }
+
+    fn move_to(&mut self, x: f32, y: f32) {
+        self.ctx.move_to(x, y);
+    }
+
+    fn line_to(&mut self, x: f32, y: f32) {
+        self.ctx.line_to(x, y);
+    }
+
+    fn cubic_bezier_to(&mut self, params: &CubicBezierParams) {
+        self.ctx.bezier_curve_to(params);
+    }
+
+    fn quadratic_curve_to(&mut self, params: &QuadraticBezierParams) {
+        self.ctx.quadratic_curve_to(params);
+    }
+
+    fn arc(&mut self, params: &ArcParams) {
+        self.ctx.arc(params);
+    }
+
+    fn rect(&mut self, params: &RectParams) {
+        self.ctx.rect(params);
+    }
+
+    fn close_path(&mut self) {
+        self.ctx.close_path();
+    }
+
+    fn fill(&mut self) {
+        self.ctx.fill();
+    }
+
+    fn stroke(&mut self) {
+        self.ctx.stroke();
+    }
+
+    fn clip(&mut self) {
+        self.ctx.clip();
+    }
+}
+
+impl CanvasBackend for VlConvertBackend {
+    fn width(&self) -> u32 {
+        self.ctx.width()
+    }
+
+    fn height(&self) -> u32 {
+        self.ctx.height()
+    }
+
+    fn clear(&mut self) {
+        self.ctx.reset();
+    }
+
+    fn get_rgba(&self) -> RgbaBuffer {
+        self.ctx
+            .get_image_data(0, 0, self.ctx.width(), self.ctx.height())
     }
 
     fn fill_rect(&mut self, x: f64, y: f64, width: f64, height: f64) {
@@ -62,8 +153,8 @@ impl CanvasBackend for VlConvertBackend {
     }
 
     fn fill_circle(&mut self, cx: f64, cy: f64, radius: f64) {
-        self.ctx.begin_path();
-        self.ctx.arc(&ArcParams {
+        self.begin_path();
+        self.arc(&ArcParams {
             x: cx as f32,
             y: cy as f32,
             radius: radius as f32,
@@ -71,12 +162,12 @@ impl CanvasBackend for VlConvertBackend {
             end_angle: std::f32::consts::TAU,
             anticlockwise: false,
         });
-        self.ctx.fill();
+        self.fill();
     }
 
     fn stroke_circle(&mut self, cx: f64, cy: f64, radius: f64) {
-        self.ctx.begin_path();
-        self.ctx.arc(&ArcParams {
+        self.begin_path();
+        self.arc(&ArcParams {
             x: cx as f32,
             y: cy as f32,
             radius: radius as f32,
@@ -84,12 +175,7 @@ impl CanvasBackend for VlConvertBackend {
             end_angle: std::f32::consts::TAU,
             anticlockwise: false,
         });
-        self.ctx.stroke();
-    }
-
-    fn get_rgba(&self) -> RgbaBuffer {
-        self.ctx
-            .get_image_data(0, 0, self.ctx.width(), self.ctx.height())
+        self.stroke();
     }
 }
 
@@ -104,8 +190,6 @@ mod tests {
 
         let rgba = backend.get_rgba();
         assert_eq!(rgba.len(), 200 * 150 * 4);
-
-        // 非全透明：至少有一个非零 alpha 像素
         assert!(rgba.chunks(4).any(|px| px[3] > 0));
     }
 }
