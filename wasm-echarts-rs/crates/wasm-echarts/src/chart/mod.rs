@@ -4,9 +4,12 @@ mod line;
 pub use bar::render_bar_series;
 pub use line::render_line_series;
 
-use wasm_zrender::{ChildRef, ZRenderer};
+use wasm_zrender::{
+    ChildRef, FillStrokeStyle, LineShape, Path, PathStyle, Shape, ZRenderer,
+};
 
 use crate::coord::Cartesian2D;
+use crate::interaction::InteractionState;
 use crate::model::GlobalModel;
 use crate::option::OptionModel;
 use crate::visual::VisualContext;
@@ -15,6 +18,7 @@ pub fn render_components(
     zr: &mut ZRenderer,
     model: &GlobalModel,
     option: &OptionModel,
+    interaction: &InteractionState,
 ) {
     let group = zr.storage.create_group();
     let coord = Cartesian2D::new(model);
@@ -23,17 +27,20 @@ pub fn render_components(
     render_grid_frame(zr, group, model);
     render_split_lines(zr, group, model, &coord);
 
+    let (zoom_start, zoom_end) = model.visible_category_range();
     for series in &model.series {
         match series.series_type {
             crate::model::SeriesType::Line => {
-                render_line_series(zr, group, model, &coord, &visual, series);
+                render_line_series(zr, group, model, &coord, &visual, series, zoom_start, zoom_end);
             }
             crate::model::SeriesType::Bar => {
-                render_bar_series(zr, group, model, &coord, &visual, series);
+                render_bar_series(zr, group, model, &coord, &visual, series, zoom_start, zoom_end);
             }
             _ => {}
         }
     }
+
+    render_axis_pointer(zr, group, model, &coord, interaction);
 
     zr.storage.add_root(ChildRef::Group(group));
 }
@@ -116,4 +123,47 @@ fn render_split_lines(
         ));
         zr.storage.group_add_child(group, ChildRef::Path(line));
     }
+}
+
+fn render_axis_pointer(
+    zr: &mut ZRenderer,
+    group: usize,
+    model: &GlobalModel,
+    coord: &Cartesian2D,
+    interaction: &InteractionState,
+) {
+    if !interaction.axis_pointer_enabled {
+        return;
+    }
+    let (px, py) = match (interaction.pointer_x, interaction.pointer_y) {
+        (Some(x), Some(y)) if model.grid.contains(x, y) => (x, y),
+        _ => return,
+    };
+
+    let snap_x = interaction
+        .axis_pointer_label(model, px, py)
+        .map(|(_, _, x)| x)
+        .unwrap_or(px);
+
+    let g = model.grid;
+    let line = zr.storage.create_path(Path::new(
+        Shape::Line(LineShape {
+            x1: snap_x,
+            y1: g.y,
+            x2: snap_x,
+            y2: g.y + g.height,
+            percent: 1.0,
+        }),
+        PathStyle {
+            fill: FillStrokeStyle::none(),
+            stroke: FillStrokeStyle::color("#aaa"),
+            line_width: 1.0,
+            line_dash: Some(vec![4.0, 4.0]),
+            ..Default::default()
+        },
+    ));
+    zr.storage.group_add_child(group, ChildRef::Path(line));
+
+    let _ = py;
+    let _ = coord;
 }

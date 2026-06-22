@@ -1,5 +1,5 @@
 /**
- * wasm-echarts JS 薄壳（阶段 4）
+ * wasm-echarts JS 薄壳（阶段 4 + 6）
  * 对齐 echarts canvas 模式 API：init / setOption / resize / on / dispatchAction / dispose
  */
 
@@ -59,7 +59,7 @@ class EChartsWasmChart {
     this._dom = dom;
     this._events = new EventBus();
     this._disposed = false;
-    this._lastHover = null;
+    this._lastHoverKey = null;
     /** @type {ResizeObserver|null} */
     this._resizeObserver = null;
     this._tooltipEl = null;
@@ -80,7 +80,7 @@ class EChartsWasmChart {
 
   _showTooltip(text, event) {
     if (!this._tooltipEl) return;
-    this._tooltipEl.textContent = text;
+    this._tooltipEl.innerHTML = text;
     this._tooltipEl.style.display = 'block';
     const rect = this._dom.getBoundingClientRect();
     this._tooltipEl.style.left = `${event.clientX - rect.left + 12}px`;
@@ -93,6 +93,11 @@ class EChartsWasmChart {
     }
   }
 
+  _hoverKey(hit) {
+    if (!hit || hit === null) return null;
+    return `${hit.seriesIndex ?? ''}:${hit.dataIndex ?? ''}:${hit.pathIndex ?? ''}`;
+  }
+
   _bindEvents() {
     const canvas = this._canvas;
 
@@ -101,28 +106,36 @@ class EChartsWasmChart {
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-      const hit = this._wasm.find_hover(x, y);
+      const result = this._wasm.handle_pointer_move(x, y);
+      this._paint();
 
-      if (hit && hit !== null) {
-        const key = `${hit.seriesIndex ?? ''}:${hit.dataIndex ?? ''}:${hit.pathIndex ?? ''}`;
-        const prevKey = this._lastHover
-          ? `${this._lastHover.seriesIndex ?? ''}:${this._lastHover.dataIndex ?? ''}:${this._lastHover.pathIndex ?? ''}`
-          : null;
-        if (key !== prevKey) {
-          this._lastHover = hit;
-          if (hit.seriesIndex != null && hit.dataIndex != null) {
-            const tip = this._wasm.get_tooltip_content(hit.seriesIndex, hit.dataIndex);
-            if (tip) {
-              this._showTooltip(tip, e);
-            }
-          }
-          this._events.emit('mouseover', { event: e, hit });
+      const hit = result?.hit;
+      const key = this._hoverKey(hit);
+
+      if (key && key !== this._lastHoverKey) {
+        this._lastHoverKey = key;
+        const tip = result?.tooltip;
+        if (tip) {
+          this._showTooltip(tip, e);
+        } else {
+          this._hideTooltip();
         }
-      } else if (this._lastHover) {
-        this._lastHover = null;
+        this._events.emit('mouseover', { event: e, hit, axisPointer: result?.axisPointer ?? null });
+      } else if (!key && this._lastHoverKey) {
+        this._lastHoverKey = null;
         this._hideTooltip();
         this._events.emit('mouseout', { event: e });
+      } else if (key && result?.tooltip) {
+        this._showTooltip(result.tooltip, e);
       }
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+      if (this._disposed) return;
+      this._wasm.handle_pointer_leave();
+      this._paint();
+      this._lastHoverKey = null;
+      this._hideTooltip();
     });
 
     canvas.addEventListener('click', (e) => {
@@ -131,8 +144,31 @@ class EChartsWasmChart {
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
       const hit = this._wasm.find_hover(x, y);
+
+      if (hit && hit !== null && hit.seriesIndex != null && hit.dataIndex != null) {
+        this._wasm.dispatch_action({
+          type: 'toggleSelect',
+          seriesIndex: hit.seriesIndex,
+          dataIndex: hit.dataIndex,
+        });
+        this._paint();
+      }
+
       this._events.emit('click', { event: e, hit: hit && hit !== null ? hit : null });
     });
+
+    canvas.addEventListener(
+      'wheel',
+      (e) => {
+        if (this._disposed) return;
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        this._wasm.apply_data_zoom_wheel(x, e.deltaY);
+        this._paint();
+      },
+      { passive: false },
+    );
   }
 
   _observeResize() {

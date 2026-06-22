@@ -2,7 +2,7 @@
 
 use wasm_zrender::{
     ChildRef, CircleShape, DisplayableProps, EcData, FillStrokeStyle, Path, PathStyle,
-    PolylineShape, Shape, PathStylePatch, STATE_EMPHASIS, ZRenderer,
+    PolylineShape, Shape, PathStylePatch, STATE_EMPHASIS, STATE_SELECT, ZRenderer,
 };
 
 use crate::coord::Cartesian2D;
@@ -16,6 +16,8 @@ pub fn render_line_series(
     coord: &Cartesian2D,
     visual: &VisualContext,
     series: &SeriesModel,
+    zoom_start: usize,
+    zoom_end: usize,
 ) {
     if series.data.is_empty() {
         return;
@@ -25,8 +27,13 @@ pub fn render_line_series(
         .data
         .iter()
         .enumerate()
+        .filter(|(i, _)| *i >= zoom_start && *i < zoom_end)
         .map(|(i, p)| coord.data_to_point(i, p.value))
         .collect();
+
+    if points.is_empty() {
+        return;
+    }
 
     let line_color = visual.resolve_item_color(series.index, 0);
 
@@ -51,7 +58,10 @@ pub fn render_line_series(
     zr.storage.group_add_child(group, ChildRef::Path(polyline));
 
     for (i, p) in series.data.iter().enumerate() {
-        let (cx, cy) = points[i];
+        if i < zoom_start || i >= zoom_end {
+            continue;
+        }
+        let (cx, cy) = points[i - zoom_start];
         let color = visual.resolve_item_color(series.index, i);
         let symbol = zr.storage.create_path(
             Path::new(
@@ -83,6 +93,15 @@ pub fn render_line_series(
             PathStylePatch {
                 fill: Some(FillStrokeStyle::color(&emphasis_color)),
                 line_width: Some(2.0),
+                ..Default::default()
+            },
+        );
+        zr.set_path_state_style(
+            symbol,
+            STATE_SELECT,
+            PathStylePatch {
+                stroke: Some(FillStrokeStyle::color("#333")),
+                line_width: Some(3.0),
                 ..Default::default()
             },
         );

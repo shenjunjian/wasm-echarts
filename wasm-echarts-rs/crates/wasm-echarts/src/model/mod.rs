@@ -6,6 +6,7 @@ mod series;
 pub use axis::{AxisModel, AxisType};
 pub use series::{DataPoint, SeriesModel, SeriesType};
 
+use crate::interaction::DataZoomRange;
 use crate::option::{OptionModel, OptionValue};
 use crate::visual::{parse_series_data, series_name_of, series_type_of};
 
@@ -36,10 +37,20 @@ pub struct GlobalModel {
     pub y_axis: AxisModel,
     pub x_categories: Vec<String>,
     pub series: Vec<SeriesModel>,
+    pub data_zoom: DataZoomRange,
 }
 
 impl GlobalModel {
     pub fn from_option(option: &OptionModel, width: u32, height: u32) -> Self {
+        Self::from_option_with_zoom(option, width, height, DataZoomRange::default())
+    }
+
+    pub fn from_option_with_zoom(
+        option: &OptionModel,
+        width: u32,
+        height: u32,
+        data_zoom: DataZoomRange,
+    ) -> Self {
         let root = option.root();
         let w = width as f64;
         let h = height as f64;
@@ -81,7 +92,12 @@ impl GlobalModel {
             y_axis,
             x_categories,
             series,
+            data_zoom,
         }
+    }
+
+    pub fn visible_category_range(&self) -> (usize, usize) {
+        self.data_zoom.category_window(self.category_count())
     }
 
     pub fn category_count(&self) -> usize {

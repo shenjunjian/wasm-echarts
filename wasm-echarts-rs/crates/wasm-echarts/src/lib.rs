@@ -2,6 +2,7 @@ mod bridge;
 mod chart;
 mod coord;
 mod instance;
+mod interaction;
 mod model;
 mod option;
 mod render;
@@ -46,7 +47,8 @@ impl DemoRenderer {
         let option = option::OptionModel::new();
         let w = self.zr.width();
         let h = self.zr.height();
-        render::render_chart(&mut self.zr, &option, w, h);
+        let interaction = crate::interaction::InteractionState::default();
+        render::render_chart(&mut self.zr, &option, w, h, &interaction);
         self.zr
             .refresh()
             .map_err(|e| JsValue::from_str(&e.to_string()))

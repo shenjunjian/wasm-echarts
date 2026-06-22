@@ -1,6 +1,6 @@
 //! 直角坐标系：dataToPoint / 轴布局
 
-use crate::model::{AxisType, GlobalModel, GridRect};
+use crate::model::{GlobalModel, GridRect};
 
 pub struct Cartesian2D<'a> {
     model: &'a GlobalModel,
@@ -15,11 +15,13 @@ impl<'a> Cartesian2D<'a> {
         self.model.grid
     }
 
-    /// category index + value → 像素坐标
+    /// category index + value → 像素坐标（category_index 为全局索引）
     pub fn data_to_point(&self, category_index: usize, value: f64) -> (f64, f64) {
         let grid = self.model.grid;
-        let n = self.model.category_count().max(1);
-        let x = grid.x + (category_index as f64 + 0.5) / n as f64 * grid.width;
+        let (start, end) = self.model.visible_category_range();
+        let visible = (end - start).max(1);
+        let local = category_index.saturating_sub(start);
+        let x = grid.x + (local as f64 + 0.5) / visible as f64 * grid.width;
 
         let ymin = self.model.y_axis.value_min();
         let ymax = self.model.y_axis.value_max();
@@ -39,11 +41,22 @@ impl<'a> Cartesian2D<'a> {
     }
 
     pub fn category_band_width(&self) -> f64 {
-        let n = self.model.category_count().max(1);
-        self.model.grid.width / n as f64
+        let (_, end) = self.model.visible_category_range();
+        let (start, _) = self.model.visible_category_range();
+        let visible = (end - start).max(1);
+        self.model.grid.width / visible as f64
     }
 
-    pub fn axis_x_type(&self) -> AxisType {
-        self.model.x_axis.axis_type
+    /// 像素 x → 最近的全局 category 索引
+    pub fn point_to_category_index(&self, x: f64) -> Option<usize> {
+        let grid = self.model.grid;
+        if x < grid.x || x > grid.x + grid.width {
+            return None;
+        }
+        let (start, end) = self.model.visible_category_range();
+        let visible = (end - start).max(1);
+        let rel = ((x - grid.x) / grid.width).clamp(0.0, 0.999_999);
+        let local = (rel * visible as f64).floor() as usize;
+        Some((start + local).min(self.model.category_count().saturating_sub(1)))
     }
 }

@@ -2,7 +2,7 @@
 
 use wasm_zrender::{
     ChildRef, DisplayableProps, EcData, FillStrokeStyle, Path, PathStyle, RectShape, Shape,
-    PathStylePatch, STATE_EMPHASIS, ZRenderer,
+    PathStylePatch, STATE_EMPHASIS, STATE_SELECT, ZRenderer,
 };
 
 use crate::coord::Cartesian2D;
@@ -18,6 +18,8 @@ pub fn render_bar_series(
     coord: &Cartesian2D,
     visual: &VisualContext,
     series: &SeriesModel,
+    zoom_start: usize,
+    zoom_end: usize,
 ) {
     if series.data.is_empty() {
         return;
@@ -28,6 +30,9 @@ pub fn render_bar_series(
     let base_y = coord.base_y().min(coord.grid().y + coord.grid().height);
 
     for (i, point) in series.data.iter().enumerate() {
+        if i < zoom_start || i >= zoom_end {
+            continue;
+        }
         let (cx, top_y) = coord.data_to_point(i, point.value);
         let x = cx - bar_w / 2.0;
         let y = top_y.min(base_y);
@@ -60,6 +65,15 @@ pub fn render_bar_series(
             STATE_EMPHASIS,
             PathStylePatch {
                 fill: Some(FillStrokeStyle::color(&color)),
+                line_width: Some(2.0),
+                ..Default::default()
+            },
+        );
+        zr.set_path_state_style(
+            bar,
+            STATE_SELECT,
+            PathStylePatch {
+                stroke: Some(FillStrokeStyle::color("#333")),
                 line_width: Some(2.0),
                 ..Default::default()
             },
