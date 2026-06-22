@@ -1,13 +1,14 @@
-//! ECharts WASM 实例（阶段 4 API 骨架）
+//! ECharts WASM 实例
 
 use js_sys::{Object, Reflect};
 use wasm_bindgen::prelude::*;
 use wasm_zrender::{STATE_EMPHASIS, STATE_NORMAL, ZRenderer};
 
+use crate::model::GlobalModel;
 use crate::option::{parse_option_value, OptionModel, OptionValue};
-use crate::scene::build_placeholder_scene;
+use crate::scheduler::run_update;
+use crate::visual::VisualContext;
 
-/// 对外暴露的 ECharts 实例（对齐 echarts canvas 模式 WASM 侧）
 #[wasm_bindgen]
 pub struct EChartsInstance {
     zr: ZRenderer,
@@ -19,7 +20,6 @@ pub struct EChartsInstance {
 
 #[wasm_bindgen]
 impl EChartsInstance {
-    /// 创建实例（对应 init 时的尺寸与 devicePixelRatio）
     #[wasm_bindgen(constructor)]
     pub fn new(width: u32, height: u32, dpr: f64) -> Result<EChartsInstance, JsValue> {
         crate::utils::set_panic_hook();
@@ -46,19 +46,16 @@ impl EChartsInstance {
         self.dpr
     }
 
-    /// 解析并合并 option（保留 function 字段）
     pub fn set_option(&mut self, option: JsValue) -> Result<(), JsValue> {
         self.option.set_option(&option)?;
-        build_placeholder_scene(&mut self.zr, &self.option);
+        run_update(&mut self.zr, &self.option, self.width, self.height);
         Ok(())
     }
 
-    /// 是否已接收过 option
     pub fn has_option(&self) -> bool {
         !self.option.is_empty()
     }
 
-    /// option 中是否含 function 字段（供 JS 调试）
     pub fn option_has_functions(&self) -> bool {
         option_contains_function(self.option.root())
     }
@@ -71,22 +68,20 @@ impl EChartsInstance {
             .resize_with_dpr(width, height, dpr)
             .map_err(|e| JsValue::from_str(&e.to_string()))?;
         if !self.option.is_empty() {
-            build_placeholder_scene(&mut self.zr, &self.option);
+            run_update(&mut self.zr, &self.option, self.width, self.height);
         }
         Ok(())
     }
 
-    /// 刷新并返回 RGBA 像素缓冲
     pub fn refresh(&mut self) -> Result<Vec<u8>, JsValue> {
-        if self.option.is_empty() {
-            build_placeholder_scene(&mut self.zr, &self.option);
+        if !self.option.is_empty() {
+            run_update(&mut self.zr, &self.option, self.width, self.height);
         }
         self.zr
             .refresh()
             .map_err(|e| JsValue::from_str(&e.to_string()))
     }
 
-    /// 命中检测，返回 JS 对象或 null
     pub fn find_hover(&mut self, x: f64, y: f64) -> JsValue {
         match self.zr.find_hover(x, y) {
             Some(hit) => {
@@ -130,7 +125,24 @@ impl EChartsInstance {
         }
     }
 
-    /// dispatchAction 简化版（highlight / downplay）
+    /// hover 时调用 tooltip.formatter，返回 string 或 null
+    pub fn get_tooltip_content(&self, series_index: i32, data_index: i32) -> JsValue {
+        if series_index < 0 || data_index < 0 {
+            return JsValue::NULL;
+        }
+        let model = GlobalModel::from_option(&self.option, self.width, self.height);
+        let si = series_index as usize;
+        let di = data_index as usize;
+        if si >= model.series.len() || di >= model.series[si].data.len() {
+            return JsValue::NULL;
+        }
+        let visual = VisualContext::new(&self.option, &model);
+        match visual.resolve_tooltip(si, di) {
+            Some(text) => JsValue::from_str(&text),
+            None => JsValue::NULL,
+        }
+    }
+
     pub fn dispatch_action(&mut self, action: JsValue) -> Result<(), JsValue> {
         let parsed = parse_option_value(&action)?;
         let action_type = parsed

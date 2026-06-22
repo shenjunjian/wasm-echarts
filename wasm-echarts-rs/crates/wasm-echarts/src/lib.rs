@@ -1,8 +1,13 @@
 mod bridge;
+mod chart;
+mod coord;
 mod instance;
+mod model;
 mod option;
-mod scene;
+mod render;
+mod scheduler;
 mod utils;
+mod visual;
 
 use wasm_bindgen::prelude::*;
 use wasm_zrender::ZRenderer;
@@ -38,7 +43,10 @@ impl DemoRenderer {
     }
 
     pub fn render(&mut self) -> Result<Vec<u8>, JsValue> {
-        scene::build_placeholder_scene(&mut self.zr, &option::OptionModel::new());
+        let option = option::OptionModel::new();
+        let w = self.zr.width();
+        let h = self.zr.height();
+        render::render_chart(&mut self.zr, &option, w, h);
         self.zr
             .refresh()
             .map_err(|e| JsValue::from_str(&e.to_string()))

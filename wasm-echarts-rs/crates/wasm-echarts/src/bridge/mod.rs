@@ -4,8 +4,8 @@
 
 mod callback;
 mod params;
+mod resolve;
 
-#[allow(unused_imports)]
 pub use callback::{try_call_formatter, JsCallback};
-#[allow(unused_imports)]
 pub use params::build_data_params;
+pub use resolve::{default_series_color, resolve_axis_formatter, resolve_color, resolve_formatter};

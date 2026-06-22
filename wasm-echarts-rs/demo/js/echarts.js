@@ -62,10 +62,35 @@ class EChartsWasmChart {
     this._lastHover = null;
     /** @type {ResizeObserver|null} */
     this._resizeObserver = null;
+    this._tooltipEl = null;
 
+    this._createTooltip();
     this._bindEvents();
     this._observeResize();
     this._paint();
+  }
+
+  _createTooltip() {
+    const tip = document.createElement('div');
+    tip.style.cssText =
+      'position:absolute;display:none;padding:6px 10px;background:rgba(50,50,50,0.9);color:#fff;font:12px/1.4 system-ui,sans-serif;border-radius:4px;pointer-events:none;white-space:nowrap;z-index:10;';
+    this._dom.appendChild(tip);
+    this._tooltipEl = tip;
+  }
+
+  _showTooltip(text, event) {
+    if (!this._tooltipEl) return;
+    this._tooltipEl.textContent = text;
+    this._tooltipEl.style.display = 'block';
+    const rect = this._dom.getBoundingClientRect();
+    this._tooltipEl.style.left = `${event.clientX - rect.left + 12}px`;
+    this._tooltipEl.style.top = `${event.clientY - rect.top + 12}px`;
+  }
+
+  _hideTooltip() {
+    if (this._tooltipEl) {
+      this._tooltipEl.style.display = 'none';
+    }
   }
 
   _bindEvents() {
@@ -85,10 +110,17 @@ class EChartsWasmChart {
           : null;
         if (key !== prevKey) {
           this._lastHover = hit;
+          if (hit.seriesIndex != null && hit.dataIndex != null) {
+            const tip = this._wasm.get_tooltip_content(hit.seriesIndex, hit.dataIndex);
+            if (tip) {
+              this._showTooltip(tip, e);
+            }
+          }
           this._events.emit('mouseover', { event: e, hit });
         }
       } else if (this._lastHover) {
         this._lastHover = null;
+        this._hideTooltip();
         this._events.emit('mouseout', { event: e });
       }
     });
@@ -181,6 +213,7 @@ class EChartsWasmChart {
     if (this._disposed) return;
     this._disposed = true;
     this._resizeObserver?.disconnect();
+    this._tooltipEl?.remove();
     this._wasm.dispose();
     this._canvas.remove();
     this._events = new EventBus();
