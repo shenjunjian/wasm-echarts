@@ -1,8 +1,5 @@
-   0.095568100s  INFO prepare_target{force=false package_id=wasm-echarts v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-echarts) target="wasm_echarts"}: cargo::core::compiler::fingerprint: stale: changed "E:\\wasm-echarts\\wasm-echarts-rs\\crates\\wasm-zrender\\src\\element\\mod.rs"
-   0.095605500s  INFO prepare_target{force=false package_id=wasm-echarts v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-echarts) target="wasm_echarts"}: cargo::core::compiler::fingerprint:           (vs) "E:\\wasm-echarts\\wasm-echarts-rs\\target\\debug\\.fingerprint\\wasm-zrender-0d3562b4befc4af9\\dep-lib-wasm_zrender"
-   0.095611800s  INFO prepare_target{force=false package_id=wasm-echarts v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-echarts) target="wasm_echarts"}: cargo::core::compiler::fingerprint:                FileTime { seconds: 13426601696, nanos: 141606900 } < FileTime { seconds: 13426601702, nanos: 223664200 }
-   0.095900300s  INFO prepare_target{force=false package_id=wasm-echarts v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-echarts) target="wasm_echarts"}: cargo::core::compiler::fingerprint: fingerprint error for wasm-echarts v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-echarts)/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("wasm_echarts", ["cdylib", "rlib"], "E:\\wasm-echarts\\wasm-echarts-rs\\crates\\wasm-echarts\\src\\lib.rs", Edition2018) }
-   0.095933500s  INFO prepare_target{force=false package_id=wasm-echarts v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-echarts) target="wasm_echarts"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\wasm-echarts\wasm-echarts-rs\target\debug\.fingerprint\wasm-echarts-8f75cac6115e9a1e\lib-wasm_echarts`
+   0.095900700s  INFO prepare_target{force=false package_id=wasm-echarts v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-echarts) target="wasm_echarts"}: cargo::core::compiler::fingerprint: fingerprint error for wasm-echarts v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-echarts)/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("wasm_echarts", ["cdylib", "rlib"], "E:\\wasm-echarts\\wasm-echarts-rs\\crates\\wasm-echarts\\src\\lib.rs", Edition2018) }
+   0.095966900s  INFO prepare_target{force=false package_id=wasm-echarts v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-echarts) target="wasm_echarts"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\wasm-echarts\wasm-echarts-rs\target\debug\.fingerprint\wasm-echarts-81b5817ead78aa11\lib-wasm_echarts`
 
 Caused by:
     系统找不到指定的文件。 (os error 2)
@@ -29,10 +26,97 @@ Stack backtrace:
   18: git_midx_writer_dump
   19: BaseThreadInitThunk
   20: RtlUserThreadStart
-   0.109641500s  INFO prepare_target{force=false package_id=wasm-zrender v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-zrender) target="wasm_zrender"}: cargo::core::compiler::fingerprint: fingerprint dirty for wasm-zrender v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-zrender)/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("wasm_zrender", ["lib"], "E:\\wasm-echarts\\wasm-echarts-rs\\crates\\wasm-zrender\\src\\lib.rs", Edition2021) }
-   0.109667700s  INFO prepare_target{force=false package_id=wasm-zrender v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-zrender) target="wasm_zrender"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(ChangedFile { reference: "E:\\wasm-echarts\\wasm-echarts-rs\\target\\debug\\.fingerprint\\wasm-zrender-0d3562b4befc4af9\\dep-lib-wasm_zrender", reference_mtime: FileTime { seconds: 13426601696, nanos: 141606900 }, stale: "E:\\wasm-echarts\\wasm-echarts-rs\\crates\\wasm-zrender\\src\\element\\mod.rs", stale_mtime: FileTime { seconds: 13426601702, nanos: 223664200 } }))
-   0.117834000s  INFO prepare_target{force=false package_id=wasm-echarts v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-echarts) target="wasm_echarts"}: cargo::core::compiler::fingerprint: fingerprint error for wasm-echarts v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-echarts)/Check { test: true }/TargetInner { name_inferred: true, ..: lib_target("wasm_echarts", ["cdylib", "rlib"], "E:\\wasm-echarts\\wasm-echarts-rs\\crates\\wasm-echarts\\src\\lib.rs", Edition2018) }
-   0.117868800s  INFO prepare_target{force=false package_id=wasm-echarts v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-echarts) target="wasm_echarts"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\wasm-echarts\wasm-echarts-rs\target\debug\.fingerprint\wasm-echarts-5b53642474eabee5\test-lib-wasm_echarts`
+   0.108138800s  INFO prepare_target{force=false package_id=indexmap v2.14.0 target="indexmap"}: cargo::core::compiler::fingerprint: fingerprint error for indexmap v2.14.0/Check { test: false }/TargetInner { benched: false, ..: lib_target("indexmap", ["lib"], "C:\\Users\\shen\\.cargo\\registry\\src\\mirrors.aliyun.com-0671735e7cc7f5e7\\indexmap-2.14.0\\src\\lib.rs", Edition2024) }
+   0.108167500s  INFO prepare_target{force=false package_id=indexmap v2.14.0 target="indexmap"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\wasm-echarts\wasm-echarts-rs\target\debug\.fingerprint\indexmap-6d4d8ecc6c7a953a\lib-indexmap`
+
+Caused by:
+    系统找不到指定的文件。 (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_libgit2_prerelease
+  13: <unknown>
+  14: <unknown>
+  15: <unknown>
+  16: <unknown>
+  17: git_midx_writer_dump
+  18: git_filter_source_repo
+  19: git_midx_writer_dump
+  20: BaseThreadInitThunk
+  21: RtlUserThreadStart
+   0.108465800s  INFO prepare_target{force=false package_id=equivalent v1.0.2 target="equivalent"}: cargo::core::compiler::fingerprint: fingerprint error for equivalent v1.0.2/Check { test: false }/TargetInner { ..: lib_target("equivalent", ["lib"], "C:\\Users\\shen\\.cargo\\registry\\src\\mirrors.aliyun.com-0671735e7cc7f5e7\\equivalent-1.0.2\\src\\lib.rs", Edition2015) }
+   0.108479800s  INFO prepare_target{force=false package_id=equivalent v1.0.2 target="equivalent"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\wasm-echarts\wasm-echarts-rs\target\debug\.fingerprint\equivalent-388c529534c59c75\lib-equivalent`
+
+Caused by:
+    系统找不到指定的文件。 (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_libgit2_prerelease
+  14: <unknown>
+  15: <unknown>
+  16: <unknown>
+  17: <unknown>
+  18: git_midx_writer_dump
+  19: git_filter_source_repo
+  20: git_midx_writer_dump
+  21: BaseThreadInitThunk
+  22: RtlUserThreadStart
+   0.108737000s  INFO prepare_target{force=false package_id=hashbrown v0.17.1 target="hashbrown"}: cargo::core::compiler::fingerprint: fingerprint error for hashbrown v0.17.1/Check { test: false }/TargetInner { ..: lib_target("hashbrown", ["lib"], "C:\\Users\\shen\\.cargo\\registry\\src\\mirrors.aliyun.com-0671735e7cc7f5e7\\hashbrown-0.17.1\\src\\lib.rs", Edition2024) }
+   0.108749200s  INFO prepare_target{force=false package_id=hashbrown v0.17.1 target="hashbrown"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\wasm-echarts\wasm-echarts-rs\target\debug\.fingerprint\hashbrown-f080cf5c035e22d8\lib-hashbrown`
+
+Caused by:
+    系统找不到指定的文件。 (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_libgit2_prerelease
+  14: <unknown>
+  15: <unknown>
+  16: <unknown>
+  17: <unknown>
+  18: git_midx_writer_dump
+  19: git_filter_source_repo
+  20: git_midx_writer_dump
+  21: BaseThreadInitThunk
+  22: RtlUserThreadStart
+   0.116878600s  INFO prepare_target{force=false package_id=wasm-echarts v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-echarts) target="wasm_echarts"}: cargo::core::compiler::fingerprint: fingerprint error for wasm-echarts v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-echarts)/Check { test: true }/TargetInner { name_inferred: true, ..: lib_target("wasm_echarts", ["cdylib", "rlib"], "E:\\wasm-echarts\\wasm-echarts-rs\\crates\\wasm-echarts\\src\\lib.rs", Edition2018) }
+   0.116900900s  INFO prepare_target{force=false package_id=wasm-echarts v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-echarts) target="wasm_echarts"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\wasm-echarts\wasm-echarts-rs\target\debug\.fingerprint\wasm-echarts-d475755d874fdd08\test-lib-wasm_echarts`
 
 Caused by:
     系统找不到指定的文件。 (os error 2)
@@ -59,8 +143,37 @@ Stack backtrace:
   18: git_midx_writer_dump
   19: BaseThreadInitThunk
   20: RtlUserThreadStart
-   0.121853200s  INFO prepare_target{force=false package_id=wasm-echarts v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-echarts) target="web"}: cargo::core::compiler::fingerprint: fingerprint error for wasm-echarts v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-echarts)/Check { test: true }/TargetInner { kind: "test", name: "web", benched: false, ..: with_path("E:\\wasm-echarts\\wasm-echarts-rs\\crates\\wasm-echarts\\tests\\web.rs", Edition2018) }
-   0.121876600s  INFO prepare_target{force=false package_id=wasm-echarts v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-echarts) target="web"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\wasm-echarts\wasm-echarts-rs\target\debug\.fingerprint\wasm-echarts-792724dfa20d87b7\test-integration-test-web`
+   0.117345700s  INFO prepare_target{force=false package_id=wasm-bindgen-test v0.3.75 target="wasm_bindgen_test"}: cargo::core::compiler::fingerprint: fingerprint error for wasm-bindgen-test v0.3.75/Check { test: false }/TargetInner { tested: false, ..: lib_target("wasm_bindgen_test", ["lib"], "C:\\Users\\shen\\.cargo\\registry\\src\\mirrors.aliyun.com-0671735e7cc7f5e7\\wasm-bindgen-test-0.3.75\\src\\lib.rs", Edition2021) }
+   0.117359300s  INFO prepare_target{force=false package_id=wasm-bindgen-test v0.3.75 target="wasm_bindgen_test"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\wasm-echarts\wasm-echarts-rs\target\debug\.fingerprint\wasm-bindgen-test-1eb8dfb54456e47f\lib-wasm_bindgen_test`
+
+Caused by:
+    系统找不到指定的文件。 (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_libgit2_prerelease
+  13: <unknown>
+  14: <unknown>
+  15: <unknown>
+  16: <unknown>
+  17: git_midx_writer_dump
+  18: git_filter_source_repo
+  19: git_midx_writer_dump
+  20: BaseThreadInitThunk
+  21: RtlUserThreadStart
+   0.120403100s  INFO prepare_target{force=false package_id=wasm-echarts v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-echarts) target="web"}: cargo::core::compiler::fingerprint: fingerprint error for wasm-echarts v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-echarts)/Check { test: true }/TargetInner { kind: "test", name: "web", benched: false, ..: with_path("E:\\wasm-echarts\\wasm-echarts-rs\\crates\\wasm-echarts\\tests\\web.rs", Edition2018) }
+   0.120488200s  INFO prepare_target{force=false package_id=wasm-echarts v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-echarts) target="web"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\wasm-echarts\wasm-echarts-rs\target\debug\.fingerprint\wasm-echarts-832c945ed71d5b61\test-integration-test-web`
 
 Caused by:
     系统找不到指定的文件。 (os error 2)
@@ -87,13 +200,11 @@ Stack backtrace:
   18: git_midx_writer_dump
   19: BaseThreadInitThunk
   20: RtlUserThreadStart
-   0.122724500s  INFO prepare_target{force=false package_id=wasm-zrender v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-zrender) target="wasm_zrender"}: cargo::core::compiler::fingerprint: stale: changed "E:\\wasm-echarts\\wasm-echarts-rs\\crates\\wasm-zrender\\src\\element\\mod.rs"
-   0.122738300s  INFO prepare_target{force=false package_id=wasm-zrender v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-zrender) target="wasm_zrender"}: cargo::core::compiler::fingerprint:           (vs) "E:\\wasm-echarts\\wasm-echarts-rs\\target\\debug\\.fingerprint\\wasm-zrender-0819fb8fabcc1cc7\\dep-test-lib-wasm_zrender"
-   0.122743400s  INFO prepare_target{force=false package_id=wasm-zrender v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-zrender) target="wasm_zrender"}: cargo::core::compiler::fingerprint:                FileTime { seconds: 13426601696, nanos: 141606900 } < FileTime { seconds: 13426601702, nanos: 223664200 }
-   0.122824300s  INFO prepare_target{force=false package_id=wasm-zrender v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-zrender) target="wasm_zrender"}: cargo::core::compiler::fingerprint: fingerprint dirty for wasm-zrender v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-zrender)/Check { test: true }/TargetInner { name_inferred: true, ..: lib_target("wasm_zrender", ["lib"], "E:\\wasm-echarts\\wasm-echarts-rs\\crates\\wasm-zrender\\src\\lib.rs", Edition2021) }
-   0.122839500s  INFO prepare_target{force=false package_id=wasm-zrender v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-zrender) target="wasm_zrender"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(ChangedFile { reference: "E:\\wasm-echarts\\wasm-echarts-rs\\target\\debug\\.fingerprint\\wasm-zrender-0819fb8fabcc1cc7\\dep-test-lib-wasm_zrender", reference_mtime: FileTime { seconds: 13426601696, nanos: 141606900 }, stale: "E:\\wasm-echarts\\wasm-echarts-rs\\crates\\wasm-zrender\\src\\element\\mod.rs", stale_mtime: FileTime { seconds: 13426601702, nanos: 223664200 } }))
-    Checking wasm-zrender v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-zrender)
+    Checking hashbrown v0.17.1
+    Checking equivalent v1.0.2
+    Checking wasm-bindgen-test v0.3.75
+    Checking indexmap v2.14.0
     Checking wasm-echarts v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-echarts)
-error: could not compile `wasm-echarts` (lib test) due to 6 previous errors
+error: could not compile `wasm-echarts` (lib) due to 5 previous errors; 3 warnings emitted
 warning: build failed, waiting for other jobs to finish...
-error: could not compile `wasm-echarts` (lib) due to 6 previous errors
+error: could not compile `wasm-echarts` (lib test) due to 5 previous errors; 3 warnings emitted

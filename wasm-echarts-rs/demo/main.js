@@ -1,28 +1,47 @@
-import init, { DemoRenderer } from '../crates/wasm-echarts/pkg/wasm_echarts.js';
+import echarts from './js/echarts.js';
 
-const CANVAS_WIDTH = 400;
-const CANVAS_HEIGHT = 300;
+const DEFAULT_OPTION = {
+  xAxis: { type: 'category', data: ['Mon', 'Tue', 'Wed'] },
+  yAxis: { type: 'value' },
+  series: [
+    {
+      type: 'line',
+      name: 'demo',
+      data: [120, 200, 150],
+      label: {
+        formatter(params) {
+          return `值: ${params.value}`;
+        },
+      },
+    },
+  ],
+};
 
 async function main() {
   const status = document.getElementById('status');
-  const canvas = document.getElementById('canvas');
+  const container = document.getElementById('chart');
 
   try {
-    await init();
-    status.textContent = 'WASM 已加载，正在渲染…';
+    status.textContent = '加载 WASM…';
 
-    const renderer = new DemoRenderer(CANVAS_WIDTH, CANVAS_HEIGHT);
-    const rgba = renderer.render();
+    const chart = await echarts.init(container, { renderer: 'canvas' });
 
-    const ctx = canvas.getContext('2d');
-    const imageData = new ImageData(
-      new Uint8ClampedArray(rgba),
-      CANVAS_WIDTH,
-      CANVAS_HEIGHT,
-    );
-    ctx.putImageData(imageData, 0, 0);
+    chart.setOption(DEFAULT_OPTION);
 
-    status.textContent = `渲染完成 (${CANVAS_WIDTH}×${CANVAS_HEIGHT}, ${rgba.length} bytes RGBA)`;
+    const meta = chart.getOption();
+    status.textContent = `阶段 4 Demo：option 已合并（含函数: ${meta.hasFunctions}）`;
+
+    chart.on('click', ({ hit }) => {
+      if (hit) {
+        status.textContent = `click → seriesIndex=${hit.seriesIndex ?? '-'}, dataIndex=${hit.dataIndex ?? '-'}, pathIndex=${hit.pathIndex}`;
+      }
+    });
+
+    chart.on('mouseover', ({ hit }) => {
+      if (hit?.dataIndex != null) {
+        container.title = `dataIndex: ${hit.dataIndex}`;
+      }
+    });
   } catch (err) {
     status.textContent = `错误: ${err}`;
     console.error(err);
