@@ -1,0 +1,7 @@
+E:\wasm-echarts\wasm-echarts-rs\target\debug\deps\wasm_bindgen_test_shared-832ffd8a95c1c456.d: C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\wasm-bindgen-test-shared-0.2.125\src\lib.rs
+
+E:\wasm-echarts\wasm-echarts-rs\target\debug\deps\libwasm_bindgen_test_shared-832ffd8a95c1c456.rlib: C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\wasm-bindgen-test-shared-0.2.125\src\lib.rs
+
+E:\wasm-echarts\wasm-echarts-rs\target\debug\deps\libwasm_bindgen_test_shared-832ffd8a95c1c456.rmeta: C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\wasm-bindgen-test-shared-0.2.125\src\lib.rs
+
+C:\Users\shen\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\wasm-bindgen-test-shared-0.2.125\src\lib.rs:

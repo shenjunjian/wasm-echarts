@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>wasm-echarts 阶段 0 Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 2rem;
+      background: #f5f5f5;
+    }
+    h1 { font-size: 1.25rem; }
+    canvas {
+      border: 1px solid #ccc;
+      background: #fff;
+      image-rendering: pixelated;
+    }
+    .info { color: #666; font-size: 0.875rem; margin-top: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>wasm-echarts 阶段 0 Demo</h1>
+  <p class="info">WASM 离屏渲染 Rect + Circle → putImageData blit 到 canvas</p>
+  <canvas id="canvas" width="400" height="300"></canvas>
+  <p id="status" class="info">加载中…</p>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

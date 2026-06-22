@@ -1,4 +1,1 @@
-warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
-package:   E:\wasm-echarts\wasm-echarts-rs\crates\wasm-echarts\Cargo.toml
-workspace: E:\wasm-echarts\wasm-echarts-rs\Cargo.toml
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.06s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.10s

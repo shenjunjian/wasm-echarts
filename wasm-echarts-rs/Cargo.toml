@@ -7,3 +7,6 @@ members = [
 
 # (可选) 解析器版本，建议设为 2021 或更高以支持更优的依赖解析
 resolver = "2"
+
+[profile.release]
+opt-level = "s"

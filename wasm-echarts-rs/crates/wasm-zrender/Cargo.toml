@@ -1,10 +1,8 @@
 [package]
 name = "wasm-zrender"
 version = "0.1.0"
-edition = "2024"
-
-[lib]
-crate-type = ["cdylib"]
-
+edition = "2021"
 
 [dependencies]
+vl-convert-canvas2d = "2.0.0-rc1"
+thiserror = "2"
