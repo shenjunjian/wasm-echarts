@@ -1,6 +1,6 @@
 //! setOption 更新调度（简化版：单次全量 refresh）
 
-use wasm_zrender::ZRenderer;
+use rust_zrender::ZRenderer;
 
 use crate::interaction::InteractionState;
 use crate::option::OptionModel;

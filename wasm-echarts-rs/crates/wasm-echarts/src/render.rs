@@ -1,6 +1,6 @@
 //! 渲染入口：GlobalModel → zrender Storage
 
-use wasm_zrender::{Storage, ZRenderer};
+use rust_zrender::{Storage, ZRenderer};
 
 use crate::chart::render_components;
 use crate::interaction::InteractionState;

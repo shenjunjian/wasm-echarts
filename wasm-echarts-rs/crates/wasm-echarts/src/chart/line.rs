@@ -1,6 +1,6 @@
 //! 折线图 ChartView
 
-use wasm_zrender::{
+use rust_zrender::{
     ChildRef, CircleShape, DisplayableProps, EcData, FillStrokeStyle, Path, PathStyle,
     PolylineShape, Shape, PathStylePatch, STATE_EMPHASIS, STATE_SELECT, ZRenderer,
 };

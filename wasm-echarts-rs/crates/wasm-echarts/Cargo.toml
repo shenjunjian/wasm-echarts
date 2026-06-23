@@ -21,7 +21,7 @@ chart-pie = []
 chart-scatter = []
 
 [dependencies]
-wasm-zrender = { path = "../wasm-zrender" }
+rust-zrender = { path = "../rust-zrender" }
 wasm-bindgen = "0.2.125"
 js-sys = "0.3.102"
 indexmap = "2"

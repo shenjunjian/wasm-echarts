@@ -26,10 +26,12 @@ wasm-echarts/
 │   │   ├── main.js
 │   │   └── js/echarts.js         # 对齐 echarts 的 JS 薄壳
 │   └── crates/
-│       ├── wasm-echarts/         # wasm-pack 项目，编译为 wasm
+│       ├── rust-zrender/         # 纯 Rust lib：zrender 渲染核心（底层依赖）
+│       ├── wasm-zrender/         # wasm-pack：ZRenderInstance 薄封装
+│       ├── wasm-echarts/         # wasm-pack：EChartsInstance + option 管线
 │       │   ├── src/
 │       │   └── pkg/              # wasm-pack 产物（见下文）
-│       └── wasm-zrender/         # 普通 Rust lib，wasm-echarts 的依赖
+│       └── …
 ├── echarts-master/               # echarts@6.1 源码，只读参考
 └── zrender-master/               # zrender@6.1 源码，只读参考
 ```
@@ -50,7 +52,23 @@ rustup target add wasm32-unknown-unknown
 
 ## 编译
 
-在仓库根目录进入 `wasm-echarts-rs/crates/wasm-echarts` 后执行 wasm-pack。
+Workspace 含三个 Rust crate：**`rust-zrender`**（纯 lib）、**`wasm-zrender`** / **`wasm-echarts`**（wasm-bindgen 产物）。  
+`wasm-echarts` 与 `wasm-zrender` 均只依赖 `rust-zrender`，彼此不依赖。
+
+### wasm-echarts（ECharts Demo）
+
+```bash
+cd wasm-echarts-rs/crates/wasm-echarts
+wasm-pack build --target web --dev    # 开发
+wasm-pack build --target web --release  # 发布
+```
+
+### wasm-zrender（zrender 底层 Demo，可选）
+
+```bash
+cd wasm-echarts-rs/crates/wasm-zrender
+wasm-pack build --target web --dev
+```
 
 ### 开发构建（推荐调试）
 
@@ -76,13 +94,21 @@ wasm-pack build --target web --release
 
 ```bash
 cd wasm-echarts-rs
+cargo test -p rust-zrender
 cargo test -p wasm-echarts
 cargo test -p wasm-zrender
 ```
 
 ## 编译产物
 
-`wasm-pack build` 成功后，主要产物位于：
+`wasm-pack build` 成功后，各 crate 产物位于对应 `pkg/`：
+
+```
+wasm-echarts-rs/crates/wasm-echarts/pkg/   # EChartsInstance
+wasm-echarts-rs/crates/wasm-zrender/pkg/   # ZRenderInstance
+```
+
+以 wasm-echarts 为例：
 
 ```
 wasm-echarts-rs/crates/wasm-echarts/pkg/
@@ -107,6 +133,17 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 | `get_tooltip_content(seriesIndex, dataIndex)` | 调用 option 中的 tooltip formatter |
 | `dispatch_action(action)` | 触发 highlight / downplay 等 |
 | `dispose()` | 释放 option |
+
+### wasm-zrender 对外 API（`wasm_zrender.d.ts`）
+
+| 类 / 方法 | 说明 |
+|-----------|------|
+| `ZRenderInstance` | zrender 薄封装实例 |
+| `load_scene(name)` | 加载预设场景：shapes / text / sector / hit / state |
+| `refresh()` | 返回 RGBA |
+| `find_hover(x, y)` | 命中检测 |
+| `resize(w, h, dpr)` | 调整尺寸并重载场景 |
+| `highlight_path` / `downplay_path` | 图元状态切换 |
 
 ## 使用方法
 

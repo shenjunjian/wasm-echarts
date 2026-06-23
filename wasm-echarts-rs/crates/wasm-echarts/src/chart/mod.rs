@@ -15,7 +15,7 @@ pub use pie::render_pie_series;
 #[cfg(feature = "chart-scatter")]
 pub use scatter::render_scatter_series;
 
-use wasm_zrender::{
+use rust_zrender::{
     ChildRef, FillStrokeStyle, LineShape, Path, PathStyle, Shape, ZRenderer,
 };
 
@@ -72,7 +72,7 @@ pub fn render_components(
 }
 
 fn render_grid_frame(zr: &mut ZRenderer, group: usize, model: &GlobalModel) {
-    use wasm_zrender::{
+    use rust_zrender::{
         FillStrokeStyle, LineShape, Path, PathStyle, Shape,
     };
 
@@ -117,7 +117,7 @@ fn render_split_lines(
     model: &GlobalModel,
     coord: &Cartesian2D,
 ) {
-    use wasm_zrender::{
+    use rust_zrender::{
         FillStrokeStyle, LineShape, Path, PathStyle, Shape,
     };
 

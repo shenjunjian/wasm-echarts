@@ -1,6 +1,6 @@
 //! 柱状图 ChartView
 
-use wasm_zrender::{
+use rust_zrender::{
     ChildRef, DisplayableProps, EcData, FillStrokeStyle, Path, PathStyle, RectShape, Shape,
     PathStylePatch, STATE_EMPHASIS, STATE_SELECT, ZRenderer,
 };

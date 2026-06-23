@@ -2,7 +2,7 @@
 
 use js_sys::{Object, Reflect};
 use wasm_bindgen::prelude::*;
-use wasm_zrender::{STATE_EMPHASIS, STATE_NORMAL, STATE_SELECT, ZRenderer};
+use rust_zrender::{STATE_EMPHASIS, STATE_NORMAL, STATE_SELECT, ZRenderer};
 
 use crate::interaction::{DataTarget, InteractionState};
 use crate::model::GlobalModel;
@@ -328,7 +328,7 @@ fn parse_data_target(parsed: &OptionValue) -> Option<DataTarget> {
     })
 }
 
-fn hit_to_js(hit: &wasm_zrender::HitResult) -> JsValue {
+fn hit_to_js(hit: &rust_zrender::HitResult) -> JsValue {
     let obj = Object::new();
     let _ = Reflect::set(&obj, &JsValue::from_str("x"), &JsValue::from(hit.x));
     let _ = Reflect::set(&obj, &JsValue::from_str("y"), &JsValue::from(hit.y));

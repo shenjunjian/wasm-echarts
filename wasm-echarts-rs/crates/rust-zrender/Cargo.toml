@@ -1,0 +1,15 @@
+[package]
+name = "rust-zrender"
+version = "0.1.0"
+edition = "2021"
+description = "Pure Rust zrender rendering library (canvas backend via vl-convert-canvas2d)"
+
+[lib]
+name = "rust_zrender"
+
+[dependencies]
+vl-convert-canvas2d = "2.0.0-rc1"
+thiserror = "2"
+tiny-skia = "0.11.4"
+kurbo = "0.13"
+csscolorparser = "0.7"

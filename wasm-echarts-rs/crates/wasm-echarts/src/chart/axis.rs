@@ -1,6 +1,6 @@
 //! 坐标轴刻度标签
 
-use wasm_zrender::{
+use rust_zrender::{
     Text, TextAlign, TextBaseline, TextStyle, ZRenderer,
 };
 

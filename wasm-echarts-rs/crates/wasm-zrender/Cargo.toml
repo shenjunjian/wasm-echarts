@@ -2,10 +2,21 @@
 name = "wasm-zrender"
 version = "0.1.0"
 edition = "2021"
+description = "wasm-bindgen 薄封装，浏览器侧暴露 rust-zrender ZRenderInstance API"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["console_error_panic_hook"]
 
 [dependencies]
-vl-convert-canvas2d = "2.0.0-rc1"
-thiserror = "2"
-tiny-skia = "0.11.4"
-kurbo = "0.13"
-csscolorparser = "0.7"
+rust-zrender = { path = "../rust-zrender" }
+wasm-bindgen = "0.2.125"
+js-sys = "0.3.102"
+web-sys = { version = "0.3.102", features = ["console"] }
+
+console_error_panic_hook = { version = "0.1.7", optional = true }
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3.75"
