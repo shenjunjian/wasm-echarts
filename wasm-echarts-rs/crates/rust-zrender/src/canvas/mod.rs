@@ -1,6 +1,7 @@
 //! Canvas Painter / Layer / brush 与后端抽象
 
 pub mod backend;
+mod font_config;
 pub mod brush;
 pub mod demo;
 pub mod helper;

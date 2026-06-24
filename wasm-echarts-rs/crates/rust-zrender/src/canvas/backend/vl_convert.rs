@@ -17,9 +17,21 @@ pub struct VlConvertBackend {
 
 impl VlConvertBackend {
     pub fn new(width: u32, height: u32) -> Result<Self, BackendError> {
-        let ctx =
-            Canvas2dContext::new(width, height).map_err(|e| BackendError::Canvas(e.to_string()))?;
+        let ctx = create_context(width, height)?;
         Ok(Self { ctx })
+    }
+}
+
+fn create_context(width: u32, height: u32) -> Result<Canvas2dContext, BackendError> {
+    #[cfg(target_arch = "wasm32")]
+    {
+        use crate::canvas::font_config::resolved_font_config;
+        Canvas2dContext::with_resolved(width, height, resolved_font_config())
+            .map_err(|e| BackendError::Canvas(e.to_string()))
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        Canvas2dContext::new(width, height).map_err(|e| BackendError::Canvas(e.to_string()))
     }
 }
 

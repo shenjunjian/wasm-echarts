@@ -4,7 +4,7 @@ use js_sys::{Object, Reflect};
 use wasm_bindgen::JsValue;
 use wasm_bindgen_test::*;
 
-use wasm_zrender::{dispose_all, init, Arc, Circle, Group, Rect};
+use wasm_zrender::{dispose_all, init, Arc, Circle, Group, Rect, Text};
 
 wasm_bindgen_test_configure!(run_in_node_experimental);
 
@@ -82,6 +82,29 @@ fn find_hover_returns_element_handle() {
     let hover = zr.find_hover(180.0, 80.0).expect("hover result");
     assert_eq!(hover.target().element_type(), "circle");
     assert_eq!(hover.top_target().element_type(), "circle");
+}
+
+#[wasm_bindgen_test]
+fn text_refresh_outputs_rgba() {
+    reset_registry();
+    let mut zr = init(JsValue::NULL, init_opts(480, 180)).unwrap();
+
+    let style = Object::new();
+    Reflect::set(&style, &"text".into(), &JsValue::from_str("wasm-zrender 文本")).unwrap();
+    Reflect::set(&style, &"x".into(), &JsValue::from(24.0)).unwrap();
+    Reflect::set(&style, &"y".into(), &JsValue::from(48.0)).unwrap();
+    Reflect::set(&style, &"fill".into(), &JsValue::from_str("#333")).unwrap();
+    Reflect::set(&style, &"fontSize".into(), &JsValue::from(18.0)).unwrap();
+
+    let opts = Object::new();
+    Reflect::set(&opts, &"style".into(), &style).unwrap();
+
+    let text = Text::new(opts.into());
+    zr.add(JsValue::from(text)).unwrap();
+
+    let rgba = zr.refresh().unwrap();
+    assert_eq!(rgba.len(), 480 * 180 * 4);
+    assert!(rgba.chunks(4).any(|px| px[3] > 0));
 }
 
 #[wasm_bindgen_test]
