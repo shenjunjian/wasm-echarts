@@ -10,6 +10,6 @@ mod text;
 pub use group::Group;
 pub use gradient::{LinearGradient, Pattern, RadialGradient};
 pub use path::Path;
-pub use shapes::{Circle, Line, Polygon, Polyline, Rect, Sector};
+pub use shapes::{Arc, BezierCurve, Circle, Ellipse, Line, Polygon, Polyline, Rect, Ring, Sector};
 pub use stub::*;
 pub use text::Text;

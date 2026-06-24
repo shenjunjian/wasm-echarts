@@ -53,3 +53,7 @@ impl_shape!(Line, "line");
 impl_shape!(Polygon, "polygon");
 impl_shape!(Polyline, "polyline");
 impl_shape!(Sector, "sector");
+impl_shape!(Arc, "arc");
+impl_shape!(Ellipse, "ellipse");
+impl_shape!(Ring, "ring");
+impl_shape!(BezierCurve, "bezier-curve");

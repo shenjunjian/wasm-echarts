@@ -20,13 +20,9 @@ macro_rules! stub_class {
     };
 }
 
-stub_class!(Arc);
-stub_class!(BezierCurve);
 stub_class!(Droplet);
-stub_class!(Ellipse);
 stub_class!(Heart);
 stub_class!(Isogon);
-stub_class!(Ring);
 stub_class!(Rose);
 stub_class!(Star);
 stub_class!(Trochoid);

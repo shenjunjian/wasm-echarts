@@ -1,11 +1,21 @@
 //! 从 JsValue 解析各 shape 字段
 
 use rust_zrender::{
-    CircleShape, LineShape, PolygonShape, PolylineShape, RectShape, SectorShape,
+    ArcShape, BezierCurveShape, CircleShape, EllipseShape, LineShape, PolygonShape,
+    PolylineShape, RectShape, RingShape, SectorShape,
 };
 use wasm_bindgen::prelude::*;
 
-use super::opts::{get_f64, get_object, get_value};
+use super::opts::{get_bool, get_f64, get_object, get_value};
+
+fn get_opt_f64(obj: &JsValue, key: &str) -> Option<f64> {
+    let v = get_value(obj, key);
+    if v.is_undefined() || v.is_null() {
+        None
+    } else {
+        v.as_f64()
+    }
+}
 
 pub fn parse_rect_shape(shape: &JsValue) -> Result<RectShape, JsValue> {
     Ok(RectShape {
@@ -67,6 +77,49 @@ pub fn parse_sector_shape(shape: &JsValue) -> Result<SectorShape, JsValue> {
         r: get_f64(shape, "r").unwrap_or(0.0),
         start_angle: get_f64(shape, "startAngle").unwrap_or(0.0),
         end_angle: get_f64(shape, "endAngle").unwrap_or(0.0),
+        percent: get_f64(shape, "percent").unwrap_or(1.0),
+    })
+}
+
+pub fn parse_arc_shape(shape: &JsValue) -> Result<ArcShape, JsValue> {
+    Ok(ArcShape {
+        cx: get_f64(shape, "cx").unwrap_or(0.0),
+        cy: get_f64(shape, "cy").unwrap_or(0.0),
+        r: get_f64(shape, "r").unwrap_or(0.0),
+        start_angle: get_f64(shape, "startAngle").unwrap_or(0.0),
+        end_angle: get_f64(shape, "endAngle").unwrap_or(std::f64::consts::PI * 2.0),
+        clockwise: get_bool(shape, "clockwise").unwrap_or(true),
+    })
+}
+
+pub fn parse_ellipse_shape(shape: &JsValue) -> Result<EllipseShape, JsValue> {
+    Ok(EllipseShape {
+        cx: get_f64(shape, "cx").unwrap_or(0.0),
+        cy: get_f64(shape, "cy").unwrap_or(0.0),
+        rx: get_f64(shape, "rx").unwrap_or(0.0),
+        ry: get_f64(shape, "ry").unwrap_or(0.0),
+    })
+}
+
+pub fn parse_ring_shape(shape: &JsValue) -> Result<RingShape, JsValue> {
+    Ok(RingShape {
+        cx: get_f64(shape, "cx").unwrap_or(0.0),
+        cy: get_f64(shape, "cy").unwrap_or(0.0),
+        r: get_f64(shape, "r").unwrap_or(0.0),
+        r0: get_f64(shape, "r0").unwrap_or(0.0),
+    })
+}
+
+pub fn parse_bezier_curve_shape(shape: &JsValue) -> Result<BezierCurveShape, JsValue> {
+    Ok(BezierCurveShape {
+        x1: get_f64(shape, "x1").unwrap_or(0.0),
+        y1: get_f64(shape, "y1").unwrap_or(0.0),
+        x2: get_f64(shape, "x2").unwrap_or(0.0),
+        y2: get_f64(shape, "y2").unwrap_or(0.0),
+        cpx1: get_f64(shape, "cpx1").unwrap_or(0.0),
+        cpy1: get_f64(shape, "cpy1").unwrap_or(0.0),
+        cpx2: get_opt_f64(shape, "cpx2"),
+        cpy2: get_opt_f64(shape, "cpy2"),
         percent: get_f64(shape, "percent").unwrap_or(1.0),
     })
 }

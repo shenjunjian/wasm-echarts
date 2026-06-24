@@ -10,8 +10,9 @@ use super::opts::{
     parse_text_style,
 };
 use super::shape::{
-    parse_circle_shape, parse_line_shape, parse_polygon_shape, parse_polyline_shape,
-    parse_rect_shape, parse_sector_shape, shape_from_opts,
+    parse_arc_shape, parse_bezier_curve_shape, parse_circle_shape, parse_ellipse_shape,
+    parse_line_shape, parse_polygon_shape, parse_polyline_shape, parse_rect_shape,
+    parse_ring_shape, parse_sector_shape, shape_from_opts,
 };
 use crate::element::pending::{PendingData, PendingPath, PendingText};
 
@@ -63,6 +64,10 @@ fn parse_shape(type_name: &str, shape: &JsValue) -> Result<Shape, JsValue> {
         "polygon" => Ok(Shape::Polygon(parse_polygon_shape(shape)?)),
         "polyline" => Ok(Shape::Polyline(parse_polyline_shape(shape)?)),
         "sector" => Ok(Shape::Sector(parse_sector_shape(shape)?)),
+        "arc" => Ok(Shape::Arc(parse_arc_shape(shape)?)),
+        "ellipse" => Ok(Shape::Ellipse(parse_ellipse_shape(shape)?)),
+        "ring" => Ok(Shape::Ring(parse_ring_shape(shape)?)),
+        "bezier-curve" => Ok(Shape::BezierCurve(parse_bezier_curve_shape(shape)?)),
         other => Err(JsValue::from_str(&format!("unsupported shape: {other}"))),
     }
 }

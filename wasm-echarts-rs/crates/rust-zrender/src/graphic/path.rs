@@ -154,7 +154,30 @@ fn estimate_bbox(shape: &Shape) -> BoundingRect {
         Shape::Polygon(s) => bbox_from_points(&s.points),
         Shape::Polyline(s) => bbox_from_points(&s.points),
         Shape::Sector(s) => BoundingRect::new(s.cx - s.r, s.cy - s.r, s.r * 2.0, s.r * 2.0),
+        Shape::Arc(s) => BoundingRect::new(s.cx - s.r, s.cy - s.r, s.r * 2.0, s.r * 2.0),
+        Shape::Ellipse(s) => BoundingRect::new(s.cx - s.rx, s.cy - s.ry, s.rx * 2.0, s.ry * 2.0),
+        Shape::Ring(s) => {
+            let outer = s.r.max(s.r0);
+            BoundingRect::new(s.cx - outer, s.cy - outer, outer * 2.0, outer * 2.0)
+        }
+        Shape::BezierCurve(s) => bbox_bezier_curve(s),
     }
+}
+
+fn bbox_bezier_curve(s: &crate::graphic::shapes::BezierCurveShape) -> BoundingRect {
+    let mut xs = vec![s.x1, s.x2, s.cpx1];
+    let mut ys = vec![s.y1, s.y2, s.cpy1];
+    if let Some(cpx2) = s.cpx2 {
+        xs.push(cpx2);
+    }
+    if let Some(cpy2) = s.cpy2 {
+        ys.push(cpy2);
+    }
+    let min_x = xs.iter().copied().fold(f64::INFINITY, f64::min);
+    let max_x = xs.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    let min_y = ys.iter().copied().fold(f64::INFINITY, f64::min);
+    let max_y = ys.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    BoundingRect::new(min_x, min_y, max_x - min_x, max_y - min_y)
 }
 
 fn bbox_from_points(points: &[(f64, f64)]) -> BoundingRect {

@@ -7,6 +7,10 @@ const IMPORT_BLOCK = `import initWasm, {
   Line,
   Polygon,
   Sector,
+  Arc,
+  Ellipse,
+  Ring,
+  BezierCurve,
   Text,
   LinearGradient,
 } from '@wasm-zrender/wasm_zrender.js';`;
@@ -117,6 +121,26 @@ export const ZRENDER_SOURCE = {
   g.add(new Polygon({
     shape: { points: [[240, 30], [300, 60], [270, 100]] },
     style: { fill: '#fac858' },
+  }));
+
+  g.add(new Arc({
+    shape: { cx: 380, cy: 80, r: 50, startAngle: 0, endAngle: Math.PI * 1.2 },
+    style: { stroke: '#5470c6', lineWidth: 4 },
+  }));
+
+  g.add(new Ellipse({
+    shape: { cx: 120, cy: 240, rx: 70, ry: 40 },
+    style: { fill: 'rgba(238, 102, 102, 0.7)' },
+  }));
+
+  g.add(new Ring({
+    shape: { cx: 300, cy: 260, r: 55, r0: 30 },
+    style: { fill: '#73c0de' },
+  }));
+
+  g.add(new BezierCurve({
+    shape: { x1: 20, y1: 300, x2: 460, y2: 300, cpx1: 240, cpy1: 180 },
+    style: { stroke: '#3ba272', lineWidth: 3 },
   }));
 
   zr.add(g);
