@@ -4,6 +4,8 @@ use std::collections::BTreeMap;
 
 use crate::canvas::backend::CanvasBackend;
 use crate::canvas::brush::{BrushScope, brush};
+use crate::canvas::image_brush::brush_image;
+use crate::storage::DisplayElementRef;
 use crate::canvas::layer::Layer;
 use crate::canvas::text_brush::{brush_text, text_sort_key};
 use crate::core::types::RgbaBuffer;
@@ -38,15 +40,15 @@ impl<B: CanvasBackend> Painter<B> {
         let items: Vec<_> = storage
             .get_display_list(true)
             .iter()
-            .map(|item| (item.zlevel, item.path_index))
+            .map(|item| (item.zlevel, item.element))
             .collect();
 
         let scope = BrushScope::new(self.width as f64, self.height as f64);
 
-        let mut by_zlevel: BTreeMap<i64, Vec<usize>> = BTreeMap::new();
-        for (zlevel, path_index) in items {
+        let mut by_zlevel: BTreeMap<i64, Vec<DisplayElementRef>> = BTreeMap::new();
+        for (zlevel, element) in items {
             let key = zlevel_to_key(zlevel);
-            by_zlevel.entry(key).or_default().push(path_index);
+            by_zlevel.entry(key).or_default().push(element);
         }
 
         if by_zlevel.len() <= 1 {
@@ -60,14 +62,12 @@ impl<B: CanvasBackend> Painter<B> {
         &mut self,
         storage: &mut Storage,
         scope: &BrushScope,
-        by_zlevel: &BTreeMap<i64, Vec<usize>>,
+        by_zlevel: &BTreeMap<i64, Vec<DisplayElementRef>>,
     ) -> Result<RgbaBuffer, crate::canvas::backend::BackendError> {
         self.base_layer.clear();
         let ctx = self.base_layer.backend_mut() as &mut dyn crate::canvas::backend::CanvasContext;
-        for indices in by_zlevel.values() {
-            for &path_index in indices {
-                brush(ctx, storage, path_index, scope)?;
-            }
+        for elements in by_zlevel.values() {
+            brush_elements(ctx, storage, elements, scope)?;
         }
         brush_all_texts(ctx, storage)?;
         Ok(self.base_layer.backend().get_rgba())
@@ -77,26 +77,22 @@ impl<B: CanvasBackend> Painter<B> {
         &mut self,
         storage: &mut Storage,
         scope: &BrushScope,
-        by_zlevel: &BTreeMap<i64, Vec<usize>>,
+        by_zlevel: &BTreeMap<i64, Vec<DisplayElementRef>>,
     ) -> Result<RgbaBuffer, crate::canvas::backend::BackendError> {
         self.base_layer.clear();
         let mut overlay_layers: Vec<Layer<B>> = Vec::new();
 
-        for (i, (_key, indices)) in by_zlevel.iter().enumerate() {
+        for (i, (_key, elements)) in by_zlevel.iter().enumerate() {
             if i == 0 {
                 let ctx =
                     self.base_layer.backend_mut() as &mut dyn crate::canvas::backend::CanvasContext;
-                for &path_index in indices {
-                    brush(ctx, storage, path_index, scope)?;
-                }
+                brush_elements(ctx, storage, elements, scope)?;
             } else {
                 let backend = B::create(self.width, self.height)?;
                 let mut layer = Layer::new(backend);
                 layer.clear();
                 let ctx = layer.backend_mut() as &mut dyn crate::canvas::backend::CanvasContext;
-                for &path_index in indices {
-                    brush(ctx, storage, path_index, scope)?;
-                }
+                brush_elements(ctx, storage, elements, scope)?;
                 overlay_layers.push(layer);
             }
         }
@@ -114,6 +110,25 @@ impl<B: CanvasBackend> Painter<B> {
 
 fn zlevel_to_key(zlevel: f64) -> i64 {
     (zlevel * 1000.0).round() as i64
+}
+
+fn brush_elements(
+    ctx: &mut dyn crate::canvas::backend::CanvasContext,
+    storage: &mut Storage,
+    elements: &[DisplayElementRef],
+    scope: &BrushScope,
+) -> Result<(), crate::canvas::backend::BackendError> {
+    for element in elements {
+        match element {
+            DisplayElementRef::Path(path_index) => {
+                brush(ctx, storage, *path_index, scope)?;
+            }
+            DisplayElementRef::Image(image_index) => {
+                brush_image(ctx, storage, *image_index, scope)?;
+            }
+        }
+    }
+    Ok(())
 }
 
 fn brush_all_texts(

@@ -20,8 +20,6 @@ macro_rules! stub_class {
     };
 }
 
-stub_class!(Image);
-stub_class!(CompoundPath);
 stub_class!(TSpan);
 stub_class!(IncrementalDisplayable);
 stub_class!(Displayable);

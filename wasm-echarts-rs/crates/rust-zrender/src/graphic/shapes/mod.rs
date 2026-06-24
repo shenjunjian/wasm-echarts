@@ -3,11 +3,13 @@
 pub mod arc;
 pub mod bezier_curve;
 pub mod circle;
+pub mod compound_path;
 pub mod droplet;
 pub mod ellipse;
 pub mod heart;
 pub mod isogon;
 pub mod line;
+pub mod path_data;
 pub mod polygon;
 pub mod polyline;
 pub mod rect;
@@ -22,11 +24,13 @@ use crate::graphic::path_proxy::PathProxy;
 pub use arc::{ArcShape, build_arc_path};
 pub use bezier_curve::{BezierCurveShape, build_bezier_curve_path};
 pub use circle::{CircleShape, build_circle_path};
+pub use compound_path::{CompoundPathShape, build_compound_path};
 pub use droplet::{DropletShape, build_droplet_path};
 pub use ellipse::{EllipseShape, build_ellipse_path};
 pub use heart::{HeartShape, build_heart_path};
 pub use isogon::{IsogonShape, build_isogon_path};
 pub use line::{LineShape, build_line_path};
+pub use path_data::{PathDataShape, build_path_data_path};
 pub use polygon::{PolygonShape, build_polygon_path};
 pub use polyline::{PolylineShape, build_polyline_path};
 pub use rect::{RectShape, build_rect_path};
@@ -54,6 +58,8 @@ pub enum Shape {
     Droplet(DropletShape),
     Rose(RoseShape),
     Trochoid(TrochoidShape),
+    PathData(PathDataShape),
+    Compound(CompoundPathShape),
 }
 
 impl Shape {
@@ -75,6 +81,8 @@ impl Shape {
             Shape::Droplet(s) => build_droplet_path(ctx, s),
             Shape::Rose(s) => build_rose_path(ctx, s),
             Shape::Trochoid(s) => build_trochoid_path(ctx, s),
+            Shape::PathData(s) => build_path_data_path(ctx, s),
+            Shape::Compound(s) => build_compound_path(ctx, s),
         }
     }
 }

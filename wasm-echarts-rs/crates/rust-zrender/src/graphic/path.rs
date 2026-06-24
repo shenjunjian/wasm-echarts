@@ -186,7 +186,40 @@ fn estimate_bbox(shape: &Shape) -> BoundingRect {
             let outer = s.r + s.r0 + s.d;
             BoundingRect::new(s.cx - outer, s.cy - outer, outer * 2.0, outer * 2.0)
         }
+        Shape::PathData(s) => bbox_from_path_data(s),
+        Shape::Compound(s) => bbox_from_shapes(&s.shapes),
     }
+}
+
+fn bbox_from_path_data(s: &crate::graphic::shapes::PathDataShape) -> BoundingRect {
+    if s.path_data.is_empty() {
+        return BoundingRect::default();
+    }
+    crate::graphic::bbox_from_svg(&s.path_data)
+        .map(|(x, y, w, h)| BoundingRect::new(x, y, w, h))
+        .unwrap_or_default()
+}
+
+fn bbox_from_shapes(shapes: &[Shape]) -> BoundingRect {
+    let mut merged = BoundingRect::default();
+    let mut has_any = false;
+    for shape in shapes {
+        let b = estimate_bbox(shape);
+        if b.is_zero_area() {
+            continue;
+        }
+        if !has_any {
+            merged = b;
+            has_any = true;
+        } else {
+            let x0 = merged.x.min(b.x);
+            let y0 = merged.y.min(b.y);
+            let x1 = (merged.x + merged.width).max(b.x + b.width);
+            let y1 = (merged.y + merged.height).max(b.y + b.height);
+            merged = BoundingRect::new(x0, y0, x1 - x0, y1 - y0);
+        }
+    }
+    merged
 }
 
 fn bbox_bezier_curve(s: &crate::graphic::shapes::BezierCurveShape) -> BoundingRect {

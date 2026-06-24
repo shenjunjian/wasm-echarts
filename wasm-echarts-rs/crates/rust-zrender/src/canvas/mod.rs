@@ -6,6 +6,7 @@ pub mod brush;
 pub mod demo;
 pub mod helper;
 pub mod image;
+pub mod image_brush;
 pub mod layer;
 pub mod painter;
 pub mod text_brush;

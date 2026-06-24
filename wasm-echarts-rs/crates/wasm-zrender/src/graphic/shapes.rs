@@ -19,7 +19,7 @@ macro_rules! impl_shape {
             pub fn new(opts: JsValue) -> Result<$name, JsValue> {
                 let element = register_path($type_name, &opts)?;
                 Ok($name {
-                    path: Path::new(element.raw_id()),
+                    path: Path::from_id(element.raw_id()),
                 })
             }
 
@@ -63,3 +63,4 @@ impl_shape!(Heart, "heart");
 impl_shape!(Droplet, "droplet");
 impl_shape!(Rose, "rose");
 impl_shape!(Trochoid, "trochoid");
+impl_shape!(CompoundPath, "compound");

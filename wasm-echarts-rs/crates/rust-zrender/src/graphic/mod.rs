@@ -1,15 +1,19 @@
 //! 图元：Path、Group、样式
 
+pub mod bezpath_util;
 pub mod displayable;
 pub mod group;
+pub mod image;
 pub mod path;
 pub mod path_proxy;
 pub mod shapes;
 pub mod style;
 pub mod text;
 
+pub use bezpath_util::{append_bezpath, bbox_from_svg};
 pub use displayable::{DisplayableProps, displayable_compare, normalize_z};
 pub use group::{ChildRef, Group};
+pub use image::{Image, ImageStyle};
 pub use path::Path;
 pub use path_proxy::{PathCmd, PathProxy};
 pub use shapes::*;

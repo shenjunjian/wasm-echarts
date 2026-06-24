@@ -4,11 +4,11 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 use rust_zrender::{
-    ChildRef, Path, PathStylePatch, Text, ZRenderer,
+    ChildRef, Image, Path, PathStylePatch, Text, ZRenderer,
 };
 use wasm_bindgen::prelude::*;
 
-use crate::bridge::build::{build_pending_path, build_pending_text};
+use crate::bridge::build::{build_pending_image, build_pending_path, build_pending_text};
 use crate::element::pending::PendingData;
 use crate::element::Element;
 
@@ -17,6 +17,7 @@ pub enum ElementKind {
     Group,
     Path,
     Text,
+    Image,
 }
 
 #[derive(Debug, Clone)]
@@ -94,6 +95,7 @@ impl ElementRegistry {
         match record.kind {
             ElementKind::Group => Ok(ChildRef::Group(idx)),
             ElementKind::Path => Ok(ChildRef::Path(idx)),
+            ElementKind::Image => Ok(ChildRef::Image(idx)),
             ElementKind::Text => Err(JsValue::from_str(
                 "Text as group child is not supported yet; use zr.add(text) at root",
             )),
@@ -239,6 +241,7 @@ impl ElementRegistry {
             ElementKind::Group => self.materialize_group(zr, zr_id, element_id),
             ElementKind::Path => self.materialize_path(zr, zr_id, element_id),
             ElementKind::Text => self.materialize_text(zr, zr_id, element_id),
+            ElementKind::Image => self.materialize_image(zr, zr_id, element_id),
         }
     }
 
@@ -340,6 +343,38 @@ impl ElementRegistry {
         text.base.name = pending.name;
 
         let idx = zr.storage.create_text(text);
+        if let Some(record) = self.elements.get_mut(&element_id) {
+            record.storage_index = Some(idx);
+            record.zr_id = Some(zr_id);
+        }
+        Ok(())
+    }
+
+    fn materialize_image(
+        &mut self,
+        zr: &mut ZRenderer,
+        zr_id: u32,
+        element_id: u32,
+    ) -> Result<(), JsValue> {
+        let pending = self
+            .elements
+            .get(&element_id)
+            .and_then(|r| {
+                if let PendingData::Image(p) = &r.pending {
+                    Some(p.clone())
+                } else {
+                    None
+                }
+            })
+            .ok_or_else(|| JsValue::from_str("invalid image element"))?;
+
+        let mut image = Image::new(pending.style)
+            .with_displayable(pending.displayable)
+            .with_ec_data(pending.ec_data);
+        image.silent = pending.silent;
+        image.base.name = pending.name;
+
+        let idx = zr.storage.create_image(image);
         if let Some(record) = self.elements.get_mut(&element_id) {
             record.storage_index = Some(idx);
             record.zr_id = Some(zr_id);
@@ -540,6 +575,15 @@ pub(crate) fn register_text(opts: &JsValue) -> Element {
             .register(ElementKind::Text, pending, "text")
     });
     Element::from_id(id)
+}
+
+pub(crate) fn register_image(opts: &JsValue) -> Result<Element, JsValue> {
+    let pending = build_pending_image(opts)?;
+    let id = ELEMENT_REGISTRY.with(|reg| {
+        reg.borrow_mut()
+            .register(ElementKind::Image, pending, "image")
+    });
+    Ok(Element::from_id(id))
 }
 
 pub(crate) fn group_add_child(group_id: u32, child_id: u32) -> Result<(), JsValue> {

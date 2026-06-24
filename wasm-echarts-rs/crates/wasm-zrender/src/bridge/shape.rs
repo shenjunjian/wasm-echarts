@@ -1,9 +1,9 @@
 //! 从 JsValue 解析各 shape 字段
 
 use rust_zrender::{
-    ArcShape, BezierCurveShape, CircleShape, DropletShape, EllipseShape, HeartShape, IsogonShape,
-    LineShape, PolygonShape, PolylineShape, RectShape, RingShape, RoseShape, SectorShape,
-    StarShape, TrochoidShape,
+    ArcShape, BezierCurveShape, CircleShape, CompoundPathShape, DropletShape, EllipseShape,
+    HeartShape, IsogonShape, LineShape, PathDataShape, PolygonShape, PolylineShape, RectShape,
+    RingShape, RoseShape, SectorShape, Shape, StarShape, TrochoidShape,
 };
 use wasm_bindgen::prelude::*;
 
@@ -195,6 +195,71 @@ pub fn parse_trochoid_shape(shape: &JsValue) -> Result<TrochoidShape, JsValue> {
         d: get_f64(shape, "d").unwrap_or(0.0),
         location: get_string(shape, "location").unwrap_or_else(|| "out".to_string()),
     })
+}
+
+pub fn parse_path_data_shape(shape: &JsValue) -> Result<PathDataShape, JsValue> {
+    Ok(PathDataShape {
+        path_data: get_string(shape, "pathData").unwrap_or_default(),
+    })
+}
+
+pub fn parse_compound_path_shape(shape: &JsValue) -> Result<CompoundPathShape, JsValue> {
+    let paths_val = get_value(shape, "paths");
+    let Some(arr) = paths_val.dyn_ref::<js_sys::Array>() else {
+        return Ok(CompoundPathShape { shapes: Vec::new() });
+    };
+    let mut shapes = Vec::with_capacity(arr.length() as usize);
+    for i in 0..arr.length() {
+        if let Some(sub) = parse_compound_subpath(&arr.get(i))? {
+            shapes.push(sub);
+        }
+    }
+    Ok(CompoundPathShape { shapes })
+}
+
+fn parse_compound_subpath(item: &JsValue) -> Result<Option<Shape>, JsValue> {
+    if let Some(path_data) = get_string(item, "pathData") {
+        return Ok(Some(Shape::PathData(PathDataShape { path_data })));
+    }
+    let type_name = get_string(item, "type");
+    let shape_obj = {
+        let nested = get_object(item, "shape");
+        if nested.is_undefined() {
+            item.clone()
+        } else {
+            nested
+        }
+    };
+    if let Some(type_name) = type_name {
+        return parse_shape_by_type(&type_name, &shape_obj).map(Some);
+    }
+    if get_string(&shape_obj, "pathData").is_some() {
+        return Ok(Some(Shape::PathData(parse_path_data_shape(&shape_obj)?)));
+    }
+    Ok(None)
+}
+
+pub fn parse_shape_by_type(type_name: &str, shape: &JsValue) -> Result<Shape, JsValue> {
+    match type_name {
+        "rect" => Ok(Shape::Rect(parse_rect_shape(shape)?)),
+        "circle" => Ok(Shape::Circle(parse_circle_shape(shape)?)),
+        "line" => Ok(Shape::Line(parse_line_shape(shape)?)),
+        "polygon" => Ok(Shape::Polygon(parse_polygon_shape(shape)?)),
+        "polyline" => Ok(Shape::Polyline(parse_polyline_shape(shape)?)),
+        "sector" => Ok(Shape::Sector(parse_sector_shape(shape)?)),
+        "arc" => Ok(Shape::Arc(parse_arc_shape(shape)?)),
+        "ellipse" => Ok(Shape::Ellipse(parse_ellipse_shape(shape)?)),
+        "ring" => Ok(Shape::Ring(parse_ring_shape(shape)?)),
+        "bezier-curve" => Ok(Shape::BezierCurve(parse_bezier_curve_shape(shape)?)),
+        "isogon" => Ok(Shape::Isogon(parse_isogon_shape(shape)?)),
+        "star" => Ok(Shape::Star(parse_star_shape(shape)?)),
+        "heart" => Ok(Shape::Heart(parse_heart_shape(shape)?)),
+        "droplet" => Ok(Shape::Droplet(parse_droplet_shape(shape)?)),
+        "rose" => Ok(Shape::Rose(parse_rose_shape(shape)?)),
+        "trochoid" => Ok(Shape::Trochoid(parse_trochoid_shape(shape)?)),
+        "path" => Ok(Shape::PathData(parse_path_data_shape(shape)?)),
+        other => Err(JsValue::from_str(&format!("unsupported shape: {other}"))),
+    }
 }
 
 /// 从 element opts 中取 shape 子对象

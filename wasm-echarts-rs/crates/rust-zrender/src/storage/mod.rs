@@ -5,13 +5,20 @@ mod timsort;
 use crate::element::REDRAW_BIT;
 use crate::graphic::displayable::normalize_z;
 use crate::graphic::group::{ChildRef, Group};
+use crate::graphic::image::Image;
 use crate::graphic::path::Path;
 use crate::graphic::text::Text;
 use timsort::sort_display_list;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DisplayElementRef {
+    Path(usize),
+    Image(usize),
+}
+
 #[derive(Debug, Clone)]
 pub struct DisplayItem {
-    pub path_index: usize,
+    pub element: DisplayElementRef,
     pub sort_key: (f64, f64, f64),
     /// 从根到当前节点的 clipPath 链
     pub clip_chain: Vec<usize>,
@@ -21,6 +28,7 @@ pub struct DisplayItem {
 pub struct Storage {
     groups: Vec<Group>,
     paths: Vec<Path>,
+    images: Vec<Image>,
     texts: Vec<Text>,
     roots: Vec<ChildRef>,
     display_list: Vec<DisplayItem>,
@@ -38,6 +46,7 @@ impl Storage {
         Self {
             groups: Vec::new(),
             paths: Vec::new(),
+            images: Vec::new(),
             texts: Vec::new(),
             roots: Vec::new(),
             display_list: Vec::new(),
@@ -55,6 +64,13 @@ impl Storage {
     pub fn create_path(&mut self, path: Path) -> usize {
         let idx = self.paths.len();
         self.paths.push(path);
+        self.display_dirty = true;
+        idx
+    }
+
+    pub fn create_image(&mut self, image: Image) -> usize {
+        let idx = self.images.len();
+        self.images.push(image);
         self.display_dirty = true;
         idx
     }
@@ -106,6 +122,18 @@ impl Storage {
         &self.paths
     }
 
+    pub fn image_mut(&mut self, index: usize) -> &mut Image {
+        &mut self.images[index]
+    }
+
+    pub fn image(&self, index: usize) -> &Image {
+        &self.images[index]
+    }
+
+    pub fn images(&self) -> &[Image] {
+        &self.images
+    }
+
     pub fn texts(&self) -> &[Text] {
         &self.texts
     }
@@ -117,6 +145,9 @@ impl Storage {
         }
         for p in &mut self.paths {
             p.base.mark_redraw();
+        }
+        for img in &mut self.images {
+            img.base.mark_redraw();
         }
         for t in &mut self.texts {
             t.base.mark_redraw();
@@ -177,6 +208,7 @@ impl Storage {
                         match c {
                             ChildRef::Group(ci) => self.groups[ci].base.dirty |= REDRAW_BIT,
                             ChildRef::Path(pi) => self.paths[pi].base.dirty |= REDRAW_BIT,
+                            ChildRef::Image(ii) => self.images[ii].base.dirty |= REDRAW_BIT,
                         }
                     }
                     self.update_and_add(&c, Some(&transform), clip_chain.clone());
@@ -200,7 +232,24 @@ impl Storage {
                 let zlevel = path.displayable.zlevel;
                 path.ensure_path();
                 self.display_list.push(DisplayItem {
-                    path_index: pi,
+                    element: DisplayElementRef::Path(pi),
+                    sort_key,
+                    clip_chain,
+                    zlevel,
+                });
+            }
+            ChildRef::Image(ii) => {
+                let image = &mut self.images[ii];
+                image.base.update_transform(parent_transform);
+                normalize_z(&mut image.displayable);
+                let sort_key = (
+                    image.displayable.zlevel,
+                    image.displayable.z,
+                    image.displayable.z2,
+                );
+                let zlevel = image.displayable.zlevel;
+                self.display_list.push(DisplayItem {
+                    element: DisplayElementRef::Image(ii),
                     sort_key,
                     clip_chain,
                     zlevel,

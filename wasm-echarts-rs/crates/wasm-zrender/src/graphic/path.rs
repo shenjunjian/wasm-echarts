@@ -1,9 +1,9 @@
-//! Path 基类：状态样式 API（不直接构造）
+//! Path 基类：状态样式 API
 
 use wasm_bindgen::prelude::*;
 
 use crate::bridge::opts::parse_path_style_patch;
-use crate::registry::{path_set_state_style, path_use_state};
+use crate::registry::{path_set_state_style, path_use_state, register_path};
 
 #[wasm_bindgen]
 pub struct Path {
@@ -11,7 +11,7 @@ pub struct Path {
 }
 
 impl Path {
-    pub(crate) fn new(id: u32) -> Self {
+    pub(crate) fn from_id(id: u32) -> Self {
         Self { id }
     }
 
@@ -31,9 +31,20 @@ impl Path {
 
 #[wasm_bindgen]
 impl Path {
+    #[wasm_bindgen(constructor)]
+    pub fn new(opts: JsValue) -> Result<Path, JsValue> {
+        let element = register_path("path", &opts)?;
+        Ok(Path::from_id(element.raw_id()))
+    }
+
     #[wasm_bindgen(getter)]
     pub fn id(&self) -> u32 {
         self.id
+    }
+
+    #[wasm_bindgen(getter, js_name = type)]
+    pub fn element_type(&self) -> String {
+        "path".to_string()
     }
 
     #[wasm_bindgen(js_name = useState)]

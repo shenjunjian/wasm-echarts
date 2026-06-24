@@ -1,6 +1,6 @@
 //! HitResult → HoverResult（{ target, topTarget }）
 
-use rust_zrender::HitResult;
+use rust_zrender::{HitResult, HitTarget};
 use wasm_bindgen::prelude::*;
 
 use crate::element::Element;
@@ -26,18 +26,25 @@ impl HoverResult {
 }
 
 pub fn hit_to_hover_result(hit: &HitResult) -> Option<HoverResult> {
-    let target = element_from_path_index(hit.path_index)?;
-    let top_target = element_from_path_index(hit.top_path_index)?;
+    let target = element_from_hit_target(hit.target)?;
+    let top_target = element_from_hit_target(hit.top_target)?;
     Some(HoverResult {
         target,
         top_target,
     })
 }
 
-fn element_from_path_index(path_index: usize) -> Option<Element> {
-    ELEMENT_REGISTRY.with(|reg| {
-        reg.borrow()
-            .find_by_storage(ElementKind::Path, path_index)
-            .map(Element::from_id)
-    })
+fn element_from_hit_target(target: HitTarget) -> Option<Element> {
+    match target {
+        HitTarget::Path(path_index) => ELEMENT_REGISTRY.with(|reg| {
+            reg.borrow()
+                .find_by_storage(ElementKind::Path, path_index)
+                .map(Element::from_id)
+        }),
+        HitTarget::Image(image_index) => ELEMENT_REGISTRY.with(|reg| {
+            reg.borrow()
+                .find_by_storage(ElementKind::Image, image_index)
+                .map(Element::from_id)
+        }),
+    }
 }

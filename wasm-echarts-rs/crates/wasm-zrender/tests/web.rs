@@ -1,12 +1,13 @@
 //! wasm-bindgen 浏览器端集成测试
 
-use js_sys::{Array, Object, Reflect};
+use js_sys::{Array, Object, Reflect, Uint8Array};
 use wasm_bindgen::JsValue;
 use wasm_bindgen_test::*;
 
 use wasm_zrender::{
-    clear_fonts, dispose_all, init, register_font, Arc, BezierCurve, Circle, Droplet, Ellipse,
-    Group, Heart, Isogon, LinearGradient, Rect, Ring, Rose, Star, Text, Trochoid,
+    clear_fonts, dispose_all, init, register_font, Arc, BezierCurve, Circle, CompoundPath, Droplet,
+    Ellipse, Group, Heart, Image, Isogon, LinearGradient, Path, Rect, Ring, Rose, Star, Text,
+    Trochoid,
 };
 
 const TEST_FONT: &[u8] = include_bytes!("../tests/fixtures/NotoSansSC-Regular.ttf");
@@ -451,6 +452,115 @@ fn trochoid_refresh_outputs_rgba() {
     let rgba = zr.refresh().unwrap();
     assert_eq!(rgba.len(), 320 * 160 * 4);
     assert!(rgba.chunks(4).any(|px| px[3] > 0));
+}
+
+fn solid_rgba_bytes(width: u32, height: u32, r: u8, g: u8, b: u8) -> Uint8Array {
+    let mut data = vec![0u8; (width * height * 4) as usize];
+    for px in data.chunks_mut(4) {
+        px[0] = r;
+        px[1] = g;
+        px[2] = b;
+        px[3] = 255;
+    }
+    Uint8Array::from(data.as_slice())
+}
+
+#[wasm_bindgen_test]
+fn generic_path_refresh_outputs_rgba() {
+    reset_registry();
+    let mut zr = init(JsValue::NULL, init_opts(320, 160)).unwrap();
+    let g = Group::new();
+
+    let shape = Object::new();
+    Reflect::set(
+        &shape,
+        &"pathData".into(),
+        &JsValue::from_str("M 40 40 L 140 40 L 140 100 Z"),
+    )
+    .unwrap();
+
+    let opts = Object::new();
+    Reflect::set(&opts, &"shape".into(), &shape).unwrap();
+    let style = Object::new();
+    Reflect::set(&style, &"fill".into(), &JsValue::from_str("#5470c6")).unwrap();
+    Reflect::set(&opts, &"style".into(), &style).unwrap();
+
+    g.add(JsValue::from(Path::new(opts.into()).unwrap()))
+        .unwrap();
+    zr.add(JsValue::from(g)).unwrap();
+
+    let rgba = zr.refresh().unwrap();
+    assert_eq!(rgba.len(), 320 * 160 * 4);
+    assert!(rgba.chunks(4).any(|px| px[3] > 0));
+}
+
+#[wasm_bindgen_test]
+fn compound_path_refresh_outputs_rgba() {
+    reset_registry();
+    let mut zr = init(JsValue::NULL, init_opts(320, 160)).unwrap();
+    let g = Group::new();
+
+    let paths = Array::new();
+    let sub0 = Object::new();
+    Reflect::set(
+        &sub0,
+        &"pathData".into(),
+        &JsValue::from_str("M 40 40 L 120 40 L 80 100 Z"),
+    )
+    .unwrap();
+    paths.push(&sub0);
+    let sub1 = Object::new();
+    Reflect::set(
+        &sub1,
+        &"pathData".into(),
+        &JsValue::from_str("M 160 60 L 220 60 L 190 120 Z"),
+    )
+    .unwrap();
+    paths.push(&sub1);
+
+    let shape = Object::new();
+    Reflect::set(&shape, &"paths".into(), &paths).unwrap();
+
+    let opts = Object::new();
+    Reflect::set(&opts, &"shape".into(), &shape).unwrap();
+    let style = Object::new();
+    Reflect::set(&style, &"fill".into(), &JsValue::from_str("#91cc75")).unwrap();
+    Reflect::set(&opts, &"style".into(), &style).unwrap();
+
+    g.add(JsValue::from(CompoundPath::new(opts.into()).unwrap()))
+        .unwrap();
+    zr.add(JsValue::from(g)).unwrap();
+
+    let rgba = zr.refresh().unwrap();
+    assert_eq!(rgba.len(), 320 * 160 * 4);
+    assert!(rgba.chunks(4).any(|px| px[3] > 0));
+}
+
+#[wasm_bindgen_test]
+fn image_refresh_outputs_rgba() {
+    reset_registry();
+    let mut zr = init(JsValue::NULL, init_opts(320, 160)).unwrap();
+    let g = Group::new();
+
+    let style = Object::new();
+    Reflect::set(&style, &"x".into(), &JsValue::from(40.0)).unwrap();
+    Reflect::set(&style, &"y".into(), &JsValue::from(30.0)).unwrap();
+    Reflect::set(&style, &"width".into(), &JsValue::from(80.0)).unwrap();
+    Reflect::set(&style, &"height".into(), &JsValue::from(60.0)).unwrap();
+    Reflect::set(&style, &"image".into(), &solid_rgba_bytes(8, 8, 238, 102, 102)).unwrap();
+    Reflect::set(&style, &"imageWidth".into(), &JsValue::from(8)).unwrap();
+    Reflect::set(&style, &"imageHeight".into(), &JsValue::from(8)).unwrap();
+
+    let opts = Object::new();
+    Reflect::set(&opts, &"style".into(), &style).unwrap();
+
+    g.add(JsValue::from(Image::new(opts.into()).unwrap()))
+        .unwrap();
+    zr.add(JsValue::from(g)).unwrap();
+
+    let rgba = zr.refresh().unwrap();
+    assert_eq!(rgba.len(), 320 * 160 * 4);
+    assert!(rgba.chunks(4).any(|px| px[0] > 200 && px[3] > 0));
 }
 
 #[wasm_bindgen_test]

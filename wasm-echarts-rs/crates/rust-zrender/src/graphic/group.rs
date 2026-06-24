@@ -6,6 +6,7 @@ use crate::element::ElementBase;
 pub enum ChildRef {
     Group(usize),
     Path(usize),
+    Image(usize),
 }
 
 #[derive(Debug, Clone)]

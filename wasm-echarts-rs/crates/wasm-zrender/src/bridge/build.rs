@@ -2,21 +2,18 @@
 
 use std::collections::HashMap;
 
-use rust_zrender::Shape;
+use rust_zrender::{ImageStyle, Shape};
 use wasm_bindgen::prelude::*;
 
+use super::fill_stroke::decode_pattern_image;
 use super::opts::{
-    get_f64, get_object, get_string, parse_element_common, parse_path_style,
+    get_f64, get_object, get_string, get_u32, get_value, parse_element_common, parse_path_style,
     parse_text_style,
 };
 use super::shape::{
-    parse_arc_shape, parse_bezier_curve_shape, parse_circle_shape, parse_droplet_shape,
-    parse_ellipse_shape, parse_heart_shape, parse_isogon_shape, parse_line_shape,
-    parse_polygon_shape, parse_polyline_shape, parse_rect_shape, parse_ring_shape,
-    parse_rose_shape, parse_sector_shape, parse_star_shape, parse_trochoid_shape,
-    shape_from_opts,
+    parse_compound_path_shape, parse_path_data_shape, parse_shape_by_type, shape_from_opts,
 };
-use crate::element::pending::{PendingData, PendingPath, PendingText};
+use crate::element::pending::{PendingData, PendingImage, PendingPath, PendingText};
 
 pub fn build_pending_path(type_name: &str, opts: &JsValue) -> Result<PendingData, JsValue> {
     let common = parse_element_common(opts);
@@ -32,6 +29,19 @@ pub fn build_pending_path(type_name: &str, opts: &JsValue) -> Result<PendingData
         ec_data: common.ec_data,
         state_patches: HashMap::new(),
         active_states: Vec::new(),
+    }))
+}
+
+pub fn build_pending_image(opts: &JsValue) -> Result<PendingData, JsValue> {
+    let common = parse_element_common(opts);
+    let style_obj = get_object(opts, "style");
+    let style = parse_image_style(&style_obj, opts)?;
+    Ok(PendingData::Image(PendingImage {
+        style,
+        displayable: common.displayable,
+        silent: common.silent,
+        name: common.name.unwrap_or_default(),
+        ec_data: common.ec_data,
     }))
 }
 
@@ -58,24 +68,33 @@ pub fn build_pending_text(opts: &JsValue) -> PendingData {
     })
 }
 
+fn parse_image_style(style: &JsValue, opts: &JsValue) -> Result<ImageStyle, JsValue> {
+    let image_val = get_value(style, "image");
+    let (data, source_width, source_height) =
+        decode_pattern_image(&image_val, get_u32(style, "imageWidth"), get_u32(style, "imageHeight"))?;
+
+    Ok(ImageStyle {
+        x: get_f64(style, "x").unwrap_or(0.0),
+        y: get_f64(style, "y").unwrap_or(0.0),
+        width: get_f64(style, "width"),
+        height: get_f64(style, "height"),
+        sx: get_f64(style, "sx").unwrap_or(0.0),
+        sy: get_f64(style, "sy").unwrap_or(0.0),
+        s_width: get_f64(style, "sWidth"),
+        s_height: get_f64(style, "sHeight"),
+        opacity: get_f64(style, "opacity")
+            .or_else(|| get_f64(opts, "opacity"))
+            .unwrap_or(1.0) as f32,
+        data,
+        source_width,
+        source_height,
+    })
+}
+
 fn parse_shape(type_name: &str, shape: &JsValue) -> Result<Shape, JsValue> {
     match type_name {
-        "rect" => Ok(Shape::Rect(parse_rect_shape(shape)?)),
-        "circle" => Ok(Shape::Circle(parse_circle_shape(shape)?)),
-        "line" => Ok(Shape::Line(parse_line_shape(shape)?)),
-        "polygon" => Ok(Shape::Polygon(parse_polygon_shape(shape)?)),
-        "polyline" => Ok(Shape::Polyline(parse_polyline_shape(shape)?)),
-        "sector" => Ok(Shape::Sector(parse_sector_shape(shape)?)),
-        "arc" => Ok(Shape::Arc(parse_arc_shape(shape)?)),
-        "ellipse" => Ok(Shape::Ellipse(parse_ellipse_shape(shape)?)),
-        "ring" => Ok(Shape::Ring(parse_ring_shape(shape)?)),
-        "bezier-curve" => Ok(Shape::BezierCurve(parse_bezier_curve_shape(shape)?)),
-        "isogon" => Ok(Shape::Isogon(parse_isogon_shape(shape)?)),
-        "star" => Ok(Shape::Star(parse_star_shape(shape)?)),
-        "heart" => Ok(Shape::Heart(parse_heart_shape(shape)?)),
-        "droplet" => Ok(Shape::Droplet(parse_droplet_shape(shape)?)),
-        "rose" => Ok(Shape::Rose(parse_rose_shape(shape)?)),
-        "trochoid" => Ok(Shape::Trochoid(parse_trochoid_shape(shape)?)),
-        other => Err(JsValue::from_str(&format!("unsupported shape: {other}"))),
+        "compound" => Ok(Shape::Compound(parse_compound_path_shape(shape)?)),
+        "path" => Ok(Shape::PathData(parse_path_data_shape(shape)?)),
+        other => parse_shape_by_type(other, shape),
     }
 }

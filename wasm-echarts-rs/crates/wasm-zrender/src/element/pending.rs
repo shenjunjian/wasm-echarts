@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use rust_zrender::{
-    DisplayableProps, EcData, PathStyle, PathStylePatch, Shape, TextStyle,
+    DisplayableProps, EcData, ImageStyle, PathStyle, PathStylePatch, Shape, TextStyle,
 };
 
 #[derive(Debug, Clone)]
@@ -31,10 +31,20 @@ pub struct PendingText {
 }
 
 #[derive(Debug, Clone)]
+pub struct PendingImage {
+    pub style: ImageStyle,
+    pub displayable: DisplayableProps,
+    pub silent: bool,
+    pub name: String,
+    pub ec_data: EcData,
+}
+
+#[derive(Debug, Clone)]
 pub enum PendingData {
     Group,
     Path(PendingPath),
     Text(PendingText),
+    Image(PendingImage),
 }
 
 impl PendingData {
