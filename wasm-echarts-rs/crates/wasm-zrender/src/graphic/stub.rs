@@ -20,13 +20,6 @@ macro_rules! stub_class {
     };
 }
 
-stub_class!(Droplet);
-stub_class!(Heart);
-stub_class!(Isogon);
-stub_class!(Rose);
-stub_class!(Star);
-stub_class!(Trochoid);
-
 stub_class!(Image);
 stub_class!(CompoundPath);
 stub_class!(TSpan);

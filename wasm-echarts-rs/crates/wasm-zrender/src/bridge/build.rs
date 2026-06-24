@@ -10,9 +10,11 @@ use super::opts::{
     parse_text_style,
 };
 use super::shape::{
-    parse_arc_shape, parse_bezier_curve_shape, parse_circle_shape, parse_ellipse_shape,
-    parse_line_shape, parse_polygon_shape, parse_polyline_shape, parse_rect_shape,
-    parse_ring_shape, parse_sector_shape, shape_from_opts,
+    parse_arc_shape, parse_bezier_curve_shape, parse_circle_shape, parse_droplet_shape,
+    parse_ellipse_shape, parse_heart_shape, parse_isogon_shape, parse_line_shape,
+    parse_polygon_shape, parse_polyline_shape, parse_rect_shape, parse_ring_shape,
+    parse_rose_shape, parse_sector_shape, parse_star_shape, parse_trochoid_shape,
+    shape_from_opts,
 };
 use crate::element::pending::{PendingData, PendingPath, PendingText};
 
@@ -68,6 +70,12 @@ fn parse_shape(type_name: &str, shape: &JsValue) -> Result<Shape, JsValue> {
         "ellipse" => Ok(Shape::Ellipse(parse_ellipse_shape(shape)?)),
         "ring" => Ok(Shape::Ring(parse_ring_shape(shape)?)),
         "bezier-curve" => Ok(Shape::BezierCurve(parse_bezier_curve_shape(shape)?)),
+        "isogon" => Ok(Shape::Isogon(parse_isogon_shape(shape)?)),
+        "star" => Ok(Shape::Star(parse_star_shape(shape)?)),
+        "heart" => Ok(Shape::Heart(parse_heart_shape(shape)?)),
+        "droplet" => Ok(Shape::Droplet(parse_droplet_shape(shape)?)),
+        "rose" => Ok(Shape::Rose(parse_rose_shape(shape)?)),
+        "trochoid" => Ok(Shape::Trochoid(parse_trochoid_shape(shape)?)),
         other => Err(JsValue::from_str(&format!("unsupported shape: {other}"))),
     }
 }

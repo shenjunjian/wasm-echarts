@@ -1,12 +1,13 @@
 //! 从 JsValue 解析各 shape 字段
 
 use rust_zrender::{
-    ArcShape, BezierCurveShape, CircleShape, EllipseShape, LineShape, PolygonShape,
-    PolylineShape, RectShape, RingShape, SectorShape,
+    ArcShape, BezierCurveShape, CircleShape, DropletShape, EllipseShape, HeartShape, IsogonShape,
+    LineShape, PolygonShape, PolylineShape, RectShape, RingShape, RoseShape, SectorShape,
+    StarShape, TrochoidShape,
 };
 use wasm_bindgen::prelude::*;
 
-use super::opts::{get_bool, get_f64, get_object, get_value};
+use super::opts::{get_bool, get_f64, get_object, get_string, get_u32, get_value};
 
 fn get_opt_f64(obj: &JsValue, key: &str) -> Option<f64> {
     let v = get_value(obj, key);
@@ -121,6 +122,78 @@ pub fn parse_bezier_curve_shape(shape: &JsValue) -> Result<BezierCurveShape, JsV
         cpx2: get_opt_f64(shape, "cpx2"),
         cpy2: get_opt_f64(shape, "cpy2"),
         percent: get_f64(shape, "percent").unwrap_or(1.0),
+    })
+}
+
+fn get_f64_array(obj: &JsValue, key: &str) -> Vec<f64> {
+    let val = get_value(obj, key);
+    let Some(arr) = val.dyn_ref::<js_sys::Array>() else {
+        return Vec::new();
+    };
+    let mut out = Vec::with_capacity(arr.length() as usize);
+    for i in 0..arr.length() {
+        if let Some(n) = arr.get(i).as_f64() {
+            out.push(n);
+        }
+    }
+    out
+}
+
+pub fn parse_isogon_shape(shape: &JsValue) -> Result<IsogonShape, JsValue> {
+    Ok(IsogonShape {
+        x: get_f64(shape, "x").unwrap_or(0.0),
+        y: get_f64(shape, "y").unwrap_or(0.0),
+        r: get_f64(shape, "r").unwrap_or(0.0),
+        n: get_u32(shape, "n").unwrap_or(0),
+    })
+}
+
+pub fn parse_star_shape(shape: &JsValue) -> Result<StarShape, JsValue> {
+    Ok(StarShape {
+        cx: get_f64(shape, "cx").unwrap_or(0.0),
+        cy: get_f64(shape, "cy").unwrap_or(0.0),
+        n: get_u32(shape, "n").unwrap_or(3),
+        r0: get_opt_f64(shape, "r0"),
+        r: get_f64(shape, "r").unwrap_or(0.0),
+    })
+}
+
+pub fn parse_heart_shape(shape: &JsValue) -> Result<HeartShape, JsValue> {
+    Ok(HeartShape {
+        cx: get_f64(shape, "cx").unwrap_or(0.0),
+        cy: get_f64(shape, "cy").unwrap_or(0.0),
+        width: get_f64(shape, "width").unwrap_or(0.0),
+        height: get_f64(shape, "height").unwrap_or(0.0),
+    })
+}
+
+pub fn parse_droplet_shape(shape: &JsValue) -> Result<DropletShape, JsValue> {
+    Ok(DropletShape {
+        cx: get_f64(shape, "cx").unwrap_or(0.0),
+        cy: get_f64(shape, "cy").unwrap_or(0.0),
+        width: get_f64(shape, "width").unwrap_or(0.0),
+        height: get_f64(shape, "height").unwrap_or(0.0),
+    })
+}
+
+pub fn parse_rose_shape(shape: &JsValue) -> Result<RoseShape, JsValue> {
+    Ok(RoseShape {
+        cx: get_f64(shape, "cx").unwrap_or(0.0),
+        cy: get_f64(shape, "cy").unwrap_or(0.0),
+        r: get_f64_array(shape, "r"),
+        k: get_f64(shape, "k").unwrap_or(0.0),
+        n: get_u32(shape, "n").unwrap_or(1),
+    })
+}
+
+pub fn parse_trochoid_shape(shape: &JsValue) -> Result<TrochoidShape, JsValue> {
+    Ok(TrochoidShape {
+        cx: get_f64(shape, "cx").unwrap_or(0.0),
+        cy: get_f64(shape, "cy").unwrap_or(0.0),
+        r: get_f64(shape, "r").unwrap_or(0.0),
+        r0: get_f64(shape, "r0").unwrap_or(0.0),
+        d: get_f64(shape, "d").unwrap_or(0.0),
+        location: get_string(shape, "location").unwrap_or_else(|| "out".to_string()),
     })
 }
 

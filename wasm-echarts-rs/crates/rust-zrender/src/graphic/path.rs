@@ -161,6 +161,31 @@ fn estimate_bbox(shape: &Shape) -> BoundingRect {
             BoundingRect::new(s.cx - outer, s.cy - outer, outer * 2.0, outer * 2.0)
         }
         Shape::BezierCurve(s) => bbox_bezier_curve(s),
+        Shape::Isogon(s) => BoundingRect::new(s.x - s.r, s.y - s.r, s.r * 2.0, s.r * 2.0),
+        Shape::Star(s) => {
+            let outer = s.r.max(s.r0.unwrap_or_else(|| s.r / 3.0));
+            BoundingRect::new(s.cx - outer, s.cy - outer, outer * 2.0, outer * 2.0)
+        }
+        Shape::Heart(s) => BoundingRect::new(
+            s.cx - s.width * 2.0,
+            s.cy - s.height * 2.0 / 3.0,
+            s.width * 4.0,
+            s.height + s.height * 2.0 / 3.0,
+        ),
+        Shape::Droplet(s) => BoundingRect::new(
+            s.cx - s.width * 3.0 / 2.0,
+            s.cy - s.height,
+            s.width * 3.0,
+            s.height + s.width,
+        ),
+        Shape::Rose(s) => {
+            let max_r = s.r.iter().copied().fold(0.0_f64, f64::max);
+            BoundingRect::new(s.cx - max_r, s.cy - max_r, max_r * 2.0, max_r * 2.0)
+        }
+        Shape::Trochoid(s) => {
+            let outer = s.r + s.r0 + s.d;
+            BoundingRect::new(s.cx - outer, s.cy - outer, outer * 2.0, outer * 2.0)
+        }
     }
 }
 

@@ -5,8 +5,8 @@ use wasm_bindgen::JsValue;
 use wasm_bindgen_test::*;
 
 use wasm_zrender::{
-    clear_fonts, dispose_all, init, register_font, Arc, BezierCurve, Circle, Ellipse, Group,
-    LinearGradient, Rect, Ring, Text,
+    clear_fonts, dispose_all, init, register_font, Arc, BezierCurve, Circle, Droplet, Ellipse,
+    Group, Heart, Isogon, LinearGradient, Rect, Ring, Rose, Star, Text, Trochoid,
 };
 
 const TEST_FONT: &[u8] = include_bytes!("../tests/fixtures/NotoSansSC-Regular.ttf");
@@ -278,6 +278,173 @@ fn bezier_curve_refresh_outputs_rgba() {
     Reflect::set(&opts, &"style".into(), &style).unwrap();
 
     g.add(JsValue::from(BezierCurve::new(opts.into()).unwrap()))
+        .unwrap();
+    zr.add(JsValue::from(g)).unwrap();
+
+    let rgba = zr.refresh().unwrap();
+    assert_eq!(rgba.len(), 320 * 160 * 4);
+    assert!(rgba.chunks(4).any(|px| px[3] > 0));
+}
+
+#[wasm_bindgen_test]
+fn isogon_refresh_outputs_rgba() {
+    reset_registry();
+    let mut zr = init(JsValue::NULL, init_opts(320, 160)).unwrap();
+    let g = Group::new();
+
+    let shape = Object::new();
+    Reflect::set(&shape, &"x".into(), &JsValue::from(160.0)).unwrap();
+    Reflect::set(&shape, &"y".into(), &JsValue::from(80.0)).unwrap();
+    Reflect::set(&shape, &"r".into(), &JsValue::from(50.0)).unwrap();
+    Reflect::set(&shape, &"n".into(), &JsValue::from(6)).unwrap();
+
+    let opts = Object::new();
+    Reflect::set(&opts, &"shape".into(), &shape).unwrap();
+    let style = Object::new();
+    Reflect::set(&style, &"fill".into(), &JsValue::from_str("#5470c6")).unwrap();
+    Reflect::set(&opts, &"style".into(), &style).unwrap();
+
+    g.add(JsValue::from(Isogon::new(opts.into()).unwrap()))
+        .unwrap();
+    zr.add(JsValue::from(g)).unwrap();
+
+    let rgba = zr.refresh().unwrap();
+    assert_eq!(rgba.len(), 320 * 160 * 4);
+    assert!(rgba.chunks(4).any(|px| px[3] > 0));
+}
+
+#[wasm_bindgen_test]
+fn star_refresh_outputs_rgba() {
+    reset_registry();
+    let mut zr = init(JsValue::NULL, init_opts(320, 160)).unwrap();
+    let g = Group::new();
+
+    let shape = Object::new();
+    Reflect::set(&shape, &"cx".into(), &JsValue::from(160.0)).unwrap();
+    Reflect::set(&shape, &"cy".into(), &JsValue::from(80.0)).unwrap();
+    Reflect::set(&shape, &"n".into(), &JsValue::from(5)).unwrap();
+    Reflect::set(&shape, &"r".into(), &JsValue::from(50.0)).unwrap();
+
+    let opts = Object::new();
+    Reflect::set(&opts, &"shape".into(), &shape).unwrap();
+    let style = Object::new();
+    Reflect::set(&style, &"fill".into(), &JsValue::from_str("#91cc75")).unwrap();
+    Reflect::set(&opts, &"style".into(), &style).unwrap();
+
+    g.add(JsValue::from(Star::new(opts.into()).unwrap())).unwrap();
+    zr.add(JsValue::from(g)).unwrap();
+
+    let rgba = zr.refresh().unwrap();
+    assert_eq!(rgba.len(), 320 * 160 * 4);
+    assert!(rgba.chunks(4).any(|px| px[3] > 0));
+}
+
+#[wasm_bindgen_test]
+fn heart_refresh_outputs_rgba() {
+    reset_registry();
+    let mut zr = init(JsValue::NULL, init_opts(320, 160)).unwrap();
+    let g = Group::new();
+
+    let shape = Object::new();
+    Reflect::set(&shape, &"cx".into(), &JsValue::from(160.0)).unwrap();
+    Reflect::set(&shape, &"cy".into(), &JsValue::from(70.0)).unwrap();
+    Reflect::set(&shape, &"width".into(), &JsValue::from(40.0)).unwrap();
+    Reflect::set(&shape, &"height".into(), &JsValue::from(50.0)).unwrap();
+
+    let opts = Object::new();
+    Reflect::set(&opts, &"shape".into(), &shape).unwrap();
+    let style = Object::new();
+    Reflect::set(&style, &"fill".into(), &JsValue::from_str("#ee6666")).unwrap();
+    Reflect::set(&opts, &"style".into(), &style).unwrap();
+
+    g.add(JsValue::from(Heart::new(opts.into()).unwrap())).unwrap();
+    zr.add(JsValue::from(g)).unwrap();
+
+    let rgba = zr.refresh().unwrap();
+    assert_eq!(rgba.len(), 320 * 160 * 4);
+    assert!(rgba.chunks(4).any(|px| px[3] > 0));
+}
+
+#[wasm_bindgen_test]
+fn droplet_refresh_outputs_rgba() {
+    reset_registry();
+    let mut zr = init(JsValue::NULL, init_opts(320, 160)).unwrap();
+    let g = Group::new();
+
+    let shape = Object::new();
+    Reflect::set(&shape, &"cx".into(), &JsValue::from(160.0)).unwrap();
+    Reflect::set(&shape, &"cy".into(), &JsValue::from(80.0)).unwrap();
+    Reflect::set(&shape, &"width".into(), &JsValue::from(30.0)).unwrap();
+    Reflect::set(&shape, &"height".into(), &JsValue::from(60.0)).unwrap();
+
+    let opts = Object::new();
+    Reflect::set(&opts, &"shape".into(), &shape).unwrap();
+    let style = Object::new();
+    Reflect::set(&style, &"fill".into(), &JsValue::from_str("#73c0de")).unwrap();
+    Reflect::set(&opts, &"style".into(), &style).unwrap();
+
+    g.add(JsValue::from(Droplet::new(opts.into()).unwrap()))
+        .unwrap();
+    zr.add(JsValue::from(g)).unwrap();
+
+    let rgba = zr.refresh().unwrap();
+    assert_eq!(rgba.len(), 320 * 160 * 4);
+    assert!(rgba.chunks(4).any(|px| px[3] > 0));
+}
+
+#[wasm_bindgen_test]
+fn rose_refresh_outputs_rgba() {
+    reset_registry();
+    let mut zr = init(JsValue::NULL, init_opts(320, 160)).unwrap();
+    let g = Group::new();
+
+    let r_arr = Array::new();
+    r_arr.push(&JsValue::from(40.0));
+
+    let shape = Object::new();
+    Reflect::set(&shape, &"cx".into(), &JsValue::from(160.0)).unwrap();
+    Reflect::set(&shape, &"cy".into(), &JsValue::from(80.0)).unwrap();
+    Reflect::set(&shape, &"r".into(), &r_arr).unwrap();
+    Reflect::set(&shape, &"k".into(), &JsValue::from(3.0)).unwrap();
+    Reflect::set(&shape, &"n".into(), &JsValue::from(1)).unwrap();
+
+    let opts = Object::new();
+    Reflect::set(&opts, &"shape".into(), &shape).unwrap();
+    let style = Object::new();
+    Reflect::set(&style, &"stroke".into(), &JsValue::from_str("#5470c6")).unwrap();
+    Reflect::set(&style, &"lineWidth".into(), &JsValue::from(2.0)).unwrap();
+    Reflect::set(&opts, &"style".into(), &style).unwrap();
+
+    g.add(JsValue::from(Rose::new(opts.into()).unwrap())).unwrap();
+    zr.add(JsValue::from(g)).unwrap();
+
+    let rgba = zr.refresh().unwrap();
+    assert_eq!(rgba.len(), 320 * 160 * 4);
+    assert!(rgba.chunks(4).any(|px| px[3] > 0));
+}
+
+#[wasm_bindgen_test]
+fn trochoid_refresh_outputs_rgba() {
+    reset_registry();
+    let mut zr = init(JsValue::NULL, init_opts(320, 160)).unwrap();
+    let g = Group::new();
+
+    let shape = Object::new();
+    Reflect::set(&shape, &"cx".into(), &JsValue::from(160.0)).unwrap();
+    Reflect::set(&shape, &"cy".into(), &JsValue::from(80.0)).unwrap();
+    Reflect::set(&shape, &"r".into(), &JsValue::from(80.0)).unwrap();
+    Reflect::set(&shape, &"r0".into(), &JsValue::from(20.0)).unwrap();
+    Reflect::set(&shape, &"d".into(), &JsValue::from(30.0)).unwrap();
+    Reflect::set(&shape, &"location".into(), &JsValue::from_str("out")).unwrap();
+
+    let opts = Object::new();
+    Reflect::set(&opts, &"shape".into(), &shape).unwrap();
+    let style = Object::new();
+    Reflect::set(&style, &"stroke".into(), &JsValue::from_str("#fac858")).unwrap();
+    Reflect::set(&style, &"lineWidth".into(), &JsValue::from(2.0)).unwrap();
+    Reflect::set(&opts, &"style".into(), &style).unwrap();
+
+    g.add(JsValue::from(Trochoid::new(opts.into()).unwrap()))
         .unwrap();
     zr.add(JsValue::from(g)).unwrap();
 
