@@ -2,8 +2,8 @@
 
 use js_sys::{Array, Reflect};
 use rust_zrender::{
-    DisplayableProps, EcData, FillStrokeStyle, PathStyle, ShadowStyle, TextAlign, TextBaseline,
-    TextStyle,
+    DisplayableProps, EcData, FillStrokeStyle, PathStyle, PathStylePatch, ShadowStyle, TextAlign,
+    TextBaseline, TextStyle,
 };
 use wasm_bindgen::prelude::*;
 
@@ -90,6 +90,31 @@ pub fn parse_path_style(style: &JsValue) -> PathStyle {
     }
 
     path_style
+}
+
+pub fn parse_path_style_patch(style: &JsValue) -> PathStylePatch {
+    if style.is_null() || style.is_undefined() {
+        return PathStylePatch::default();
+    }
+
+    PathStylePatch {
+        fill: parse_optional_fill_stroke(style, "fill"),
+        stroke: parse_optional_fill_stroke(style, "stroke"),
+        line_width: get_f64(style, "lineWidth").map(|n| n as f32),
+        opacity: get_f64(style, "opacity").map(|n| n as f32),
+        fill_opacity: get_f64(style, "fillOpacity").map(|n| n as f32),
+        stroke_opacity: get_f64(style, "strokeOpacity").map(|n| n as f32),
+        shadow: None,
+    }
+}
+
+fn parse_optional_fill_stroke(obj: &JsValue, key: &str) -> Option<FillStrokeStyle> {
+    let value = get_value(obj, key);
+    if value.is_undefined() {
+        None
+    } else {
+        Some(parse_fill_stroke(&value))
+    }
 }
 
 pub fn parse_text_style(style: &JsValue) -> TextStyle {

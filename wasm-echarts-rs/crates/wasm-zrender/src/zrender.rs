@@ -3,8 +3,8 @@
 use wasm_bindgen::prelude::*;
 
 use crate::bridge::hit::hit_to_hover_result;
+use crate::element::js::element_from_js;
 use crate::bridge::opts::{parse_init_opts, InitOpts};
-use crate::element::Element;
 use crate::registry::{
     mount_element_to_zr, unmount_element_from_zr, with_zr, ZR_REGISTRY, ELEMENT_REGISTRY,
 };
@@ -40,12 +40,14 @@ impl ZRender {
         with_zr(self.id, |zr| Ok(zr.dpr())).unwrap_or(1.0)
     }
 
-    pub fn add(&self, el: &Element) -> Result<(), JsValue> {
-        mount_element_to_zr(self.id, el)
+    pub fn add(&self, el: JsValue) -> Result<(), JsValue> {
+        let element = element_from_js(&el)?;
+        mount_element_to_zr(self.id, &element)
     }
 
-    pub fn remove(&self, el: &Element) -> Result<(), JsValue> {
-        unmount_element_from_zr(self.id, el)
+    pub fn remove(&self, el: JsValue) -> Result<(), JsValue> {
+        let element = element_from_js(&el)?;
+        unmount_element_from_zr(self.id, &element)
     }
 
     pub fn refresh(&mut self) -> Result<Vec<u8>, JsValue> {

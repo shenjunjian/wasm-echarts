@@ -1,5 +1,8 @@
 //! Element 基类：wasm 侧图元引用（handle + 元数据）
 
+pub(crate) mod js;
+pub(crate) mod pending;
+
 use wasm_bindgen::prelude::*;
 
 use crate::registry::{ElementKind, ELEMENT_REGISTRY};

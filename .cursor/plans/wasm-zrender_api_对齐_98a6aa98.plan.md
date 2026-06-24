@@ -10,10 +10,10 @@ todos:
     status: completed
   - id: wasm-graphic-impl
     content: wasm-zrender：导出 Group/Rect/Circle/Line/Polygon/Polyline/Sector/Text，实现 add/useState/setStateStyle/findHover
-    status: pending
+    status: completed
   - id: wasm-export-stubs
     content: wasm-zrender：按 export.ts 全量导出其余类型为 stub（构造或 add 时抛 NotImplemented）
-    status: pending
+    status: completed
   - id: site-examples
     content: site：示例源码改为官方风格 JS，更新 zrender.js/example-runner/parse-source/docs/README
     status: pending
