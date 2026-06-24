@@ -5,9 +5,9 @@ use wasm_bindgen::JsValue;
 use wasm_bindgen_test::*;
 
 use wasm_zrender::{
-    clear_fonts, dispose_all, init, register_font, Arc, BezierCurve, Circle, CompoundPath, Displayable,
-    Droplet, Ellipse, Group, Heart, Image, Isogon, LinearGradient, Path, Rect, Ring, Rose, Star, Text,
-    Trochoid, TSpan,
+    clear_fonts, dispose_all, init, register_font, Arc, BezierCurve, BoundingRect, Circle, CompoundPath,
+    Displayable, Droplet, Ellipse, Group, Heart, Image, Isogon, LinearGradient, OrientedBoundingRect, Path,
+    Point, Rect, Ring, Rose, Star, Text, Trochoid, TSpan,
 };
 
 const TEST_FONT: &[u8] = include_bytes!("../tests/fixtures/NotoSansSC-Regular.ttf");
@@ -638,4 +638,48 @@ fn emphasis_style() -> JsValue {
     Reflect::set(&style, &"fill".into(), &JsValue::from_str("#ee6666")).unwrap();
     Reflect::set(&style, &"lineWidth".into(), &JsValue::from(4.0)).unwrap();
     style.into()
+}
+
+#[wasm_bindgen_test]
+fn point_basic_ops() {
+    let mut p = Point::new(Some(3.0), Some(4.0));
+    assert_eq!(p.len(), 5.0);
+    p.add(&Point::new(Some(1.0), Some(2.0)));
+    assert_eq!(p.x(), 4.0);
+    assert_eq!(p.y(), 6.0);
+    assert_eq!(p.distance(&Point::new(Some(4.0), Some(6.0))), 0.0);
+}
+
+#[wasm_bindgen_test]
+fn bounding_rect_contain_union_intersect() {
+    let rect = BoundingRect::new(10.0, 20.0, 30.0, 40.0);
+    assert!(rect.contain(10.0, 20.0));
+    assert!(!rect.contain(0.0, 0.0));
+
+    let mut merged = BoundingRect::new(0.0, 0.0, 10.0, 10.0);
+    merged.union(&BoundingRect::new(5.0, 5.0, 10.0, 10.0));
+    assert_eq!(merged.width(), 15.0);
+    assert_eq!(merged.height(), 15.0);
+
+    assert!(rect.intersect(
+        &BoundingRect::new(35.0, 50.0, 10.0, 10.0),
+        JsValue::UNDEFINED,
+    ));
+    assert!(!rect.intersect(
+        &BoundingRect::new(100.0, 100.0, 10.0, 10.0),
+        JsValue::UNDEFINED,
+    ));
+}
+
+#[wasm_bindgen_test]
+fn oriented_bounding_rect_intersect() {
+    let a = OrientedBoundingRect::new(
+        JsValue::from(BoundingRect::new(0.0, 0.0, 20.0, 20.0)),
+        JsValue::UNDEFINED,
+    );
+    let b = OrientedBoundingRect::new(
+        JsValue::from(BoundingRect::new(5.0, 5.0, 10.0, 10.0)),
+        JsValue::UNDEFINED,
+    );
+    assert!(a.intersect(&b, JsValue::UNDEFINED, JsValue::UNDEFINED));
 }

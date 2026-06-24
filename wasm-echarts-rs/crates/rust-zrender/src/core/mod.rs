@@ -2,4 +2,10 @@
 
 pub mod bbox;
 pub mod matrix;
+pub mod obb;
+pub mod point;
 pub mod types;
+
+pub use bbox::BoundingRect;
+pub use obb::{IntersectOpt, OrientedBoundingRect};
+pub use point::Point2;

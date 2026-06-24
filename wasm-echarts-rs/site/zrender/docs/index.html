@@ -121,16 +121,28 @@ let mut zr = ZRenderer::new(480, 360)?;</pre>
     </div>
 
     <div class="doc-section">
-      <h3>已实现图元</h3>
-      <p><code>Group</code>、<code>Rect</code>、<code>Circle</code>、<code>Line</code>、<code>Polygon</code>、<code>Polyline</code>、<code>Sector</code>、<code>Text</code></p>
+      <h3>已实现图元与几何</h3>
+      <p>
+        图元：<code>Group</code>、<code>Rect</code>、<code>Circle</code>、<code>Line</code>、<code>Polygon</code>、
+        <code>Polyline</code>、<code>Sector</code>、<code>Text</code>、<code>TSpan</code>、<code>Image</code>、
+        <code>Path</code>、<code>CompoundPath</code>、<code>Displayable</code>，以及
+        <code>Arc</code>、<code>Ellipse</code>、<code>Ring</code>、<code>BezierCurve</code>、
+        <code>Heart</code>、<code>Star</code>、<code>Isogon</code>、<code>Droplet</code>、<code>Rose</code>、<code>Trochoid</code> 等 Path 子类。
+      </p>
+      <p>
+        样式：<code>LinearGradient</code>、<code>RadialGradient</code>、<code>Pattern</code>。
+      </p>
+      <p>
+        几何值对象（不参与 Storage）：<code>Point</code>、<code>BoundingRect</code>、<code>OrientedBoundingRect</code>。
+      </p>
       <p>Path 子类支持 <code>useState(state)</code>、<code>setStateStyle(state, style)</code>。</p>
     </div>
 
     <div class="doc-section">
-      <h3>Stub 导出（构造时抛错）</h3>
+      <h3>Stub 导出（构造时抛错或未实现）</h3>
       <p>
-        <code>Arc</code>、<code>BezierCurve</code>、<code>Image</code>、<code>Ellipse</code>、
-        <code>LinearGradient</code>、<code>RadialGradient</code>、<code>Pattern</code> 等其余 export.ts 类型均已导出，便于后续补实现。
+        <code>IncrementalDisplayable</code>；工具模块 <code>matrix</code>、<code>vector</code>、<code>color</code>、
+        <code>path</code>、<code>util</code>、<code>morph</code>、<code>parseSVG</code> 等仍为空对象 stub。
       </p>
     </div>
 
