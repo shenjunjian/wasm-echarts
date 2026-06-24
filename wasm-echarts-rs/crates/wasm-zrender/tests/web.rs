@@ -1,10 +1,10 @@
 //! wasm-bindgen 浏览器端集成测试
 
-use js_sys::{Object, Reflect};
+use js_sys::{Array, Object, Reflect};
 use wasm_bindgen::JsValue;
 use wasm_bindgen_test::*;
 
-use wasm_zrender::{clear_fonts, dispose_all, init, register_font, Arc, Circle, Group, Rect, Text};
+use wasm_zrender::{clear_fonts, dispose_all, init, register_font, Arc, Circle, Group, LinearGradient, Rect, Text};
 
 const TEST_FONT: &[u8] = include_bytes!("../tests/fixtures/NotoSansSC-Regular.ttf");
 
@@ -76,6 +76,62 @@ fn init_group_rect_refresh_outputs_rgba() {
     let rgba = zr.refresh().unwrap();
     assert_eq!(rgba.len(), 320 * 160 * 4);
     assert!(rgba.chunks(4).any(|px| px[3] > 0));
+}
+
+#[wasm_bindgen_test]
+fn rect_linear_gradient_fill_outputs_non_monochrome() {
+    reset_registry();
+    let mut zr = init(JsValue::NULL, init_opts(320, 160)).unwrap();
+    let g = Group::new();
+
+    let color_stops = Array::new();
+    let stop0 = Object::new();
+    Reflect::set(&stop0, &"offset".into(), &JsValue::from(0.0)).unwrap();
+    Reflect::set(&stop0, &"color".into(), &JsValue::from_str("#5470c6")).unwrap();
+    color_stops.push(&stop0);
+    let stop1 = Object::new();
+    Reflect::set(&stop1, &"offset".into(), &JsValue::from(1.0)).unwrap();
+    Reflect::set(&stop1, &"color".into(), &JsValue::from_str("#91cc75")).unwrap();
+    color_stops.push(&stop1);
+
+    let gradient = LinearGradient::new(0.0, 0.0, 1.0, 0.0, Some(color_stops.into()), None);
+
+    let opts = Object::new();
+    let shape = Object::new();
+    Reflect::set(&shape, &"x".into(), &JsValue::from(20.0)).unwrap();
+    Reflect::set(&shape, &"y".into(), &JsValue::from(20.0)).unwrap();
+    Reflect::set(&shape, &"width".into(), &JsValue::from(100.0)).unwrap();
+    Reflect::set(&shape, &"height".into(), &JsValue::from(60.0)).unwrap();
+    Reflect::set(&opts, &"shape".into(), &shape).unwrap();
+
+    let style = Object::new();
+    Reflect::set(&style, &"fill".into(), &JsValue::from(gradient)).unwrap();
+    Reflect::set(&opts, &"style".into(), &style).unwrap();
+
+    let rect = Rect::new(opts.into()).unwrap();
+    g.add(JsValue::from(rect)).unwrap();
+    zr.add(JsValue::from(g)).unwrap();
+
+    let rgba = zr.refresh().unwrap();
+    assert_eq!(rgba.len(), 320 * 160 * 4);
+
+    let mut left_red = 0u8;
+    let mut right_green = 0u8;
+    for y in 20..80 {
+        for x in 20..120 {
+            let i = (y * 320 + x) * 4;
+            if rgba[i + 3] == 0 {
+                continue;
+            }
+            if x < 60 {
+                left_red = rgba[i];
+            } else if x > 80 {
+                right_green = rgba[i + 1];
+            }
+        }
+    }
+    assert!(left_red > 80, "left side should be bluish");
+    assert!(right_green > 80, "right side should be greenish");
 }
 
 #[wasm_bindgen_test]

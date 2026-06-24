@@ -165,12 +165,48 @@ fn create_pattern_from_style(
     ctx: &dyn crate::canvas::backend::CanvasContext,
     pattern: &PatternStyle,
 ) -> Result<Arc<CanvasPattern>, BackendError> {
-    ctx.create_pattern(
+    let canvas_pattern = ctx.create_pattern(
         &pattern.data,
         pattern.width,
         pattern.height,
         &pattern.repeat,
-    )
+    )?;
+
+    let mut owned = (*canvas_pattern).clone();
+    if pattern_needs_transform(pattern) {
+        owned.set_transform(pattern_transform_matrix(pattern));
+    }
+    Ok(Arc::new(owned))
+}
+
+fn pattern_needs_transform(p: &PatternStyle) -> bool {
+    p.x != 0.0
+        || p.y != 0.0
+        || p.rotation != 0.0
+        || p.scale_x != 1.0
+        || p.scale_y != 1.0
+}
+
+fn pattern_transform_matrix(p: &PatternStyle) -> vl_convert_canvas2d::DOMMatrix {
+    use crate::core::matrix::{create, rotate, scale, to_dom_matrix, translate};
+
+    let mut m = create();
+    let mut tmp = create();
+
+    translate(&mut tmp, &m, p.x as f32, p.y as f32);
+    m = tmp;
+
+    if p.rotation != 0.0 {
+        rotate(&mut tmp, &m, p.rotation as f32);
+        m = tmp;
+    }
+
+    if p.scale_x != 1.0 || p.scale_y != 1.0 {
+        scale(&mut tmp, &m, p.scale_x as f32, p.scale_y as f32);
+        m = tmp;
+    }
+
+    to_dom_matrix(&m)
 }
 
 #[cfg(test)]

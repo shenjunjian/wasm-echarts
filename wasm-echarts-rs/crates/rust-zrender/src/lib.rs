@@ -22,4 +22,5 @@ pub use handler::{Handler, HitResult};
 pub use graphic::*;
 pub use storage::Storage;
 pub use vl_convert_canvas2d::ResolvedFontConfig;
+pub use vl_convert_canvas2d::{LineCap, LineJoin};
 pub use zrender::ZRenderer;

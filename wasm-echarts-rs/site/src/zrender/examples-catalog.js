@@ -8,6 +8,7 @@ const IMPORT_BLOCK = `import initWasm, {
   Polygon,
   Sector,
   Text,
+  LinearGradient,
 } from '@wasm-zrender/wasm_zrender.js';`;
 
 const TEXT_IMPORT_BLOCK = `import initWasm, {
@@ -90,7 +91,12 @@ export const ZRENDER_SOURCE = {
 
   g.add(new Rect({
     shape: { x: 20, y: 20, width: 100, height: 60 },
-    style: { fill: '#5470c6' },
+    style: {
+      fill: new LinearGradient(0, 0, 1, 0, [
+        { offset: 0, color: '#5470c6' },
+        { offset: 1, color: '#91cc75' },
+      ]),
+    },
   }));
 
   g.add(new Circle({

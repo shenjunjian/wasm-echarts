@@ -74,39 +74,3 @@ impl OrientedBoundingRect {
     }
 }
 
-#[wasm_bindgen]
-pub struct LinearGradient;
-
-#[wasm_bindgen]
-impl LinearGradient {
-    #[wasm_bindgen(constructor)]
-    pub fn new(_opts: JsValue) -> Result<LinearGradient, JsValue> {
-        Err(JsValue::from_str(
-            "LinearGradient is not implemented in wasm-zrender",
-        ))
-    }
-}
-
-#[wasm_bindgen]
-pub struct RadialGradient;
-
-#[wasm_bindgen]
-impl RadialGradient {
-    #[wasm_bindgen(constructor)]
-    pub fn new(_opts: JsValue) -> Result<RadialGradient, JsValue> {
-        Err(JsValue::from_str(
-            "RadialGradient is not implemented in wasm-zrender",
-        ))
-    }
-}
-
-#[wasm_bindgen]
-pub struct Pattern;
-
-#[wasm_bindgen]
-impl Pattern {
-    #[wasm_bindgen(constructor)]
-    pub fn new(_opts: JsValue) -> Result<Pattern, JsValue> {
-        Err(JsValue::from_str("Pattern is not implemented in wasm-zrender"))
-    }
-}

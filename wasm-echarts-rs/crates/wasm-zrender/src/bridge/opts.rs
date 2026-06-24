@@ -2,10 +2,12 @@
 
 use js_sys::{Array, Reflect};
 use rust_zrender::{
-    DisplayableProps, EcData, FillStrokeStyle, PathStyle, PathStylePatch, ShadowStyle, TextAlign,
-    TextBaseline, TextStyle,
+    DisplayableProps, EcData, FillStrokeStyle, LineCap, LineJoin, PathStyle, PathStylePatch,
+    ShadowStyle, TextAlign, TextBaseline, TextStyle,
 };
 use wasm_bindgen::prelude::*;
+
+use crate::bridge::fill_stroke::parse_fill_stroke;
 
 #[derive(Debug, Clone, Copy)]
 pub struct InitOpts {
@@ -79,6 +81,8 @@ pub fn parse_path_style(style: &JsValue) -> PathStyle {
         stroke_opacity: get_f64(style, "strokeOpacity").unwrap_or(1.0) as f32,
         shadow: parse_shadow(style),
         stroke_first: get_bool(style, "strokeFirst").unwrap_or(false),
+        line_cap: parse_line_cap(style),
+        line_join: parse_line_join(style),
         ..PathStyle::default()
     };
 
@@ -130,18 +134,20 @@ pub fn parse_text_style(style: &JsValue) -> TextStyle {
     }
 }
 
-fn parse_fill_stroke(value: &JsValue) -> FillStrokeStyle {
-    if value.is_null() || value.is_undefined() {
-        return FillStrokeStyle::None;
+fn parse_line_cap(style: &JsValue) -> LineCap {
+    match get_string(style, "lineCap").as_deref() {
+        Some("round") => LineCap::Round,
+        Some("square") => LineCap::Square,
+        _ => LineCap::Butt,
     }
-    if let Some(s) = value.as_string() {
-        if s == "none" || s.is_empty() {
-            return FillStrokeStyle::None;
-        }
-        return FillStrokeStyle::Color(s);
+}
+
+fn parse_line_join(style: &JsValue) -> LineJoin {
+    match get_string(style, "lineJoin").as_deref() {
+        Some("round") => LineJoin::Round,
+        Some("bevel") => LineJoin::Bevel,
+        _ => LineJoin::Miter,
     }
-    // 渐变 / Pattern 在 Todo 4 stub 或后续补全；当前按 none 处理
-    FillStrokeStyle::None
 }
 
 fn parse_line_dash(style: &JsValue) -> Option<Vec<f32>> {
