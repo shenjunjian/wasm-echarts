@@ -1,112 +1,253 @@
-function buildZrenderSource(scene, insideMain = '') {
-  return `// wasm-pack build --target web 后，从 pkg 引入 JS 与 WASM
-import initWasm, { ZRenderInstance } from './pkg/wasm_zrender.js';
+const IMPORT_BLOCK = `import initWasm, {
+  init,
+  dispose,
+  Group,
+  Rect,
+  Circle,
+  Line,
+  Polygon,
+  Sector,
+  Text,
+} from '@wasm-zrender/wasm_zrender.js';`;
+
+const BOILERPLATE = `${IMPORT_BLOCK}
+
+const width = 480;
+const height = 360;
+const dpr = window.devicePixelRatio || 1;
 
 async function main() {
-  // 1. 初始化 WASM 模块（加载 .wasm 并完成 bindgen 绑定）
   await initWasm();
 
-  // 2. 创建 canvas 与 ZRender 实例
   const canvas = document.getElementById('canvas');
-  const width = 480;
-  const height = 360;
-  const dpr = window.devicePixelRatio || 1;
-
   canvas.width = Math.floor(width * dpr);
   canvas.height = Math.floor(height * dpr);
   canvas.style.width = \`\${width}px\`;
   canvas.style.height = \`\${height}px\`;
 
-  const zr = new ZRenderInstance(width, height, dpr);
+  const zr = init(null, { width, height, devicePixelRatio: dpr });
+`;
 
-  // 3. 加载内置场景并渲染到 RGBA 像素
-  zr.load_scene('${scene}');
+const FOOTER = `
   paint(zr, canvas);
-${insideMain}
 }
 
 function paint(zr, canvas) {
   const rgba = zr.refresh();
-  const w = zr.width();
-  const h = zr.height();
   const ctx = canvas.getContext('2d');
-  ctx.putImageData(new ImageData(new Uint8ClampedArray(rgba), w, h), 0, 0);
+  ctx.putImageData(
+    new ImageData(new Uint8ClampedArray(rgba), zr.width(), zr.height()),
+    0,
+    0,
+  );
 }
 
 main();`;
-}
 
 export const ZRENDER_SOURCE = {
-  shapes: buildZrenderSource('shapes'),
-  text: buildZrenderSource('text'),
-  sector: buildZrenderSource('sector'),
-  hit: buildZrenderSource(
-    'hit',
-    `
-  // 4. 命中检测：鼠标移动时查询 hover 目标
+  shapes: `${BOILERPLATE}
+  const g = new Group();
+
+  g.add(new Rect({
+    shape: { x: 20, y: 20, width: 100, height: 60 },
+    style: { fill: '#5470c6' },
+  }));
+
+  g.add(new Circle({
+    shape: { cx: 180, cy: 80, r: 40 },
+    style: {
+      fill: 'rgba(145, 204, 117, 0.8)',
+      stroke: '#ee6666',
+      lineWidth: 3,
+    },
+    z: 1,
+  }));
+
+  g.add(new Line({
+    shape: { x1: 20, y1: 120, x2: 280, y2: 120 },
+    style: { stroke: '#333', lineWidth: 2, lineDash: [6, 4] },
+  }));
+
+  g.add(new Polygon({
+    shape: { points: [[240, 30], [300, 60], [270, 100]] },
+    style: { fill: '#fac858' },
+  }));
+
+  zr.add(g);
+${FOOTER}`,
+
+  text: `${BOILERPLATE}
+  zr.add(new Text({
+    style: {
+      text: 'wasm-zrender 文本',
+      x: 24,
+      y: 48,
+      fill: '#333',
+      fontSize: 18,
+      fontWeight: 'bold',
+    },
+  }));
+
+  zr.add(new Text({
+    style: {
+      text: '对齐 · 中文 · fillText',
+      x: 24,
+      y: 96,
+      fill: '#5470c6',
+      fontSize: 14,
+    },
+  }));
+${FOOTER}`,
+
+  sector: `${BOILERPLATE}
+  const g = new Group();
+  const cx = 240;
+  const cy = 180;
+  const r = 120;
+  const values = [30, 70, 100, 50];
+  const colors = ['#5470c6', '#91cc75', '#fac858', '#ee6666'];
+  const total = values.reduce((sum, v) => sum + v, 0);
+  let angle = -Math.PI / 2;
+
+  values.forEach((value, i) => {
+    const sweep = (value / total) * Math.PI * 2;
+    const start = angle;
+    const end = angle + sweep;
+    angle = end;
+
+    g.add(new Sector({
+      shape: { cx, cy, r, startAngle: start, endAngle: end },
+      style: { fill: colors[i], stroke: '#fff', lineWidth: 1 },
+      seriesIndex: 0,
+      dataIndex: i,
+    }));
+  });
+
+  zr.add(g);
+${FOOTER}`,
+
+  hit: `${BOILERPLATE}
+  const g = new Group();
+  const colors = ['#5470c6', '#91cc75', '#fac858'];
+
+  [
+    { x: 40, y: 40, w: 90, h: 60, dataIndex: 0 },
+    { x: 160, y: 50, w: 100, h: 70, dataIndex: 1 },
+    { x: 300, y: 60, w: 80, h: 80, dataIndex: 2 },
+  ].forEach((item, i) => {
+    g.add(new Rect({
+      shape: { x: item.x, y: item.y, width: item.w, height: item.h },
+      style: { fill: colors[i] },
+      seriesIndex: 0,
+      dataIndex: item.dataIndex,
+    }));
+  });
+
+  zr.add(g);
+  paint(zr, canvas);
+
   canvas.addEventListener('mousemove', (e) => {
     const rect = canvas.getBoundingClientRect();
-    const hit = zr.find_hover(e.clientX - rect.left, e.clientY - rect.top);
-    console.log(hit);
+    const hover = zr.findHover(e.clientX - rect.left, e.clientY - rect.top);
+    console.log(hover?.target?.type, hover?.target?.id);
     paint(zr, canvas);
   });
-  canvas.addEventListener('mouseleave', () => {
-    paint(zr, canvas);
-  });`,
-  ),
-  state: buildZrenderSource(
-    'state',
-    `
-  // 4. emphasis / downplay 状态切换
-  let lastIndex = null;
+}
+
+function paint(zr, canvas) {
+  const rgba = zr.refresh();
+  const ctx = canvas.getContext('2d');
+  ctx.putImageData(
+    new ImageData(new Uint8ClampedArray(rgba), zr.width(), zr.height()),
+    0,
+    0,
+  );
+}
+
+main();`,
+
+  state: `${BOILERPLATE}
+  const g = new Group();
+  const colors = ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272'];
+  const rects = [];
+
+  for (let row = 0; row < 2; row++) {
+    for (let col = 0; col < 3; col++) {
+      const i = row * 3 + col;
+      const rect = new Rect({
+        shape: { x: 40 + col * 130, y: 60 + row * 100, width: 100, height: 70 },
+        style: { fill: colors[i] },
+        seriesIndex: 0,
+        dataIndex: i,
+      });
+      rect.setStateStyle('emphasis', { fill: '#ee6666', lineWidth: 4 });
+      rects.push(rect);
+      g.add(rect);
+    }
+  }
+
+  zr.add(g);
+  paint(zr, canvas);
+
+  let active = null;
   canvas.addEventListener('click', (e) => {
     const rect = canvas.getBoundingClientRect();
-    const hit = zr.find_hover(e.clientX - rect.left, e.clientY - rect.top);
-    if (hit?.pathIndex != null) {
-      if (lastIndex != null && lastIndex !== hit.pathIndex) {
-        zr.downplay_path(lastIndex);
-      }
-      zr.highlight_path(hit.pathIndex);
-      lastIndex = hit.pathIndex;
-      paint(zr, canvas);
-    }
-  });`,
-  ),
+    const hover = zr.findHover(e.clientX - rect.left, e.clientY - rect.top);
+    const target = hover?.target && rects.find((r) => r.id === hover.target.id);
+    if (!target) return;
+    if (active && active.id !== target.id) active.useState('normal');
+    target.useState('emphasis');
+    active = target;
+    paint(zr, canvas);
+  });
+}
+
+function paint(zr, canvas) {
+  const rgba = zr.refresh();
+  const ctx = canvas.getContext('2d');
+  ctx.putImageData(
+    new ImageData(new Uint8ClampedArray(rgba), zr.width(), zr.height()),
+    0,
+    0,
+  );
+}
+
+main();`,
 };
 
 export const ZRENDER_EXAMPLES = [
   {
     id: 'shapes',
     title: '基础图形 shapes',
-    description: 'Rect / Circle / Line / Polygon / 渐变 / 虚线 / 阴影',
+    description: 'Group + Rect / Circle / Line / Polygon',
     previewUrl: './shapes.html',
     source: ZRENDER_SOURCE.shapes,
   },
   {
     id: 'text',
     title: '文本 text',
-    description: 'fillText、对齐、中文',
+    description: 'new Text({ style }) 根节点渲染',
     previewUrl: './text.html',
     source: ZRENDER_SOURCE.text,
   },
   {
     id: 'sector',
     title: '扇区 sector',
-    description: 'SectorShape 饼图扇区',
+    description: '循环 new Sector 饼图扇区',
     previewUrl: './sector.html',
     source: ZRENDER_SOURCE.sector,
   },
   {
     id: 'hit',
     title: '命中检测 hit',
-    description: 'find_hover + ECData 回显',
+    description: 'findHover + 鼠标移动',
     previewUrl: './hit.html',
     source: ZRENDER_SOURCE.hit,
   },
   {
     id: 'state',
     title: '状态 state',
-    description: 'emphasis / downplay 切换',
+    description: 'setStateStyle + useState emphasis',
     previewUrl: './state.html',
     source: ZRENDER_SOURCE.state,
   },

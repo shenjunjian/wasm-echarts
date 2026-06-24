@@ -16,10 +16,10 @@ todos:
     status: completed
   - id: site-examples
     content: site：示例源码改为官方风格 JS，更新 zrender.js/example-runner/parse-source/docs/README
-    status: pending
+    status: completed
   - id: tests-verify
     content: wasm-bindgen-test + 5 个示例页手工验收，确认无 load_scene 残留
-    status: pending
+    status: completed
 isProject: false
 ---
 

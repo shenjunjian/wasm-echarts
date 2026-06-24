@@ -1,6 +1,6 @@
 import { mountPreview } from '@shared/mount-preview.js';
-import { runZrenderExample, defaultSource } from '@zrender/example-runner.js';
+import { runZrenderExample } from '@zrender/example-runner.js';
 
 mountPreview((host, log) =>
-  runZrenderExample(defaultSource('hit'), host, log, { interactive: 'hit' }),
+  runZrenderExample('hit', host, log, { interactive: 'hit' }),
 );

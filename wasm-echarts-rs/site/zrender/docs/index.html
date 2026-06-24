@@ -17,26 +17,57 @@
 
   <main class="page page-narrow">
     <h1>wasm-zrender 文档</h1>
-    <p class="lead">底层 2D 渲染 WASM 绑定，直接封装 <code>rust_zrender::ZRenderer</code>。</p>
+    <p class="lead">对齐官方 zrender <code>export.ts</code> 的 WASM 命名空间导出，底层封装 <code>rust_zrender::ZRenderer</code>。</p>
 
     <div class="doc-section">
       <h3>快速开始</h3>
       <pre>cd crates/wasm-zrender && wasm-pack build --target web
 
-cd ../..
-cd site && npm install && npm run dev
+cd ../../site && npm install && npm run dev
 # 打开 http://127.0.0.1:5173/zrender/examples/</pre>
     </div>
 
     <div class="doc-section">
-      <h3>主要 API</h3>
+      <h3>顶层 API</h3>
       <ul>
-        <li><code>new ZRenderInstance(width, height, dpr)</code></li>
-        <li><code>load_scene(scene)</code> — 内置场景：<code>shapes</code> | <code>text</code> | <code>sector</code> | <code>hit</code> | <code>state</code></li>
-        <li><code>refresh()</code> → RGBA 字节数组</li>
-        <li><code>find_hover(x, y)</code> → pathIndex / seriesIndex / dataIndex</li>
-        <li><code>highlight_path</code> / <code>downplay_path</code></li>
-        <li><code>resize(width, height, dpr)</code></li>
+        <li><code>init(dom?, opts?)</code> — 创建 ZRender（<code>dom</code> 忽略，尺寸来自 opts）</li>
+        <li><code>dispose(zr)</code> / <code>disposeAll()</code> — 释放实例</li>
+        <li><code>getInstance(id)</code> — 按 id 取实例</li>
+      </ul>
+    </div>
+
+    <div class="doc-section">
+      <h3>ZRender 实例方法</h3>
+      <ul>
+        <li><code>add(el)</code> / <code>remove(el)</code> — 根节点增删</li>
+        <li><code>refresh()</code> / <code>flush()</code> — 同步返回 RGBA 字节数组</li>
+        <li><code>resize(opts)</code> — 调整尺寸（不重载预设场景）</li>
+        <li><code>findHover(x, y)</code> — 返回 <code>{ target, topTarget }</code></li>
+      </ul>
+    </div>
+
+    <div class="doc-section">
+      <h3>已实现图元</h3>
+      <p><code>Group</code>、<code>Rect</code>、<code>Circle</code>、<code>Line</code>、<code>Polygon</code>、<code>Polyline</code>、<code>Sector</code>、<code>Text</code></p>
+      <p>Path 子类支持 <code>useState(state)</code>、<code>setStateStyle(state, style)</code>。</p>
+    </div>
+
+    <div class="doc-section">
+      <h3>Stub 导出（构造时抛错）</h3>
+      <p>
+        <code>Arc</code>、<code>BezierCurve</code>、<code>Image</code>、<code>Ellipse</code>、
+        <code>LinearGradient</code>、<code>RadialGradient</code>、<code>Pattern</code> 等其余 export.ts 类型均已导出，便于后续补实现。
+      </p>
+    </div>
+
+    <div class="doc-section">
+      <h3>与官方 zrender 的差异</h3>
+      <ul>
+        <li>仅 canvas 离屏模式，无 SVG painter / animation 帧循环</li>
+        <li><code>refresh()</code> 同步返回像素，需 JS 侧 <code>putImageData</code> 上屏</li>
+        <li><code>init(dom)</code> 的 dom 参数忽略</li>
+        <li><code>Text</code> 暂仅支持 <code>zr.add(text)</code> 根节点（不支持 <code>group.add(text)</code>）</li>
+        <li>无 <code>on('click')</code> 事件总线，命中检测需自行绑定 DOM 事件</li>
       </ul>
     </div>
 
@@ -46,15 +77,6 @@ cd site && npm install && npm run dev
         <code>wasm-zrender</code> 与 <code>wasm-echarts</code> 为 sibling，均只依赖 <code>rust-zrender</code>。
         echarts 图表管线不经过 wasm-zrender，而是内部直接使用 <code>ZRenderer</code>。
       </p>
-    </div>
-
-    <div class="doc-section">
-      <h3>已知限制</h3>
-      <ul>
-        <li>当前仅 <code>load_scene</code> 预设场景，动态 <code>add_path</code> API 待补</li>
-        <li>Text 未完全纳入场景图 z 排序；conic 渐变未实现</li>
-        <li>输出为 RGBA 像素，需 JS 侧 <code>putImageData</code> 上屏</li>
-      </ul>
     </div>
   </main>
 </body>

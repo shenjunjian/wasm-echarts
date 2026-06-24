@@ -27,7 +27,7 @@ wasm-echarts/
 │   │   └── js/echarts.js         # 对齐 echarts 的 JS 薄壳
 │   └── crates/
 │       ├── rust-zrender/         # 纯 Rust lib：zrender 渲染核心（底层依赖）
-│       ├── wasm-zrender/         # wasm-pack：ZRenderInstance 薄封装
+│       ├── wasm-zrender/         # wasm-pack：对齐 zrender export.ts 的 init/Group/Rect API
 │       ├── wasm-echarts/         # wasm-pack：EChartsInstance + option 管线
 │       │   ├── src/
 │       │   └── pkg/              # wasm-pack 产物（见下文）
@@ -105,7 +105,7 @@ cargo test -p wasm-zrender
 
 ```
 wasm-echarts-rs/crates/wasm-echarts/pkg/   # EChartsInstance
-wasm-echarts-rs/crates/wasm-zrender/pkg/   # ZRenderInstance
+wasm-echarts-rs/crates/wasm-zrender/pkg/   # init / Group / Rect / …（export.ts 对齐）
 ```
 
 以 wasm-echarts 为例：
@@ -136,14 +136,20 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 
 ### wasm-zrender 对外 API（`wasm_zrender.d.ts`）
 
-| 类 / 方法 | 说明 |
-|-----------|------|
-| `ZRenderInstance` | zrender 薄封装实例 |
-| `load_scene(name)` | 加载预设场景：shapes / text / sector / hit / state |
-| `refresh()` | 返回 RGBA |
-| `find_hover(x, y)` | 命中检测 |
-| `resize(w, h, dpr)` | 调整尺寸并重载场景 |
-| `highlight_path` / `downplay_path` | 图元状态切换 |
+对齐官方 zrender `export.ts` 命名空间导出：
+
+| 导出 | 说明 |
+|------|------|
+| `init(dom?, opts?)` | 创建 ZRender 实例（dom 忽略，尺寸来自 opts） |
+| `dispose(zr)` / `disposeAll()` | 释放实例 |
+| `Group` / `Rect` / `Circle` / `Line` / `Polygon` / `Polyline` / `Sector` / `Text` | 已实现图元 |
+| `ZRender.add(el)` / `remove(el)` | 根节点增删 |
+| `ZRender.refresh()` | 同步返回 RGBA 像素 |
+| `ZRender.findHover(x, y)` | 返回 `{ target, topTarget }` |
+| `Path.useState` / `setStateStyle` | emphasis 等状态切换 |
+| 其余 export.ts 类型 | stub 导出，构造时抛 `not implemented` |
+
+**与官方差异**：仅离屏 canvas、`refresh()` 同步上屏、无 animation / 事件总线。详见 [zrender 文档](wasm-echarts-rs/site/zrender/docs/index.html)。
 
 ## 使用方法
 

@@ -1,14 +1,31 @@
-   0.119515400s  INFO prepare_target{force=false package_id=wasm-zrender v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-zrender) target="wasm_zrender"}: cargo::core::compiler::fingerprint: stale: changed "E:\\wasm-echarts\\wasm-echarts-rs\\crates\\wasm-zrender\\src\\element\\mod.rs"
-   0.119555700s  INFO prepare_target{force=false package_id=wasm-zrender v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-zrender) target="wasm_zrender"}: cargo::core::compiler::fingerprint:           (vs) "E:\\wasm-echarts\\wasm-echarts-rs\\target\\debug\\.fingerprint\\wasm-zrender-b719e5af2832a2e5\\dep-lib-wasm_zrender"
-   0.119562000s  INFO prepare_target{force=false package_id=wasm-zrender v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-zrender) target="wasm_zrender"}: cargo::core::compiler::fingerprint:                FileTime { seconds: 13426764340, nanos: 77438600 } < FileTime { seconds: 13426764664, nanos: 457535800 }
-   0.119680700s  INFO prepare_target{force=false package_id=wasm-zrender v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-zrender) target="wasm_zrender"}: cargo::core::compiler::fingerprint: fingerprint dirty for wasm-zrender v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-zrender)/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("wasm_zrender", ["cdylib", "rlib"], "E:\\wasm-echarts\\wasm-echarts-rs\\crates\\wasm-zrender\\src\\lib.rs", Edition2021) }
-   0.119712200s  INFO prepare_target{force=false package_id=wasm-zrender v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-zrender) target="wasm_zrender"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(ChangedFile { reference: "E:\\wasm-echarts\\wasm-echarts-rs\\target\\debug\\.fingerprint\\wasm-zrender-b719e5af2832a2e5\\dep-lib-wasm_zrender", reference_mtime: FileTime { seconds: 13426764340, nanos: 77438600 }, stale: "E:\\wasm-echarts\\wasm-echarts-rs\\crates\\wasm-zrender\\src\\element\\mod.rs", stale_mtime: FileTime { seconds: 13426764664, nanos: 457535800 } }))
-   0.121250300s  INFO prepare_target{force=false package_id=wasm-zrender v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-zrender) target="wasm_zrender"}: cargo::core::compiler::fingerprint: stale: changed "E:\\wasm-echarts\\wasm-echarts-rs\\crates\\wasm-zrender\\src\\element\\mod.rs"
-   0.121271200s  INFO prepare_target{force=false package_id=wasm-zrender v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-zrender) target="wasm_zrender"}: cargo::core::compiler::fingerprint:           (vs) "E:\\wasm-echarts\\wasm-echarts-rs\\target\\debug\\.fingerprint\\wasm-zrender-907990291ab5d38e\\dep-test-lib-wasm_zrender"
-   0.121279400s  INFO prepare_target{force=false package_id=wasm-zrender v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-zrender) target="wasm_zrender"}: cargo::core::compiler::fingerprint:                FileTime { seconds: 13426764340, nanos: 77438600 } < FileTime { seconds: 13426764664, nanos: 457535800 }
-   0.121468400s  INFO prepare_target{force=false package_id=wasm-zrender v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-zrender) target="wasm_zrender"}: cargo::core::compiler::fingerprint: fingerprint dirty for wasm-zrender v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-zrender)/Check { test: true }/TargetInner { name_inferred: true, ..: lib_target("wasm_zrender", ["cdylib", "rlib"], "E:\\wasm-echarts\\wasm-echarts-rs\\crates\\wasm-zrender\\src\\lib.rs", Edition2021) }
-   0.121502600s  INFO prepare_target{force=false package_id=wasm-zrender v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-zrender) target="wasm_zrender"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(ChangedFile { reference: "E:\\wasm-echarts\\wasm-echarts-rs\\target\\debug\\.fingerprint\\wasm-zrender-907990291ab5d38e\\dep-test-lib-wasm_zrender", reference_mtime: FileTime { seconds: 13426764340, nanos: 77438600 }, stale: "E:\\wasm-echarts\\wasm-echarts-rs\\crates\\wasm-zrender\\src\\element\\mod.rs", stale_mtime: FileTime { seconds: 13426764664, nanos: 457535800 } }))
+    Blocking waiting for file lock on build directory
+   4.963537800s  INFO prepare_target{force=false package_id=wasm-zrender v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-zrender) target="web"}: cargo::core::compiler::fingerprint: fingerprint error for wasm-zrender v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-zrender)/Check { test: true }/TargetInner { kind: "test", name: "web", benched: false, ..: with_path("E:\\wasm-echarts\\wasm-echarts-rs\\crates\\wasm-zrender\\tests\\web.rs", Edition2021) }
+   4.963591500s  INFO prepare_target{force=false package_id=wasm-zrender v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-zrender) target="web"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\wasm-echarts\wasm-echarts-rs\target\debug\.fingerprint\wasm-zrender-fcff05e11445f182\test-integration-test-web`
+
+Caused by:
+    系统找不到指定的文件。 (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_libgit2_prerelease
+  12: <unknown>
+  13: <unknown>
+  14: <unknown>
+  15: <unknown>
+  16: git_midx_writer_dump
+  17: git_filter_source_repo
+  18: git_midx_writer_dump
+  19: BaseThreadInitThunk
+  20: RtlUserThreadStart
     Checking wasm-zrender v0.1.0 (E:\wasm-echarts\wasm-echarts-rs\crates\wasm-zrender)
-error: could not compile `wasm-zrender` (lib) due to 33 previous errors; 7 warnings emitted
-warning: build failed, waiting for other jobs to finish...
-error: could not compile `wasm-zrender` (lib test) due to 33 previous errors; 7 warnings emitted
+error: could not compile `wasm-zrender` (test "web") due to 1 previous error

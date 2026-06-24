@@ -24,6 +24,6 @@ pub use graphic::{
 pub use zrender::{dispose, dispose_all, get_instance, init, ZRender};
 
 #[wasm_bindgen(start)]
-pub fn main() {
+pub fn init_panic_hook() {
     utils::set_panic_hook();
 }
