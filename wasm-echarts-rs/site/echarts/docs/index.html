@@ -1,0 +1,71 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>wasm-echarts 文档</title>
+  <link rel="stylesheet" href="/src/shared/layout.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/">wasm-echarts</a>
+    <nav>
+      <a href="../">wasm-echarts</a>
+      <a href="../examples/">实例</a>
+    </nav>
+  </header>
+
+  <main class="page page-narrow">
+    <h1>wasm-echarts 文档</h1>
+    <p class="lead">在浏览器侧对齐 ECharts canvas 模式的核心用法。</p>
+
+    <div class="doc-section">
+      <h3>快速开始</h3>
+      <pre>cd crates/wasm-echarts && wasm-pack build --target web
+
+cd ../..
+cd site && npm install && npm run dev
+# 打开 http://127.0.0.1:5173/echarts/examples/</pre>
+    </div>
+
+    <div class="doc-section">
+      <h3>JS 薄壳 API</h3>
+      <pre>import echarts from './js/echarts.js';
+
+const chart = await echarts.init(dom, { renderer: 'canvas' });
+chart.setOption(option);
+chart.on('click', ({ hit }) => { /* ... */ });
+chart.resize();
+chart.benchmark(30);
+chart.dispose();</pre>
+    </div>
+
+    <div class="doc-section">
+      <h3>函数 option</h3>
+      <p>
+        WASM 侧可识别 option 中的函数字段（如 <code>tooltip.formatter</code>、<code>series[].itemStyle.color</code>），
+        由 JS 薄壳在 setOption 时保留并在渲染/交互阶段回调。实例页目前以 JSON 为主；含函数的 option 见
+        <a href="../examples/interactive.html">交互合集</a> 等页面内置逻辑。
+      </p>
+    </div>
+
+    <div class="doc-section">
+      <h3>已支持图表与交互（MVP）</h3>
+      <ul>
+        <li>图表：line、bar、pie、scatter</li>
+        <li>交互：hover 高亮、toggleSelect、wheel dataZoom、axisPointer 竖线、string tooltip</li>
+        <li>轴标签 Text 渲染（formatter 解析存在，轴侧调用待完善）</li>
+      </ul>
+    </div>
+
+    <div class="doc-section">
+      <h3>与官方 ECharts 差异</h3>
+      <ul>
+        <li>无 SVG、无动画过渡、legend / dataZoom 滑块未绘制</li>
+        <li>series label、RichText、gauge、polar 等待实现</li>
+        <li>tooltip 暂不支持 HTMLElement 返回值</li>
+      </ul>
+    </div>
+  </main>
+</body>
+</html>

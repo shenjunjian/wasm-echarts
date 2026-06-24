@@ -1,0 +1,61 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>wasm-zrender 文档</title>
+  <link rel="stylesheet" href="/src/shared/layout.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/">wasm-echarts</a>
+    <nav>
+      <a href="../">wasm-zrender</a>
+      <a href="../examples/">实例</a>
+    </nav>
+  </header>
+
+  <main class="page page-narrow">
+    <h1>wasm-zrender 文档</h1>
+    <p class="lead">底层 2D 渲染 WASM 绑定，直接封装 <code>rust_zrender::ZRenderer</code>。</p>
+
+    <div class="doc-section">
+      <h3>快速开始</h3>
+      <pre>cd crates/wasm-zrender && wasm-pack build --target web
+
+cd ../..
+cd site && npm install && npm run dev
+# 打开 http://127.0.0.1:5173/zrender/examples/</pre>
+    </div>
+
+    <div class="doc-section">
+      <h3>主要 API</h3>
+      <ul>
+        <li><code>new ZRenderInstance(width, height, dpr)</code></li>
+        <li><code>load_scene(scene)</code> — 内置场景：<code>shapes</code> | <code>text</code> | <code>sector</code> | <code>hit</code> | <code>state</code></li>
+        <li><code>refresh()</code> → RGBA 字节数组</li>
+        <li><code>find_hover(x, y)</code> → pathIndex / seriesIndex / dataIndex</li>
+        <li><code>highlight_path</code> / <code>downplay_path</code></li>
+        <li><code>resize(width, height, dpr)</code></li>
+      </ul>
+    </div>
+
+    <div class="doc-section">
+      <h3>架构关系</h3>
+      <p>
+        <code>wasm-zrender</code> 与 <code>wasm-echarts</code> 为 sibling，均只依赖 <code>rust-zrender</code>。
+        echarts 图表管线不经过 wasm-zrender，而是内部直接使用 <code>ZRenderer</code>。
+      </p>
+    </div>
+
+    <div class="doc-section">
+      <h3>已知限制</h3>
+      <ul>
+        <li>当前仅 <code>load_scene</code> 预设场景，动态 <code>add_path</code> API 待补</li>
+        <li>Text 未完全纳入场景图 z 排序；conic 渐变未实现</li>
+        <li>输出为 RGBA 像素，需 JS 侧 <code>putImageData</code> 上屏</li>
+      </ul>
+    </div>
+  </main>
+</body>
+</html>

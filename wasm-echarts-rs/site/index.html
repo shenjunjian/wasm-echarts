@@ -1,0 +1,76 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>wasm-echarts · 文档站</title>
+  <link rel="stylesheet" href="/src/shared/layout.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/">wasm-echarts</a>
+  </header>
+
+  <main class="page page-narrow">
+    <h1>WebAssembly 图表渲染</h1>
+    <p class="lead">
+      用 Rust 重写 zrender 渲染内核，并在浏览器侧提供 wasm-zrender 与 wasm-echarts 两个 WASM 产物。
+    </p>
+
+    <section>
+      <h2>项目缘由</h2>
+      <div class="doc-section">
+        <p>
+          官方 ECharts 的 canvas 渲染依赖 JavaScript 与 zrender。本项目将<strong>渲染层</strong>迁移到 Rust，
+          通过 wasm-bindgen 暴露给浏览器，目标包括：
+        </p>
+        <ul>
+          <li><strong>性能</strong>：几何计算、绘制指令生成在 WASM 中执行，减少 JS 主线程开销</li>
+          <li><strong>可测试性</strong>：底层 <code>rust-zrender</code> 为纯 Rust crate，可用 <code>cargo test</code> 做像素级回归</li>
+          <li><strong>分层架构</strong>：<code>rust-zrender</code>（引擎）+ <code>wasm-zrender</code>（底层 API）+ <code>wasm-echarts</code>（图表 option 管线），职责清晰、可独立集成</li>
+          <li><strong>兼容路径</strong>：echarts 侧尽量对齐 <code>init</code> / <code>setOption</code> / 事件与交互语义，便于从官方 API 平滑迁移</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <h2>已知限制</h2>
+      <div class="notice">
+        <p>当前为 <strong>MVP</strong> 阶段，以下能力明确不在范围内或尚未实现：</p>
+        <ul>
+          <li>不支持 SVG 渲染模式；仅 canvas（WASM 出 RGBA → JS 写 ImageData）</li>
+          <li>无动画中间帧 / morph；setOption 后为即时全量重绘</li>
+          <li>无 Loading、DataView 等 DOM 组件；tooltip 以字符串为主</li>
+          <li>legend、dataZoom 滑块、gauge、polar 等组件/图表类型尚未完整</li>
+          <li>RichText / series label 引导线等待补全；与官方 ECharts 视觉/行为存在差异</li>
+        </ul>
+        <p style="margin: 0.75rem 0 0;">
+          详细 API 与差异说明见各产品文档页。
+        </p>
+      </div>
+    </section>
+
+    <section>
+      <h2>产品入口</h2>
+      <div class="card-grid">
+        <article class="card">
+          <h3>wasm-zrender</h3>
+          <p>底层 2D 渲染：图元、文本、命中检测、emphasis 状态。适合验证 rust-zrender 能力与集成 WASM 薄封装。</p>
+          <div class="card-actions">
+            <a class="btn btn-primary" href="./zrender/docs/">文档</a>
+            <a class="btn" href="./zrender/examples/">实例</a>
+          </div>
+        </article>
+        <article class="card">
+          <h3>wasm-echarts</h3>
+          <p>图表 option 管线：line / bar / pie / scatter、hover / select / dataZoom / tooltip 等交互。</p>
+          <div class="card-actions">
+            <a class="btn btn-primary" href="./echarts/docs/">文档</a>
+            <a class="btn" href="./echarts/examples/">实例</a>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,9 +1,4 @@
-/**
- * wasm-echarts JS 薄壳（阶段 4 + 6）
- * 对齐 echarts canvas 模式 API：init / setOption / resize / on / dispatchAction / dispose
- */
-
-import initWasm, { EChartsInstance } from '../../crates/wasm-echarts/pkg/wasm_echarts.js';
+import initWasm, { EChartsInstance } from '@wasm-echarts/wasm_echarts.js';
 
 let wasmReady = null;
 
@@ -14,7 +9,6 @@ function ensureWasm() {
   return wasmReady;
 }
 
-/** 简单事件总线 */
 class EventBus {
   constructor() {
     /** @type {Map<string, Set<Function>>} */
@@ -48,11 +42,6 @@ class EventBus {
 }
 
 class EChartsWasmChart {
-  /**
-   * @param {EChartsInstance} wasm
-   * @param {HTMLCanvasElement} canvas
-   * @param {HTMLElement} dom
-   */
   constructor(wasm, canvas, dom) {
     this._wasm = wasm;
     this._canvas = canvas;
@@ -188,10 +177,6 @@ class EChartsWasmChart {
     ctx.putImageData(imageData, 0, 0);
   }
 
-  /**
-   * @param {object} option
-   * @param {object} [opts]
-   */
   setOption(option, opts = {}) {
     const merged = { ...option, ...opts };
     this._wasm.set_option(merged);
@@ -215,10 +200,6 @@ class EChartsWasmChart {
     return this;
   }
 
-  /**
-   * @param {string} type
-   * @param {Function} handler
-   */
   on(type, handler) {
     this._events.on(type, handler);
     return this;
@@ -229,9 +210,6 @@ class EChartsWasmChart {
     return this;
   }
 
-  /**
-   * @param {object} action
-   */
   dispatchAction(action) {
     this._wasm.dispatch_action(action);
     this._paint();
@@ -245,9 +223,6 @@ class EChartsWasmChart {
     };
   }
 
-  /**
-   * @param {number} [iterations=30]
-   */
   benchmark(iterations = 30) {
     return this._wasm.benchmark_render(iterations);
   }
@@ -263,11 +238,6 @@ class EChartsWasmChart {
   }
 }
 
-/**
- * 初始化图表（对齐 echarts.init(dom, { renderer: 'canvas' })）
- * @param {HTMLElement} dom
- * @param {{ renderer?: string, width?: number, height?: number, devicePixelRatio?: number }} [opts]
- */
 export async function init(dom, opts = {}) {
   if (opts.renderer && opts.renderer !== 'canvas') {
     console.warn('wasm-echarts 仅支持 canvas renderer，已忽略:', opts.renderer);
@@ -296,6 +266,5 @@ export async function init(dom, opts = {}) {
   return new EChartsWasmChart(wasm, canvas, dom);
 }
 
-/** 默认导出命名空间式 API */
 const echarts = { init };
 export default echarts;
