@@ -32,4 +32,15 @@ impl Group {
         self.children.push(child);
         self.base.mark_redraw();
     }
+
+    /// 从组中移除指定子节点（对齐 zrender Group#remove）
+    pub fn remove_child(&mut self, child: ChildRef) -> bool {
+        if let Some(idx) = self.children.iter().position(|c| *c == child) {
+            self.children.remove(idx);
+            self.base.mark_redraw();
+            true
+        } else {
+            false
+        }
+    }
 }

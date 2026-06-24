@@ -298,4 +298,40 @@ mod tests {
         let rgba = zr.refresh().unwrap();
         assert!(rgba.chunks(4).any(|px| px[0] > 200));
     }
+
+    #[test]
+    fn del_root_removes_from_scene() {
+        let mut zr = ZRenderer::new(100, 100).unwrap();
+        let path = zr.storage.create_path(Path::new(
+            Shape::Rect(RectShape {
+                x: 10.0,
+                y: 10.0,
+                width: 80.0,
+                height: 80.0,
+            }),
+            PathStyle {
+                fill: FillStrokeStyle::color("#5470c6"),
+                ..Default::default()
+            },
+        ));
+        zr.storage.add_root(ChildRef::Path(path));
+        let with_shape = zr.refresh().unwrap();
+        assert!(with_shape.chunks(4).any(|px| px[3] > 0));
+
+        zr.storage.del_root(ChildRef::Path(path));
+        let empty = zr.refresh().unwrap();
+        assert!(!empty.chunks(4).any(|px| px[3] > 0));
+    }
+
+    #[test]
+    fn group_remove_child_updates_hit_test() {
+        let mut zr = ZRenderer::new(320, 160).unwrap();
+        build_test_scene(&mut zr.storage);
+        assert!(zr.find_hover(180.0, 80.0).is_some());
+
+        let circle = ChildRef::Path(1);
+        zr.storage.group_remove_child(0, circle);
+        assert!(zr.find_hover(180.0, 80.0).is_none());
+        assert!(zr.find_hover(70.0, 50.0).is_some());
+    }
 }

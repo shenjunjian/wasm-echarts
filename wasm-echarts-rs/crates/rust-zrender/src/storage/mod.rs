@@ -70,9 +70,24 @@ impl Storage {
         self.display_dirty = true;
     }
 
+    /// 从根节点移除指定子节点（对齐 zrender Storage#delRoot）
+    pub fn del_root(&mut self, child: ChildRef) {
+        if let Some(idx) = self.roots.iter().position(|c| *c == child) {
+            self.roots.remove(idx);
+            self.display_dirty = true;
+        }
+    }
+
     pub fn group_add_child(&mut self, group_index: usize, child: ChildRef) {
         self.groups[group_index].add_child(child);
         self.display_dirty = true;
+    }
+
+    /// 从组中移除指定子节点（对齐 zrender Group#remove）
+    pub fn group_remove_child(&mut self, group_index: usize, child: ChildRef) {
+        if self.groups[group_index].remove_child(child) {
+            self.display_dirty = true;
+        }
     }
 
     pub fn group_mut(&mut self, index: usize) -> &mut Group {

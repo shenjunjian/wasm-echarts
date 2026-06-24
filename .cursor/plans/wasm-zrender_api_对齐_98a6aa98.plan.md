@@ -4,10 +4,10 @@ overview: 移除 scene.rs 预设场景，将 wasm-zrender 重构为与 zrender e
 todos:
   - id: rust-storage-remove
     content: rust-zrender：实现 Storage::del_root / group_remove_child，支撑 zr.remove 与 Group.remove
-    status: pending
+    status: completed
   - id: wasm-core
     content: wasm-zrender：ZRender 实例表 + ElementRegistry + opts 解析 + 删除 scene.rs/instance 旧 API
-    status: pending
+    status: completed
   - id: wasm-graphic-impl
     content: wasm-zrender：导出 Group/Rect/Circle/Line/Polygon/Polyline/Sector/Text，实现 add/useState/setStateStyle/findHover
     status: pending

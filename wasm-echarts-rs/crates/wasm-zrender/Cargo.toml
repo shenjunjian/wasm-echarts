@@ -2,7 +2,7 @@
 name = "wasm-zrender"
 version = "0.1.0"
 edition = "2021"
-description = "wasm-bindgen 薄封装，浏览器侧暴露 rust-zrender ZRenderInstance API"
+description = "wasm-bindgen 薄封装，浏览器侧暴露对齐 zrender export.ts 的 init/Group/Rect API"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
