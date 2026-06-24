@@ -96,9 +96,7 @@ impl ElementRegistry {
             ElementKind::Group => Ok(ChildRef::Group(idx)),
             ElementKind::Path => Ok(ChildRef::Path(idx)),
             ElementKind::Image => Ok(ChildRef::Image(idx)),
-            ElementKind::Text => Err(JsValue::from_str(
-                "Text as group child is not supported yet; use zr.add(text) at root",
-            )),
+            ElementKind::Text => Ok(ChildRef::Text(idx)),
         }
     }
 
@@ -520,11 +518,8 @@ pub(crate) fn mount_element_to_zr(zr_id: u32, element: &Element) -> Result<(), J
         reg.attach_to_zr(element_id, zr_id)?;
         with_zr(zr_id, |zr| {
             reg.materialize_tree(zr, zr_id, element_id)?;
-            let kind = reg.kind(element_id).unwrap();
-            if kind != ElementKind::Text {
-                let child = reg.child_ref(element_id)?;
-                zr.storage.add_root(child);
-            }
+            let child = reg.child_ref(element_id)?;
+            zr.storage.add_root(child);
             reg.mark_mounted(element_id, zr_id)?;
             Ok(())
         })
@@ -536,18 +531,12 @@ pub(crate) fn unmount_element_from_zr(zr_id: u32, element: &Element) -> Result<(
     ELEMENT_REGISTRY.with(|reg| {
         let mut reg = reg.borrow_mut();
         reg.assert_belongs_to_zr(element_id, zr_id)?;
-        let kind = reg.kind(element_id).unwrap();
-        if kind != ElementKind::Text {
-            let child = reg.child_ref(element_id)?;
-            reg.mark_unmounted(element_id);
-            with_zr(zr_id, |zr| {
-                zr.storage.del_root(child);
-                Ok(())
-            })
-        } else {
-            reg.mark_unmounted(element_id);
+        let child = reg.child_ref(element_id)?;
+        reg.mark_unmounted(element_id);
+        with_zr(zr_id, |zr| {
+            zr.storage.del_root(child);
             Ok(())
-        }
+        })
     })
 }
 
@@ -573,6 +562,15 @@ pub(crate) fn register_text(opts: &JsValue) -> Element {
     let id = ELEMENT_REGISTRY.with(|reg| {
         reg.borrow_mut()
             .register(ElementKind::Text, pending, "text")
+    });
+    Element::from_id(id)
+}
+
+pub(crate) fn register_tspan(opts: &JsValue) -> Element {
+    let pending = build_pending_text(opts);
+    let id = ELEMENT_REGISTRY.with(|reg| {
+        reg.borrow_mut()
+            .register(ElementKind::Text, pending, "tspan")
     });
     Element::from_id(id)
 }
@@ -651,6 +649,9 @@ mod tests {
     use std::collections::HashMap;
     use rust_zrender::ZRenderer;
 
+    use crate::bridge::hit::hit_to_hover_result;
+    use crate::element::Element;
+
     #[test]
     fn element_registry_tracks_mount_state() {
         use rust_zrender::{DisplayableProps, PathStyle, Shape, RectShape};
@@ -676,6 +677,125 @@ mod tests {
         reg.mark_mounted(id, 1).unwrap();
         assert!(reg.is_mounted(id));
         assert!(!reg.can_add_to_zr(id));
+    }
+
+    #[test]
+    fn mount_group_text_find_hover_end_to_end() {
+        use rust_zrender::{
+            DisplayableProps, TextAlign, TextBaseline, TextStyle, ZRenderer,
+        };
+
+        ELEMENT_REGISTRY.with(|reg| reg.borrow_mut().clear());
+        ZR_REGISTRY.with(|reg| reg.borrow_mut().clear());
+
+        let zr = ZRenderer::new(320, 160).unwrap();
+        let zr_id = ZR_REGISTRY.with(|reg| reg.borrow_mut().insert(zr));
+
+        let mut reg = ElementRegistry::default();
+        let group_id = reg.register(ElementKind::Group, PendingData::group(), "group");
+        let pending = PendingData::Text(crate::element::pending::PendingText {
+            content: "Hover".into(),
+            x: 50.0,
+            y: 50.0,
+            style: TextStyle {
+                font_size: 20.0,
+                align: TextAlign::Left,
+                baseline: TextBaseline::Top,
+                ..Default::default()
+            },
+            displayable: DisplayableProps::default(),
+            silent: false,
+            name: String::new(),
+            ec_data: Default::default(),
+        });
+        let text_id = reg.register(ElementKind::Text, pending, "text");
+        reg.set_parent(text_id, group_id).unwrap();
+
+        ELEMENT_REGISTRY.with(|global| {
+            *global.borrow_mut() = reg;
+        });
+
+        let group_el = Element::from_id(group_id);
+        mount_element_to_zr(zr_id, &group_el).unwrap();
+
+        let hit = with_zr(zr_id, |zr| Ok(zr.find_hover(60.0, 55.0)))
+            .unwrap()
+            .expect("handler hit");
+        assert!(matches!(hit.target, rust_zrender::HitTarget::Text(_)));
+        let hover = hit_to_hover_result(&hit).expect("registry maps text storage index");
+        assert_eq!(hover.target().element_type(), "text");
+    }
+
+    #[test]
+    fn text_in_group_mount_and_hover() {
+        use rust_zrender::{
+            DisplayableProps, TextAlign, TextBaseline, TextStyle, ZRenderer,
+        };
+
+        let mut reg = ElementRegistry::default();
+        let group_id = reg.register(ElementKind::Group, PendingData::group(), "group");
+        let pending = PendingData::Text(crate::element::pending::PendingText {
+            content: "Hover Label".into(),
+            x: 50.0,
+            y: 50.0,
+            style: TextStyle {
+                font_size: 20.0,
+                align: TextAlign::Left,
+                baseline: TextBaseline::Top,
+                ..Default::default()
+            },
+            displayable: DisplayableProps::default(),
+            silent: false,
+            name: String::new(),
+            ec_data: Default::default(),
+        });
+        let text_id = reg.register(ElementKind::Text, pending, "text");
+        reg.set_parent(text_id, group_id).unwrap();
+
+        let mut zr = ZRenderer::new(320, 160).unwrap();
+        reg.materialize_tree(&mut zr, 1, group_id).unwrap();
+        let group_idx = reg.storage_index(group_id).unwrap();
+        zr.storage
+            .add_root(rust_zrender::ChildRef::Group(group_idx));
+
+        let hit = rust_zrender::Handler::find_hover(&mut zr.storage, 60.0, 55.0)
+            .expect("text in group should be hittable");
+        assert!(matches!(hit.target, rust_zrender::HitTarget::Text(_)));
+        assert!(reg.find_by_storage(ElementKind::Text, 0).is_some());
+    }
+
+    #[test]
+    fn text_mount_and_find_by_storage() {
+        use rust_zrender::{
+            DisplayableProps, TextAlign, TextBaseline, TextStyle, ZRenderer,
+        };
+
+        let mut reg = ElementRegistry::default();
+        let pending = PendingData::Text(crate::element::pending::PendingText {
+            content: "Hover".into(),
+            x: 50.0,
+            y: 50.0,
+            style: TextStyle {
+                font_size: 20.0,
+                align: TextAlign::Left,
+                baseline: TextBaseline::Top,
+                ..Default::default()
+            },
+            displayable: DisplayableProps::default(),
+            silent: false,
+            name: String::new(),
+            ec_data: Default::default(),
+        });
+        let element_id = reg.register(ElementKind::Text, pending, "text");
+        let mut zr = ZRenderer::new(320, 160).unwrap();
+        reg.materialize_tree(&mut zr, 1, element_id).unwrap();
+        let child = reg.child_ref(element_id).unwrap();
+        zr.storage.add_root(child);
+
+        let hit = rust_zrender::Handler::find_hover(&mut zr.storage, 60.0, 55.0)
+            .expect("text should be hittable");
+        assert!(matches!(hit.target, rust_zrender::HitTarget::Text(_)));
+        assert!(reg.find_by_storage(ElementKind::Text, 0).is_some());
     }
 
     #[test]

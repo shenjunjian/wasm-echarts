@@ -7,6 +7,7 @@ pub enum ChildRef {
     Group(usize),
     Path(usize),
     Image(usize),
+    Text(usize),
 }
 
 #[derive(Debug, Clone)]

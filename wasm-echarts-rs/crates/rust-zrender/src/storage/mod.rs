@@ -14,6 +14,7 @@ use timsort::sort_display_list;
 pub enum DisplayElementRef {
     Path(usize),
     Image(usize),
+    Text(usize),
 }
 
 #[derive(Debug, Clone)]
@@ -78,6 +79,7 @@ impl Storage {
     pub fn create_text(&mut self, text: Text) -> usize {
         let idx = self.texts.len();
         self.texts.push(text);
+        self.display_dirty = true;
         idx
     }
 
@@ -136,6 +138,14 @@ impl Storage {
 
     pub fn texts(&self) -> &[Text] {
         &self.texts
+    }
+
+    pub fn text(&self, index: usize) -> &Text {
+        &self.texts[index]
+    }
+
+    pub fn text_mut(&mut self, index: usize) -> &mut Text {
+        &mut self.texts[index]
     }
 
     pub fn mark_all_dirty(&mut self) {
@@ -209,6 +219,7 @@ impl Storage {
                             ChildRef::Group(ci) => self.groups[ci].base.dirty |= REDRAW_BIT,
                             ChildRef::Path(pi) => self.paths[pi].base.dirty |= REDRAW_BIT,
                             ChildRef::Image(ii) => self.images[ii].base.dirty |= REDRAW_BIT,
+                            ChildRef::Text(ti) => self.texts[ti].base.dirty |= REDRAW_BIT,
                         }
                     }
                     self.update_and_add(&c, Some(&transform), clip_chain.clone());
@@ -250,6 +261,23 @@ impl Storage {
                 let zlevel = image.displayable.zlevel;
                 self.display_list.push(DisplayItem {
                     element: DisplayElementRef::Image(ii),
+                    sort_key,
+                    clip_chain,
+                    zlevel,
+                });
+            }
+            ChildRef::Text(ti) => {
+                let text = &mut self.texts[ti];
+                text.base.update_transform(parent_transform);
+                normalize_z(&mut text.displayable);
+                let sort_key = (
+                    text.displayable.zlevel,
+                    text.displayable.z,
+                    text.displayable.z2,
+                );
+                let zlevel = text.displayable.zlevel;
+                self.display_list.push(DisplayItem {
+                    element: DisplayElementRef::Text(ti),
                     sort_key,
                     clip_chain,
                     zlevel,

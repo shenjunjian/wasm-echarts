@@ -46,5 +46,10 @@ fn element_from_hit_target(target: HitTarget) -> Option<Element> {
                 .find_by_storage(ElementKind::Image, image_index)
                 .map(Element::from_id)
         }),
+        HitTarget::Text(text_index) => ELEMENT_REGISTRY.with(|reg| {
+            reg.borrow()
+                .find_by_storage(ElementKind::Text, text_index)
+                .map(Element::from_id)
+        }),
     }
 }

@@ -8,6 +8,7 @@ use crate::storage::{DisplayElementRef, DisplayItem, Storage};
 pub enum HitTarget {
     Path(usize),
     Image(usize),
+    Text(usize),
 }
 
 /// 命中结果
@@ -81,6 +82,23 @@ impl Handler {
                     silent: image.silent,
                 })
             }
+            DisplayElementRef::Text(text_index) => {
+                let text = storage.text(text_index);
+                if text.base.ignore || text.displayable.invisible || text.silent {
+                    return None;
+                }
+                if !text.hit_test(x, y) {
+                    return None;
+                }
+                Some(HitResult {
+                    x,
+                    y,
+                    target: HitTarget::Text(text_index),
+                    top_target: HitTarget::Text(text_index),
+                    ec_data: text.ec_data.clone(),
+                    silent: text.silent,
+                })
+            }
         }
     }
 
@@ -104,6 +122,7 @@ mod tests {
     use crate::graphic::path::Path;
     use crate::graphic::shapes::{CircleShape, RectShape, Shape};
     use crate::graphic::style::{FillStrokeStyle, PathStyle};
+    use crate::graphic::text::{Text, TextAlign, TextBaseline, TextStyle};
     use std::sync::Arc;
 
     #[test]
@@ -210,5 +229,37 @@ mod tests {
         let hit = Handler::find_hover(&mut storage, 40.0, 40.0).unwrap();
         assert_eq!(hit.target, HitTarget::Image(image));
         assert_eq!(hit.ec_data.series_index, Some(1));
+    }
+
+    #[test]
+    fn text_hit_test() {
+        let mut storage = Storage::new();
+        let text = storage.create_text(
+            Text::new("Hit Me", 50.0, 50.0)
+                .with_style(TextStyle {
+                    font_size: 20.0,
+                    align: TextAlign::Left,
+                    baseline: TextBaseline::Top,
+                    ..Default::default()
+                })
+                .with_ec_data(EcData::new(2, 3)),
+        );
+        storage.text_mut(text).silent = false;
+        storage.add_root(ChildRef::Text(text));
+
+        let hit = Handler::find_hover(&mut storage, 60.0, 55.0).unwrap();
+        assert_eq!(hit.target, HitTarget::Text(text));
+        assert_eq!(hit.ec_data.series_index, Some(2));
+        assert!(Handler::find_hover(&mut storage, 5.0, 5.0).is_none());
+    }
+
+    #[test]
+    fn silent_text_is_not_hittable() {
+        let mut storage = Storage::new();
+        let text = storage.create_text(Text::new("Silent", 50.0, 50.0));
+        storage.text_mut(text).silent = true;
+        storage.add_root(ChildRef::Text(text));
+
+        assert!(Handler::find_hover(&mut storage, 60.0, 55.0).is_none());
     }
 }

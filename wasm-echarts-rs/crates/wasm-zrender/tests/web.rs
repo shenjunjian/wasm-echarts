@@ -5,9 +5,9 @@ use wasm_bindgen::JsValue;
 use wasm_bindgen_test::*;
 
 use wasm_zrender::{
-    clear_fonts, dispose_all, init, register_font, Arc, BezierCurve, Circle, CompoundPath, Droplet,
-    Ellipse, Group, Heart, Image, Isogon, LinearGradient, Path, Rect, Ring, Rose, Star, Text,
-    Trochoid,
+    clear_fonts, dispose_all, init, register_font, Arc, BezierCurve, Circle, CompoundPath, Displayable,
+    Droplet, Ellipse, Group, Heart, Image, Isogon, LinearGradient, Path, Rect, Ring, Rose, Star, Text,
+    Trochoid, TSpan,
 };
 
 const TEST_FONT: &[u8] = include_bytes!("../tests/fixtures/NotoSansSC-Regular.ttf");
@@ -175,6 +175,63 @@ fn text_refresh_outputs_rgba() {
     let rgba = zr.refresh().unwrap();
     assert_eq!(rgba.len(), 480 * 180 * 4);
     assert!(rgba.chunks(4).any(|px| px[3] > 0));
+}
+
+#[wasm_bindgen_test]
+fn text_in_group_refresh_outputs_rgba() {
+    reset_registry();
+    register_test_font();
+    let mut zr = init(JsValue::NULL, init_opts(320, 160)).unwrap();
+    let g = Group::new();
+
+    let style = Object::new();
+    Reflect::set(&style, &"text".into(), &JsValue::from_str("Group Text")).unwrap();
+    Reflect::set(&style, &"x".into(), &JsValue::from(40.0)).unwrap();
+    Reflect::set(&style, &"y".into(), &JsValue::from(60.0)).unwrap();
+    Reflect::set(&style, &"fill".into(), &JsValue::from_str("#5470c6")).unwrap();
+    Reflect::set(&style, &"fontSize".into(), &JsValue::from(16.0)).unwrap();
+
+    let opts = Object::new();
+    Reflect::set(&opts, &"style".into(), &style).unwrap();
+
+    let text = Text::new(opts.into());
+    g.add(JsValue::from(text)).unwrap();
+    zr.add(JsValue::from(g)).unwrap();
+
+    let rgba = zr.refresh().unwrap();
+    assert_eq!(rgba.len(), 320 * 160 * 4);
+    assert!(rgba.chunks(4).any(|px| px[3] > 0));
+}
+
+#[wasm_bindgen_test]
+fn tspan_refresh_outputs_rgba() {
+    reset_registry();
+    register_test_font();
+    let mut zr = init(JsValue::NULL, init_opts(320, 160)).unwrap();
+
+    let style = Object::new();
+    Reflect::set(&style, &"text".into(), &JsValue::from_str("TSpan MVP")).unwrap();
+    Reflect::set(&style, &"x".into(), &JsValue::from(30.0)).unwrap();
+    Reflect::set(&style, &"y".into(), &JsValue::from(70.0)).unwrap();
+    Reflect::set(&style, &"fill".into(), &JsValue::from_str("#ee6666")).unwrap();
+    Reflect::set(&style, &"fontSize".into(), &JsValue::from(18.0)).unwrap();
+
+    let opts = Object::new();
+    Reflect::set(&opts, &"style".into(), &style).unwrap();
+
+    let tspan = TSpan::new(opts.into());
+    zr.add(JsValue::from(tspan)).unwrap();
+
+    let rgba = zr.refresh().unwrap();
+    assert_eq!(rgba.len(), 320 * 160 * 4);
+    assert!(rgba.chunks(4).any(|px| px[3] > 0));
+}
+
+#[wasm_bindgen_test]
+fn displayable_is_abstract() {
+    reset_registry();
+    let result = Displayable::new(JsValue::NULL);
+    assert!(result.is_err());
 }
 
 #[wasm_bindgen_test]

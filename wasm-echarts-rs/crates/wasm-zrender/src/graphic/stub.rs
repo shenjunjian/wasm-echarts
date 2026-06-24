@@ -20,9 +20,7 @@ macro_rules! stub_class {
     };
 }
 
-stub_class!(TSpan);
 stub_class!(IncrementalDisplayable);
-stub_class!(Displayable);
 
 #[wasm_bindgen]
 pub struct Point;

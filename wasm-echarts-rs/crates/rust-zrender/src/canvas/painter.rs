@@ -7,7 +7,7 @@ use crate::canvas::brush::{BrushScope, brush};
 use crate::canvas::image_brush::brush_image;
 use crate::storage::DisplayElementRef;
 use crate::canvas::layer::Layer;
-use crate::canvas::text_brush::{brush_text, text_sort_key};
+use crate::canvas::text_brush::brush_text;
 use crate::core::types::RgbaBuffer;
 use crate::storage::Storage;
 
@@ -69,7 +69,6 @@ impl<B: CanvasBackend> Painter<B> {
         for elements in by_zlevel.values() {
             brush_elements(ctx, storage, elements, scope)?;
         }
-        brush_all_texts(ctx, storage)?;
         Ok(self.base_layer.backend().get_rgba())
     }
 
@@ -101,9 +100,6 @@ impl<B: CanvasBackend> Painter<B> {
             composite_layer(&mut self.base_layer, layer)?;
         }
 
-        let ctx = self.base_layer.backend_mut() as &mut dyn crate::canvas::backend::CanvasContext;
-        brush_all_texts(ctx, storage)?;
-
         Ok(self.base_layer.backend().get_rgba())
     }
 }
@@ -126,26 +122,13 @@ fn brush_elements(
             DisplayElementRef::Image(image_index) => {
                 brush_image(ctx, storage, *image_index, scope)?;
             }
+            DisplayElementRef::Text(text_index) => {
+                let text = storage.text(*text_index);
+                if !text.base.ignore && !text.displayable.invisible {
+                    brush_text(ctx, text)?;
+                }
+            }
         }
-    }
-    Ok(())
-}
-
-fn brush_all_texts(
-    ctx: &mut dyn crate::canvas::backend::CanvasContext,
-    storage: &Storage,
-) -> Result<(), crate::canvas::backend::BackendError> {
-    if storage.texts().is_empty() {
-        return Ok(());
-    }
-    let mut order: Vec<usize> = (0..storage.texts().len()).collect();
-    order.sort_by(|a, b| {
-        text_sort_key(&storage.texts()[*a])
-            .partial_cmp(&text_sort_key(&storage.texts()[*b]))
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
-    for idx in order {
-        brush_text(ctx, &storage.texts()[idx])?;
     }
     Ok(())
 }
