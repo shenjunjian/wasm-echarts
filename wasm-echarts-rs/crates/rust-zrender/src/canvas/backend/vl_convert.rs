@@ -7,7 +7,7 @@ use crate::graphic::text::{TextAlign, TextBaseline};
 use std::sync::Arc;
 use vl_convert_canvas2d::{
     ArcParams, Canvas2dContext, CanvasGradient, CanvasImageDataRef, CanvasPattern,
-    CubicBezierParams, QuadraticBezierParams, RectParams,
+    CubicBezierParams, QuadraticBezierParams, RectParams, ResolvedFontConfig,
 };
 
 /// 基于 vl-convert-canvas2d 的 Canvas 2D 后端
@@ -20,19 +20,18 @@ impl VlConvertBackend {
         let ctx = create_context(width, height)?;
         Ok(Self { ctx })
     }
+
+    pub fn update_font_database(&mut self, resolved: &ResolvedFontConfig) {
+        self.ctx.update_font_database(resolved);
+    }
 }
 
 fn create_context(width: u32, height: u32) -> Result<Canvas2dContext, BackendError> {
-    #[cfg(target_arch = "wasm32")]
-    {
-        use crate::canvas::font_config::resolved_font_config;
-        Canvas2dContext::with_resolved(width, height, resolved_font_config())
+    crate::canvas::font_registry::with_resolved_font_config(|resolved| {
+        Canvas2dContext::with_resolved(width, height, resolved)
             .map_err(|e| BackendError::Canvas(e.to_string()))
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        Canvas2dContext::new(width, height).map_err(|e| BackendError::Canvas(e.to_string()))
-    }
+    })
+    .map_err(|e| BackendError::Canvas(e.to_string()))?
 }
 
 impl CanvasContext for VlConvertBackend {
@@ -305,6 +304,10 @@ impl CanvasBackend for VlConvertBackend {
             anticlockwise: false,
         });
         self.stroke();
+    }
+
+    fn update_font_database(&mut self, resolved: &ResolvedFontConfig) {
+        self.ctx.update_font_database(resolved);
     }
 }
 

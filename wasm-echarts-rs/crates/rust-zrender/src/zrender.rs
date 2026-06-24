@@ -61,6 +61,11 @@ impl ZRenderer {
         Ok(())
     }
 
+    /// 注册新字体后，热更新当前 Painter 的字体库。
+    pub fn update_font_database(&mut self, resolved: &crate::ResolvedFontConfig) {
+        self.painter.update_font_database(resolved);
+    }
+
     /// 命中检测（反向遍历 displayList）
     pub fn find_hover(&mut self, x: f64, y: f64) -> Option<HitResult> {
         Handler::find_hover(&mut self.storage, x, y)

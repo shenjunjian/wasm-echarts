@@ -112,6 +112,11 @@ pub trait CanvasBackend: CanvasContext {
     fn clear(&mut self);
     fn get_rgba(&self) -> RgbaBuffer;
 
+    /// 热更新字体库（注册新字体后调用）。
+    fn update_font_database(&mut self, resolved: &crate::ResolvedFontConfig) {
+        let _ = resolved;
+    }
+
     // 便捷方法（阶段 0 demo 保留）
     fn fill_rect(&mut self, x: f64, y: f64, width: f64, height: f64);
     fn stroke_rect(&mut self, x: f64, y: f64, width: f64, height: f64);

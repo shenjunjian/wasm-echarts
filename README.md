@@ -141,6 +141,8 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 | 导出 | 说明 |
 |------|------|
 | `init(dom?, opts?)` | 创建 ZRender 实例（dom 忽略，尺寸来自 opts） |
+| `registerFont(data, opts?)` | 注册字体 bytes（**Text 渲染前必调**，见下文） |
+| `clearFonts()` | 清空已注册字体（测试用） |
 | `dispose(zr)` / `disposeAll()` | 释放实例 |
 | `Group` / `Rect` / `Circle` / `Line` / `Polygon` / `Polyline` / `Sector` / `Text` | 已实现图元 |
 | `ZRender.add(el)` / `remove(el)` | 根节点增删 |
@@ -150,6 +152,38 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 | 其余 export.ts 类型 | stub 导出，构造时抛 `not implemented` |
 
 **与官方差异**：仅离屏 canvas、`refresh()` 同步上屏、无 animation / 事件总线。详见 [zrender 文档](wasm-echarts-rs/site/zrender/docs/index.html)。
+
+### 字体加载（Text 必看）
+
+wasm-zrender 在 Rust 离屏 Canvas 中绘制文字，**WASM 环境无法读取系统字体**。使用 `Text` 图元前，须由宿主将字体文件 bytes 注册到 fontdb：
+
+```javascript
+import initWasm, { init, registerFont, Text } from './pkg/wasm_zrender.js';
+
+await initWasm();
+
+// 1. 加载字体（TTF / OTF / WOFF）
+const bytes = new Uint8Array(
+  await (await fetch('/fonts/NotoSansSC-Regular.ttf')).arrayBuffer()
+);
+
+// 2. 注册到 WASM fontdb（须在含 Text 的 refresh 之前）
+registerFont(bytes, {
+  familyName: 'Noto Sans SC',       // 可选，覆盖字体族名
+  sansSerif: ['Noto Sans SC'],      // 可选，映射 CSS sans-serif
+});
+
+// 3. 正常使用
+const zr = init(null, { width: 480, height: 360 });
+zr.add(new Text({ style: { text: '中文', x: 24, y: 48, fontSize: 18, fill: '#333' } }));
+const rgba = zr.refresh();
+```
+
+**Wasmer / 原生 Rust** 宿主可直接调用 `rust_zrender::register_font(bytes, RegisterFontOptions { ... })`，无需 JS。
+
+site 文档站提供辅助模块 `site/src/zrender/fonts.js`（`loadFontFromUrl` / `ensureDefaultFont`），默认字体位于 `site/public/fonts/NotoSansSC-Regular.ttf`。text 示例见 [zrender/examples/text.html](wasm-echarts-rs/site/zrender/examples/text.html)。
+
+未注册字体时渲染 `Text` 会报错 `no default font found`。
 
 ## 使用方法
 

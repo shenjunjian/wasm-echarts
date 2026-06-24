@@ -451,7 +451,7 @@ setOption → OptionManager.merge → GlobalModel
 | 函数回调 WASM 边界开销 | 对常量结果做 per-series 缓存；热点路径（如 color）可 batch 调用 |
 | renderItem `api` 对象复杂 | 分阶段实现 api 子集，与 CustomSeries 官方文档对齐 |
 | WASM 体积 | `opt-level = "s"` + wasm-opt；按需编译 chart feature |
-| 字体渲染 | JS 预加载字体 bytes 传入 WASM fontdb |
+| 字体渲染 | **已实现**：宿主 `registerFont` / Rust `register_font` 注入 fontdb；详见 [wasm-zrender 字体规范](wasm-zrender_api_对齐_98a6aa98.plan.md#字体加载规范必遵) |
 
 ---
 

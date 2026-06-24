@@ -4,12 +4,21 @@ use js_sys::{Object, Reflect};
 use wasm_bindgen::JsValue;
 use wasm_bindgen_test::*;
 
-use wasm_zrender::{dispose_all, init, Arc, Circle, Group, Rect, Text};
+use wasm_zrender::{clear_fonts, dispose_all, init, register_font, Arc, Circle, Group, Rect, Text};
+
+const TEST_FONT: &[u8] = include_bytes!("../tests/fixtures/NotoSansSC-Regular.ttf");
 
 wasm_bindgen_test_configure!(run_in_node_experimental);
 
 fn reset_registry() {
     dispose_all();
+    clear_fonts().unwrap();
+}
+
+fn register_test_font() {
+    let opts = Object::new();
+    Reflect::set(&opts, &"familyName".into(), &JsValue::from_str("Noto Sans SC")).unwrap();
+    register_font(TEST_FONT, opts.into()).unwrap();
 }
 
 fn init_opts(width: u32, height: u32) -> JsValue {
@@ -87,6 +96,7 @@ fn find_hover_returns_element_handle() {
 #[wasm_bindgen_test]
 fn text_refresh_outputs_rgba() {
     reset_registry();
+    register_test_font();
     let mut zr = init(JsValue::NULL, init_opts(480, 180)).unwrap();
 
     let style = Object::new();

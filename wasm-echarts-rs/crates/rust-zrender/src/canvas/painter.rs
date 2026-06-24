@@ -24,6 +24,13 @@ impl<B: CanvasBackend> Painter<B> {
         }
     }
 
+    pub fn update_font_database(&mut self, resolved: &crate::ResolvedFontConfig)
+    where
+        B: CanvasBackend,
+    {
+        self.base_layer.backend_mut().update_font_database(resolved);
+    }
+
     pub fn refresh(
         &mut self,
         storage: &mut Storage,

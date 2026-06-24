@@ -3,6 +3,7 @@
 mod bridge;
 mod element;
 mod export;
+mod font;
 mod graphic;
 mod registry;
 mod utils;
@@ -22,6 +23,7 @@ pub use graphic::{
     Trochoid, TSpan,
 };
 pub use zrender::{dispose, dispose_all, get_instance, init, ZRender};
+pub use font::{clear_fonts, register_font};
 
 #[wasm_bindgen(start)]
 pub fn init_panic_hook() {

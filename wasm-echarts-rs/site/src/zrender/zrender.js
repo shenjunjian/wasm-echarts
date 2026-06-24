@@ -9,6 +9,8 @@ export function ensureWasm() {
   return wasmReady;
 }
 
+export { ensureDefaultFont, loadFontFromUrl, registerFontBytes } from './fonts.js';
+
 /** @param {import('@wasm-zrender/wasm_zrender.js').ZRender} zr @param {HTMLCanvasElement} canvas */
 export function paintCanvas(zr, canvas) {
   const rgba = zr.refresh();

@@ -445,11 +445,23 @@ impl ZRenderRegistry {
     pub fn clear(&mut self) {
         self.instances.clear();
     }
+
+    pub fn update_all_font_databases(&mut self, resolved: &rust_zrender::ResolvedFontConfig) {
+        for zr in self.instances.values_mut() {
+            zr.update_font_database(resolved);
+        }
+    }
 }
 
 thread_local! {
     pub static ZR_REGISTRY: RefCell<ZRenderRegistry> = RefCell::new(ZRenderRegistry::default());
     pub static ELEMENT_REGISTRY: RefCell<ElementRegistry> = RefCell::new(ElementRegistry::default());
+}
+
+pub(crate) fn refresh_all_font_databases(resolved: &rust_zrender::ResolvedFontConfig) {
+    ZR_REGISTRY.with(|reg| {
+        reg.borrow_mut().update_all_font_databases(resolved);
+    });
 }
 
 pub(crate) fn with_zr<F, T>(id: u32, f: F) -> Result<T, JsValue>

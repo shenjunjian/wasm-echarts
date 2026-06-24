@@ -230,3 +230,22 @@ pub fn get_object(obj: &JsValue, key: &str) -> JsValue {
         JsValue::UNDEFINED
     }
 }
+
+pub fn get_string_array(obj: &JsValue, key: &str) -> Option<Vec<String>> {
+    let value = get_value(obj, key);
+    if !value.is_instance_of::<Array>() {
+        return None;
+    }
+    let array = Array::from(&value);
+    let mut out = Vec::with_capacity(array.length() as usize);
+    for item in array.iter() {
+        if let Some(s) = item.as_string() {
+            out.push(s);
+        }
+    }
+    if out.is_empty() {
+        None
+    } else {
+        Some(out)
+    }
+}

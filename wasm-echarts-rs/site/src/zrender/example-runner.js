@@ -1,4 +1,4 @@
-import { createZrenderView } from './zrender.js';
+import { createZrenderView, ensureDefaultFont } from './zrender.js';
 import { ZRENDER_SETUPS } from './example-setups.js';
 
 const EXAMPLE_META = {
@@ -23,6 +23,10 @@ export async function runZrenderExample(exampleId, previewEl, log, hooks = {}) {
   }
 
   const setup = ZRENDER_SETUPS[exampleId];
+  if (exampleId === 'text') {
+    await ensureDefaultFont();
+  }
+
   const view = await createZrenderView(previewEl, {
     width: meta.width,
     height: meta.height,

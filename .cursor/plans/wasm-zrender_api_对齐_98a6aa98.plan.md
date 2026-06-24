@@ -20,6 +20,9 @@ todos:
   - id: tests-verify
     content: wasm-bindgen-test + 5 个示例页手工验收，确认无 load_scene 残留
     status: completed
+  - id: font-registry
+    content: 字体：宿主预加载 font bytes → registerFont / rust register_font，文档与 site text 示例
+    status: completed
 isProject: false
 ---
 
@@ -28,9 +31,13 @@ isProject: false
 ## 目标用法（对齐官方，保留离屏渲染差异）
 
 ```javascript
-import initWasm, { init, dispose, Group, Rect, Circle, Line, Polygon, Sector, Text } from '@wasm-zrender/wasm_zrender.js';
+import initWasm, { init, dispose, registerFont, Group, Rect, Circle, Line, Polygon, Sector, Text } from '@wasm-zrender/wasm_zrender.js';
 
 await initWasm();
+
+// 文本渲染前须注册字体（WASM 无系统字体，见下文「字体加载规范」）
+const fontBytes = new Uint8Array(await (await fetch('/fonts/NotoSansSC-Regular.ttf')).arrayBuffer());
+registerFont(fontBytes, { familyName: 'Noto Sans SC', sansSerif: ['Noto Sans SC'] });
 
 const zr = init(null, { width: 480, height: 360, devicePixelRatio: dpr });
 
@@ -56,7 +63,62 @@ dispose(zr);
 - 仅 canvas 离屏模式，无 SVG painter / animation 帧循环
 - `refresh()` 同步返回像素，需 JS `putImageData` 上屏
 - `init(dom)` 的 `dom` 参数忽略（尺寸来自 opts）
+- **文本渲染前须由宿主注册字体**（WASM 不读系统字体，见「字体加载规范」）
 - 未实现能力：动画、`on('click')` 事件总线、coarse pointer 等
+
+---
+
+## 字体加载规范（必遵）
+
+wasm-zrender 在 **Rust 离屏 Canvas**（vl-convert-canvas2d + cosmic-text）中绘制文本，**不经过浏览器 `ctx.font`**。WASM / Wasmer 等宿主环境读不到操作系统字体，因此：
+
+1. **禁止**在 `.wasm` 内嵌入默认字体（体积大、不可定制）。
+2. **必须**由宿主在运行时将字体文件 bytes（TTF / OTF / WOFF）注册到全局 `fontdb`。
+3. 注册时机：`initWasm()` 之后、`init()` 创建实例之前（或任意时刻；已存在的 `ZRender` 会热更新 fontdb）。
+
+### JS API（wasm-zrender）
+
+| 导出 | 说明 |
+|------|------|
+| `registerFont(data, opts?)` | `data`: `Uint8Array`；`opts.familyName` 覆盖族名；`opts.sansSerif` 映射 CSS `sans-serif` |
+| `clearFonts()` | 清空已注册字体（测试用） |
+
+```javascript
+await initWasm();
+
+const bytes = new Uint8Array(await (await fetch('/fonts/NotoSansSC-Regular.ttf')).arrayBuffer());
+registerFont(bytes, {
+  familyName: 'Noto Sans SC',
+  sansSerif: ['Noto Sans SC'],
+});
+
+const zr = init(null, { width: 480, height: 360 });
+zr.add(new Text({ style: { text: '中文', x: 24, y: 48, fontSize: 18, fill: '#333' } }));
+```
+
+site 薄壳辅助：`site/src/zrender/fonts.js` 提供 `loadFontFromUrl` / `ensureDefaultFont`；默认字体文件位于 `site/public/fonts/NotoSansSC-Regular.ttf`。
+
+### Rust API（rust-zrender，Wasmer / 原生测试）
+
+```rust
+use rust_zrender::{register_font, RegisterFontOptions, ZRenderer};
+
+register_font(font_bytes, RegisterFontOptions {
+    family_name: Some("Noto Sans SC".into()),
+    sans_serif: Some(vec!["Noto Sans SC".into()]),
+})?;
+
+let zr = ZRenderer::new(480, 360)?;
+```
+
+- **wasm32**：`load_system_fonts = false`，仅使用已注册字体。
+- **原生**：默认仍加载系统字体，已注册字体与之合并。
+
+### 示例与文档同步要求
+
+- **text** 示例必须在源码与 `examples-catalog.js` 展示 `fetch` + `registerFont` 流程。
+- README、`site/zrender/docs/index.html` 须包含本节要点。
+- 未注册字体时渲染 `Text` 会 panic（`no default font found`），文档中须明确说明。
 
 ---
 
@@ -132,6 +194,8 @@ flowchart TB
 | 导出 | 行为 |
 |------|------|
 | `init(dom?, opts?)` | 创建 `ZRender`，注册到 instances |
+| `registerFont(data, opts?)` | 注册字体 bytes 到全局 fontdb（Text 渲染前必调） |
+| `clearFonts()` | 清空已注册字体 |
 | `dispose(zr)` | 释放实例 |
 | `disposeAll()` | 清空全部 |
 | `getInstance(id)` | 按 id 取实例（可选） |
@@ -189,7 +253,7 @@ flowchart TB
 | [`site/src/zrender/zrender.js`](wasm-echarts-rs/site/src/zrender/zrender.js) | 瘦身为 **仅 canvas 上屏辅助**（`putImageData`、事件坐标转换），或合并进示例；不再维护 `createViewer({ scene })` |
 | [`site/src/zrender/example-runner.js`](wasm-echarts-rs/site/src/zrender/example-runner.js) | 执行真实 JS 源码（类似 echarts 示例），去掉 JSON `scene` 配置 |
 | [`site/src/shared/parse-source.js`](wasm-echarts-rs/site/src/shared/parse-source.js) | 删除/替换 `parseZrenderSource` 的 scene JSON 解析 |
-| [`site/zrender/docs/index.html`](wasm-echarts-rs/site/zrender/docs/index.html) | API 表改为 export.ts 风格；注明 stub 列表与离屏差异 |
+| [`site/zrender/docs/index.html`](wasm-echarts-rs/site/zrender/docs/index.html) | API 表改为 export.ts 风格；**字体加载**专节；注明 stub 列表与离屏差异 |
 | [`README.md`](README.md) | wasm-zrender API 小节更新 |
 
 5 个示例与旧 scene 的映射（内容迁到 JS，不再 Rust 预设）：

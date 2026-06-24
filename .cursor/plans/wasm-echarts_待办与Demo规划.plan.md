@@ -15,7 +15,7 @@ todos:
     content: wasm-zrender：ZRenderInstance WASM 薄封装（load_scene/find_hover/resize）；待补 add_element 动态 API
     status: pending
   - id: zrender-backend-gaps
-    content: rust-zrender：conic 渐变、Text 场景图集成、字体 JS 注入、CSS filter（可选）
+    content: rust-zrender：conic 渐变、Text 场景图集成、CSS filter（可选）；字体 JS 注入已完成（registerFont）
     status: pending
   - id: echarts-callback-full
     content: echarts 桥接：renderItem/api、axisLabel.formatter、symbol/symbolSize、formatter 缓存
@@ -282,7 +282,7 @@ cd wasm-echarts-rs/site && npm install && npm run dev
 | CSS filter | 阶段 2 | 忽略 | 文档化不支持；按需评估 |
 | Text 场景图 | 阶段 7 | 仅 `Storage.texts` 平铺列表，未进 Group/displayList | 纳入 `ChildRef::Text`、z 排序、transform |
 | Text 命中检测 | 阶段 3 | 未做 | `measure_text` + bbox contain（轴标签可 silent） |
-| 字体资源 | 风险缓解 | 使用 vl-convert 默认字体 | JS 预加载 font bytes → `fontdb` 共享 |
+| 字体资源 | 风险缓解 | **已实现**：`registerFont` / `rust_zrender::register_font` | 宿主预加载 TTF/OTF/WOFF bytes → 全局 fontdb；WASM 不嵌入字体、不读系统字体 |
 | strokeText | 阶段 7 | 未暴露 | 按需封装 `CanvasContext::stroke_text` |
 
 ### 2.2 wasm-zrender WASM 薄封装（阶段 3 规划）

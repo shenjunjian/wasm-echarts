@@ -10,6 +10,13 @@ const IMPORT_BLOCK = `import initWasm, {
   Text,
 } from '@wasm-zrender/wasm_zrender.js';`;
 
+const TEXT_IMPORT_BLOCK = `import initWasm, {
+  init,
+  dispose,
+  registerFont,
+  Text,
+} from '@wasm-zrender/wasm_zrender.js';`;
+
 const BOILERPLATE = `${IMPORT_BLOCK}
 
 const width = 480;
@@ -18,6 +25,39 @@ const dpr = window.devicePixelRatio || 1;
 
 async function main() {
   await initWasm();
+
+  const canvas = document.getElementById('canvas');
+  canvas.width = Math.floor(width * dpr);
+  canvas.height = Math.floor(height * dpr);
+  canvas.style.width = \`\${width}px\`;
+  canvas.style.height = \`\${height}px\`;
+
+  const zr = init(null, { width, height, devicePixelRatio: dpr });
+`;
+
+const TEXT_BOILERPLATE = `${TEXT_IMPORT_BLOCK}
+
+const width = 480;
+const height = 360;
+const dpr = window.devicePixelRatio || 1;
+const FONT_URL = '/fonts/NotoSansSC-Regular.ttf';
+const FONT_FAMILY = 'Noto Sans SC';
+
+async function loadFont(url) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(\`字体加载失败: \${url}\`);
+  }
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  registerFont(bytes, {
+    familyName: FONT_FAMILY,
+    sansSerif: [FONT_FAMILY],
+  });
+}
+
+async function main() {
+  await initWasm();
+  await loadFont(FONT_URL);
 
   const canvas = document.getElementById('canvas');
   canvas.width = Math.floor(width * dpr);
@@ -76,7 +116,7 @@ export const ZRENDER_SOURCE = {
   zr.add(g);
 ${FOOTER}`,
 
-  text: `${BOILERPLATE}
+  text: `${TEXT_BOILERPLATE}
   zr.add(new Text({
     style: {
       text: 'wasm-zrender 文本',
@@ -95,6 +135,17 @@ ${FOOTER}`,
       y: 96,
       fill: '#5470c6',
       fontSize: 14,
+    },
+  }));
+
+  zr.add(new Text({
+    style: {
+      text: 'right align',
+      x: 440,
+      y: 140,
+      fill: '#666',
+      fontSize: 12,
+      textAlign: 'right',
     },
   }));
 ${FOOTER}`,

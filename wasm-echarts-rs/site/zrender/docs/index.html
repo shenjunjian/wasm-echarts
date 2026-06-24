@@ -31,9 +31,83 @@ cd ../../site && npm install && npm run dev
       <h3>顶层 API</h3>
       <ul>
         <li><code>init(dom?, opts?)</code> — 创建 ZRender（<code>dom</code> 忽略，尺寸来自 opts）</li>
+        <li><code>registerFont(data, opts?)</code> — 注册字体 bytes 到全局 fontdb（<strong>Text 渲染前必调</strong>，见下节）</li>
+        <li><code>clearFonts()</code> — 清空已注册字体（测试用）</li>
         <li><code>dispose(zr)</code> / <code>disposeAll()</code> — 释放实例</li>
         <li><code>getInstance(id)</code> — 按 id 取实例</li>
       </ul>
+    </div>
+
+    <div class="doc-section">
+      <h3>字体加载（Text 必看）</h3>
+      <p>
+        wasm-zrender 在 <strong>Rust 离屏 Canvas</strong>（vl-convert-canvas2d + cosmic-text）中绘制文本，
+        不经过浏览器 <code>ctx.font</code>。WASM / Wasmer 等宿主<strong>读不到操作系统字体</strong>，
+        因此 <strong>不会</strong> 在 <code>.wasm</code> 内嵌入默认字体，而由宿主在运行时注入。
+      </p>
+      <p>使用 <code>Text</code> 图元或任何含文字的渲染前，须先注册至少一种字体；否则 <code>refresh()</code> 会报错 <code>no default font found</code>。</p>
+
+      <h4>调用顺序</h4>
+      <ol>
+        <li><code>await initWasm()</code></li>
+        <li><code>registerFont(bytes, opts?)</code> — 加载 TTF / OTF / WOFF 文件内容</li>
+        <li><code>init(...)</code> → 构图 → <code>refresh()</code></li>
+      </ol>
+      <p>可在任意时刻再次调用 <code>registerFont</code>；已创建的 <code>ZRender</code> 实例会自动热更新 fontdb。</p>
+
+      <h4><code>registerFont(data, opts?)</code></h4>
+      <ul>
+        <li><code>data</code> — <code>Uint8Array</code>，字体文件原始 bytes</li>
+        <li><code>opts.familyName</code> — 可选，覆盖字体族名（不传则读字体 name table）</li>
+        <li><code>opts.sansSerif</code> — 可选，<code>string[]</code>，将 CSS <code>sans-serif</code> 映射到这些族名；若只传 <code>familyName</code> 则默认映射到该族名</li>
+      </ul>
+
+      <pre>import initWasm, { init, registerFont, Text } from '@wasm-zrender/wasm_zrender.js';
+
+await initWasm();
+
+const bytes = new Uint8Array(
+  await (await fetch('/fonts/NotoSansSC-Regular.ttf')).arrayBuffer()
+);
+registerFont(bytes, {
+  familyName: 'Noto Sans SC',
+  sansSerif: ['Noto Sans SC'],
+});
+
+const zr = init(null, { width: 480, height: 360, devicePixelRatio: dpr });
+
+zr.add(new Text({
+  style: {
+    text: 'wasm-zrender 文本',
+    x: 24,
+    y: 48,
+    fill: '#333',
+    fontSize: 18,
+  },
+}));
+
+const rgba = zr.refresh();
+const ctx = canvas.getContext('2d');
+ctx.putImageData(new ImageData(new Uint8ClampedArray(rgba), zr.width(), zr.height()), 0, 0);</pre>
+
+      <h4>site 薄壳辅助</h4>
+      <p>
+        文档站提供 <code>site/src/zrender/fonts.js</code>：
+        <code>loadFontFromUrl(url)</code>、<code>ensureDefaultFont()</code>、<code>registerFontBytes(bytes)</code>。
+        默认字体文件：<code>site/public/fonts/NotoSansSC-Regular.ttf</code>。
+        <a href="../examples/text.html">text 示例</a> 演示完整流程。
+      </p>
+
+      <h4>Wasmer / 原生 Rust 宿主</h4>
+      <pre>use rust_zrender::{register_font, RegisterFontOptions, ZRenderer};
+
+register_font(font_bytes, RegisterFontOptions {
+    family_name: Some("Noto Sans SC".into()),
+    sans_serif: Some(vec!["Noto Sans SC".into()]),
+})?;
+
+let mut zr = ZRenderer::new(480, 360)?;</pre>
+      <p>wasm32 目标不加载系统字体；原生目标默认仍加载系统字体，并与已注册字体合并。</p>
     </div>
 
     <div class="doc-section">
@@ -67,6 +141,7 @@ cd ../../site && npm install && npm run dev
         <li><code>refresh()</code> 同步返回像素，需 JS 侧 <code>putImageData</code> 上屏</li>
         <li><code>init(dom)</code> 的 dom 参数忽略</li>
         <li><code>Text</code> 暂仅支持 <code>zr.add(text)</code> 根节点（不支持 <code>group.add(text)</code>）</li>
+        <li><strong>文本须宿主注册字体</strong>，见上文「字体加载」；无浏览器系统字体回退</li>
         <li>无 <code>on('click')</code> 事件总线，命中检测需自行绑定 DOM 事件</li>
       </ul>
     </div>
