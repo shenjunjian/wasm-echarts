@@ -1,0 +1,43 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background: #fafafa;
+}
+
+.preview-root {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.preview-root .chart-host {
+  width: 100%;
+  max-width: 520px;
+  height: 380px;
+  border: 1px solid #e2e5ea;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.preview-root canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+
+.preview-log {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0.45rem 0.75rem;
+  font: 0.75rem/1.4 ui-monospace, Consolas, monospace;
+  color: #5c6370;
+  background: rgba(255, 255, 255, 0.92);
+  border-top: 1px solid #e2e5ea;
+}

@@ -1,10 +1,6 @@
-import { mountExample } from '@shared/example-shell.js';
+import { mountPreview } from '@shared/mount-preview.js';
 import { runZrenderExample, defaultSource } from '@zrender/example-runner.js';
 
-mountExample(document.getElementById('app'), {
-  title: '基础图形 · shapes',
-  description: 'Rect / Circle / Line / Polygon / 渐变 / 虚线 / 阴影',
-  backHref: '/zrender/examples/',
-  defaultSource: defaultSource('shapes'),
-  run: runZrenderExample,
-});
+mountPreview((host, log) =>
+  runZrenderExample(defaultSource('shapes'), host, log),
+);
