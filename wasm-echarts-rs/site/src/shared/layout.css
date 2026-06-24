@@ -493,15 +493,20 @@ a:hover {
   margin: 0;
   padding: 1rem;
   overflow: auto;
+  background: var(--code-bg);
+}
+
+.example-source-code pre {
+  margin: 0;
+  padding: 0;
+  background: transparent !important;
   font-family: var(--mono);
   font-size: 0.78rem;
   line-height: 1.5;
-  color: var(--code-text);
 }
 
 .example-source-code code {
   font-family: inherit;
-  white-space: pre;
 }
 
 .example-preview-panel iframe {

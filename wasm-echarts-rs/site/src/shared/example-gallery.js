@@ -1,3 +1,5 @@
+import { highlightSource } from '@shared/highlight-source.js';
+
 /**
  * 实例画廊：左侧菜单 · 右侧源码 + iframe 预览
  */
@@ -46,7 +48,7 @@ export function mountExampleGallery(root, options) {
           <span>源码</span>
           <button type="button" class="btn btn-sm" data-action="copy">复制</button>
         </div>
-        <pre class="example-source-code"><code></code></pre>
+        <div class="example-source-code"></div>
       </section>
       <section class="example-preview-panel">
         <div class="example-panel-header">预览</div>
@@ -56,7 +58,7 @@ export function mountExampleGallery(root, options) {
   `;
 
   const nav = root.querySelector('.example-nav');
-  const codeEl = root.querySelector('.example-source-code code');
+  const sourceEl = root.querySelector('.example-source-code');
   const iframe = root.querySelector('iframe');
   const copyBtn = root.querySelector('[data-action="copy"]');
 
@@ -82,13 +84,30 @@ export function mountExampleGallery(root, options) {
       .join('');
   };
 
+  /** @type {number} */
+  let renderSeq = 0;
+
+  const renderSource = async (source) => {
+    const seq = ++renderSeq;
+    sourceEl.textContent = source;
+    try {
+      const html = await highlightSource(source);
+      if (seq !== renderSeq) return;
+      sourceEl.innerHTML = html;
+    } catch (err) {
+      if (seq !== renderSeq) return;
+      console.error(err);
+      sourceEl.textContent = source;
+    }
+  };
+
   const selectExample = (id, { pushHash = true } = {}) => {
     if (!ids.has(id)) return;
     activeId = id;
     const example = getExample(id);
 
     renderNav();
-    codeEl.textContent = example.source;
+    void renderSource(example.source);
     iframe.src = example.previewUrl;
 
     if (pushHash && location.hash !== `#${id}`) {
