@@ -108,12 +108,20 @@ impl Storage {
         }
     }
 
+    pub fn group(&self, index: usize) -> &Group {
+        &self.groups[index]
+    }
+
     pub fn group_mut(&mut self, index: usize) -> &mut Group {
         &mut self.groups[index]
     }
 
     pub fn path_mut(&mut self, index: usize) -> &mut Path {
         &mut self.paths[index]
+    }
+
+    pub fn mark_display_dirty(&mut self) {
+        self.display_dirty = true;
     }
 
     pub fn path(&self, index: usize) -> &Path {

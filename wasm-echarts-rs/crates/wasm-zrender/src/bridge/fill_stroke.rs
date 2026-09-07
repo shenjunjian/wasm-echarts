@@ -16,7 +16,7 @@ pub fn parse_fill_stroke(value: &JsValue) -> FillStrokeStyle {
         return FillStrokeStyle::None;
     }
     if let Some(s) = value.as_string() {
-        if s == "none" || s.is_empty() {
+        if s == "none" || s.is_empty() || s.eq_ignore_ascii_case("transparent") {
             return FillStrokeStyle::None;
         }
         return FillStrokeStyle::Color(s);

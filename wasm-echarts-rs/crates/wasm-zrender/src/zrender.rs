@@ -76,6 +76,29 @@ impl ZRender {
             .flatten()
             .and_then(|hit| hit_to_hover_result(&hit))
     }
+
+    #[wasm_bindgen(js_name = getWidth)]
+    pub fn get_width(&self) -> u32 {
+        self.width()
+    }
+
+    #[wasm_bindgen(js_name = getHeight)]
+    pub fn get_height(&self) -> u32 {
+        self.height()
+    }
+
+    pub fn on(&self, _event: &str, _handler: JsValue) -> ZRender {
+        ZRender::from_id(self.id)
+    }
+
+    pub fn off(&self, _event: JsValue, _handler: JsValue) -> ZRender {
+        ZRender::from_id(self.id)
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn animation(&self) -> crate::animation::Animation {
+        crate::animation::Animation::default()
+    }
 }
 
 /// 创建 ZRender 实例（dom 参数忽略，尺寸来自 opts）

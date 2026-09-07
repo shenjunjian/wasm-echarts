@@ -76,6 +76,14 @@ impl ElementRegistry {
         self.elements.get(&id).map(|r| r.type_name.clone())
     }
 
+    pub fn pending(&self, id: u32) -> Option<&PendingData> {
+        self.elements.get(&id).map(|r| &r.pending)
+    }
+
+    pub fn pending_mut(&mut self, id: u32) -> Option<&mut PendingData> {
+        self.elements.get_mut(&id).map(|r| &mut r.pending)
+    }
+
     pub fn storage_index(&self, id: u32) -> Option<usize> {
         self.elements.get(&id).and_then(|r| r.storage_index)
     }
@@ -268,7 +276,23 @@ impl ElementRegistry {
         zr_id: u32,
         element_id: u32,
     ) -> Result<(), JsValue> {
+        let pending = self
+            .elements
+            .get(&element_id)
+            .and_then(|r| {
+                if let PendingData::Group(g) = &r.pending {
+                    Some(g.clone())
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_default();
         let idx = zr.storage.create_group();
+        {
+            let group = zr.storage.group_mut(idx);
+            group.base.transform_state.x = pending.x;
+            group.base.transform_state.y = pending.y;
+        }
         if let Some(record) = self.elements.get_mut(&element_id) {
             record.storage_index = Some(idx);
             record.zr_id = Some(zr_id);
@@ -296,7 +320,8 @@ impl ElementRegistry {
 
         let mut path = Path::new(pending.shape, pending.style)
             .with_displayable(pending.displayable)
-            .with_ec_data(pending.ec_data);
+            .with_ec_data(pending.ec_data)
+            .with_transform(pending.x, pending.y);
         path.silent = pending.silent;
         path.base.name = pending.name;
 
@@ -305,6 +330,13 @@ impl ElementRegistry {
         }
         for state in &pending.active_states {
             path.use_state(state);
+        }
+
+        if let Some(clip_id) = pending.clip_element_id {
+            self.materialize_element(zr, zr_id, clip_id)?;
+            if let Some(clip_idx) = self.storage_index(clip_id) {
+                path.clip_path = Some(clip_idx);
+            }
         }
 
         let idx = zr.storage.create_path(path);
@@ -339,6 +371,8 @@ impl ElementRegistry {
         text.silent = pending.silent;
         text.ec_data = pending.ec_data;
         text.base.name = pending.name;
+        text.base.transform_state.x = pending.tx;
+        text.base.transform_state.y = pending.ty;
 
         let idx = zr.storage.create_text(text);
         if let Some(record) = self.elements.get_mut(&element_id) {
@@ -371,6 +405,8 @@ impl ElementRegistry {
             .with_ec_data(pending.ec_data);
         image.silent = pending.silent;
         image.base.name = pending.name;
+        image.base.transform_state.x = pending.x;
+        image.base.transform_state.y = pending.y;
 
         let idx = zr.storage.create_image(image);
         if let Some(record) = self.elements.get_mut(&element_id) {
@@ -671,6 +707,9 @@ mod tests {
             ec_data: Default::default(),
             state_patches: HashMap::new(),
             active_states: Vec::new(),
+            x: 0.0,
+            y: 0.0,
+            clip_element_id: None,
         });
         let id = reg.register(ElementKind::Path, pending, "rect");
         assert!(reg.can_add_to_zr(id));
@@ -707,6 +746,8 @@ mod tests {
             silent: false,
             name: String::new(),
             ec_data: Default::default(),
+            tx: 0.0,
+            ty: 0.0,
         });
         let text_id = reg.register(ElementKind::Text, pending, "text");
         reg.set_parent(text_id, group_id).unwrap();
@@ -748,6 +789,8 @@ mod tests {
             silent: false,
             name: String::new(),
             ec_data: Default::default(),
+            tx: 0.0,
+            ty: 0.0,
         });
         let text_id = reg.register(ElementKind::Text, pending, "text");
         reg.set_parent(text_id, group_id).unwrap();
@@ -785,6 +828,8 @@ mod tests {
             silent: false,
             name: String::new(),
             ec_data: Default::default(),
+            tx: 0.0,
+            ty: 0.0,
         });
         let element_id = reg.register(ElementKind::Text, pending, "text");
         let mut zr = ZRenderer::new(320, 160).unwrap();

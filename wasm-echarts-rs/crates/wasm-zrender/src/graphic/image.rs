@@ -2,6 +2,9 @@
 
 use wasm_bindgen::prelude::*;
 
+use crate::element::api;
+use crate::animation::Animator;
+use crate::graphic::BoundingRect;
 use crate::registry::register_image;
 
 #[wasm_bindgen]
@@ -27,5 +30,34 @@ impl Image {
     #[wasm_bindgen(getter, js_name = type)]
     pub fn element_type(&self) -> String {
         "image".to_string()
+    }
+
+    pub fn animate(&self, path: JsValue, looping: JsValue) -> Animator {
+        api::element_animate(self.id, path, looping)
+    }
+
+    pub fn on(&self, event: &str, handler: JsValue) -> Image {
+        api::element_on(self.id, event, handler);
+        Image { id: self.id }
+    }
+
+    pub fn attr(&self, key: JsValue, value: JsValue) -> Image {
+        let _ = api::element_attr(self.id, key, value);
+        Image { id: self.id }
+    }
+
+    #[wasm_bindgen(js_name = getBoundingRect)]
+    pub fn get_bounding_rect(&self) -> BoundingRect {
+        BoundingRect::from_inner(api::element_get_bounding_rect(self.id))
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn position(&self) -> JsValue {
+        api::element_position_js(self.id)
+    }
+
+    #[wasm_bindgen(setter)]
+    pub fn set_position(&self, value: JsValue) {
+        let _ = api::element_set_position(self.id, &value);
     }
 }

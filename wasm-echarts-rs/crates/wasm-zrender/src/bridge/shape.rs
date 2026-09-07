@@ -266,3 +266,72 @@ pub fn parse_shape_by_type(type_name: &str, shape: &JsValue) -> Result<Shape, Js
 pub fn shape_from_opts(opts: &JsValue) -> JsValue {
     get_object(opts, "shape")
 }
+
+/// 将 JS shape 补丁合并进已有 Shape（未出现的字段保持原值）。
+pub fn merge_shape(existing: &Shape, patch: &JsValue) -> Result<Shape, JsValue> {
+    if patch.is_null() || patch.is_undefined() {
+        return Ok(existing.clone());
+    }
+    match existing {
+        Shape::Rect(s) => Ok(Shape::Rect(RectShape {
+            x: get_f64(patch, "x").unwrap_or(s.x),
+            y: get_f64(patch, "y").unwrap_or(s.y),
+            width: get_f64(patch, "width").unwrap_or(s.width),
+            height: get_f64(patch, "height").unwrap_or(s.height),
+        })),
+        Shape::Circle(s) => Ok(Shape::Circle(CircleShape {
+            cx: get_f64(patch, "cx").unwrap_or(s.cx),
+            cy: get_f64(patch, "cy").unwrap_or(s.cy),
+            r: get_f64(patch, "r").unwrap_or(s.r),
+        })),
+        Shape::Line(s) => Ok(Shape::Line(LineShape {
+            x1: get_f64(patch, "x1").unwrap_or(s.x1),
+            y1: get_f64(patch, "y1").unwrap_or(s.y1),
+            x2: get_f64(patch, "x2").unwrap_or(s.x2),
+            y2: get_f64(patch, "y2").unwrap_or(s.y2),
+            percent: get_f64(patch, "percent").unwrap_or(s.percent),
+        })),
+        Shape::Heart(s) => Ok(Shape::Heart(HeartShape {
+            cx: get_f64(patch, "cx").unwrap_or(s.cx),
+            cy: get_f64(patch, "cy").unwrap_or(s.cy),
+            width: get_f64(patch, "width").unwrap_or(s.width),
+            height: get_f64(patch, "height").unwrap_or(s.height),
+        })),
+        Shape::Ellipse(s) => Ok(Shape::Ellipse(EllipseShape {
+            cx: get_f64(patch, "cx").unwrap_or(s.cx),
+            cy: get_f64(patch, "cy").unwrap_or(s.cy),
+            rx: get_f64(patch, "rx").unwrap_or(s.rx),
+            ry: get_f64(patch, "ry").unwrap_or(s.ry),
+        })),
+        Shape::Ring(s) => Ok(Shape::Ring(RingShape {
+            cx: get_f64(patch, "cx").unwrap_or(s.cx),
+            cy: get_f64(patch, "cy").unwrap_or(s.cy),
+            r: get_f64(patch, "r").unwrap_or(s.r),
+            r0: get_f64(patch, "r0").unwrap_or(s.r0),
+        })),
+        Shape::Arc(s) => Ok(Shape::Arc(ArcShape {
+            cx: get_f64(patch, "cx").unwrap_or(s.cx),
+            cy: get_f64(patch, "cy").unwrap_or(s.cy),
+            r: get_f64(patch, "r").unwrap_or(s.r),
+            start_angle: get_f64(patch, "startAngle").unwrap_or(s.start_angle),
+            end_angle: get_f64(patch, "endAngle").unwrap_or(s.end_angle),
+            clockwise: get_bool(patch, "clockwise").unwrap_or(s.clockwise),
+        })),
+        Shape::Sector(s) => Ok(Shape::Sector(SectorShape {
+            cx: get_f64(patch, "cx").unwrap_or(s.cx),
+            cy: get_f64(patch, "cy").unwrap_or(s.cy),
+            r: get_f64(patch, "r").unwrap_or(s.r),
+            start_angle: get_f64(patch, "startAngle").unwrap_or(s.start_angle),
+            end_angle: get_f64(patch, "endAngle").unwrap_or(s.end_angle),
+            percent: get_f64(patch, "percent").unwrap_or(s.percent),
+        })),
+        other => {
+            // 其余类型：若 patch 含 type 则整段重解析，否则保持原值
+            if let Some(type_name) = get_string(patch, "type") {
+                parse_shape_by_type(&type_name, patch)
+            } else {
+                Ok(other.clone())
+            }
+        }
+    }
+}

@@ -1,5 +1,6 @@
 //! Element 基类：wasm 侧图元引用（handle + 元数据）
 
+pub(crate) mod api;
 pub(crate) mod js;
 pub(crate) mod pending;
 

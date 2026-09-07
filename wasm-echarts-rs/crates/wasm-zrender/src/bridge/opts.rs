@@ -127,7 +127,9 @@ pub fn parse_text_style(style: &JsValue) -> TextStyle {
     }
 
     TextStyle {
-        fill: get_string(style, "fill").unwrap_or_else(|| "#333".into()),
+        fill: get_string(style, "fill")
+            .or_else(|| get_string(style, "textFill"))
+            .unwrap_or_else(|| "#333".into()),
         font_size: get_f64(style, "fontSize").unwrap_or(12.0) as f32,
         align: parse_text_align(style),
         baseline: parse_text_baseline(style),
@@ -185,7 +187,10 @@ fn parse_shadow(style: &JsValue) -> Option<ShadowStyle> {
 }
 
 fn parse_text_align(style: &JsValue) -> TextAlign {
-    match get_string(style, "align").as_deref() {
+    match get_string(style, "align")
+        .or_else(|| get_string(style, "textAlign"))
+        .as_deref()
+    {
         Some("center") => TextAlign::Center,
         Some("right") => TextAlign::Right,
         _ => TextAlign::Left,
@@ -194,6 +199,7 @@ fn parse_text_align(style: &JsValue) -> TextAlign {
 
 fn parse_text_baseline(style: &JsValue) -> TextBaseline {
     match get_string(style, "verticalAlign")
+        .or_else(|| get_string(style, "textVerticalAlign"))
         .or_else(|| get_string(style, "baseline"))
         .as_deref()
     {
@@ -202,6 +208,40 @@ fn parse_text_baseline(style: &JsValue) -> TextBaseline {
         Some("bottom") => TextBaseline::Bottom,
         _ => TextBaseline::Alphabetic,
     }
+}
+
+/// 解析 `position: [x, y]` 或顶层 `x` / `y`。
+pub fn parse_position(opts: &JsValue) -> (f64, f64) {
+    let pos = get_value(opts, "position");
+    if let Some((x, y)) = parse_xy_pair(&pos) {
+        return (x, y);
+    }
+    (
+        get_f64(opts, "x").unwrap_or(0.0),
+        get_f64(opts, "y").unwrap_or(0.0),
+    )
+}
+
+pub fn parse_xy_pair(value: &JsValue) -> Option<(f64, f64)> {
+    if value.is_null() || value.is_undefined() {
+        return None;
+    }
+    if let Some(arr) = value.dyn_ref::<Array>() {
+        if arr.length() >= 2 {
+            return Some((
+                arr.get(0).as_f64().unwrap_or(0.0),
+                arr.get(1).as_f64().unwrap_or(0.0),
+            ));
+        }
+    }
+    None
+}
+
+pub fn xy_pair_to_js(x: f64, y: f64) -> JsValue {
+    let arr = Array::new();
+    arr.push(&JsValue::from(x));
+    arr.push(&JsValue::from(y));
+    arr.into()
 }
 
 pub fn get_value(obj: &JsValue, key: &str) -> JsValue {

@@ -683,3 +683,52 @@ fn oriented_bounding_rect_intersect() {
     );
     assert!(a.intersect(&b, JsValue::UNDEFINED, JsValue::UNDEFINED));
 }
+
+#[wasm_bindgen_test]
+fn official_example_apis_do_not_throw() {
+    reset_registry();
+    let mut zr = init(JsValue::NULL, init_opts(320, 160)).unwrap();
+    assert_eq!(zr.get_width(), 320);
+    assert_eq!(zr.get_height(), 160);
+    let _ = zr.on("mousedown", JsValue::UNDEFINED);
+    zr.animation().on("frame", JsValue::UNDEFINED);
+
+    let pos = Array::new();
+    pos.push(&JsValue::from(80.0));
+    pos.push(&JsValue::from(70.0));
+    let opts = circle_opts();
+    Reflect::set(&opts, &"position".into(), &pos).unwrap();
+
+    let circle = Circle::new(opts).unwrap();
+    circle
+        .animate(JsValue::from_str("shape"), JsValue::TRUE)
+        .when(1000.0, JsValue::UNDEFINED)
+        .during(JsValue::UNDEFINED)
+        .done(JsValue::UNDEFINED)
+        .start(JsValue::UNDEFINED);
+    let _ = circle.on("mousemove", JsValue::UNDEFINED);
+
+    let heart_opts = Object::new();
+    let heart_shape = Object::new();
+    Reflect::set(&heart_shape, &"cx".into(), &JsValue::from(80.0)).unwrap();
+    Reflect::set(&heart_shape, &"cy".into(), &JsValue::from(70.0)).unwrap();
+    Reflect::set(&heart_shape, &"width".into(), &JsValue::from(40.0)).unwrap();
+    Reflect::set(&heart_shape, &"height".into(), &JsValue::from(50.0)).unwrap();
+    Reflect::set(&heart_opts, &"shape".into(), &heart_shape).unwrap();
+    let heart = Heart::new(heart_opts.into()).unwrap();
+    let _ = circle.set_clip_path(JsValue::from(heart));
+    zr.add(JsValue::from(circle)).unwrap();
+
+    let group = Group::new();
+    let child = Circle::new(circle_opts()).unwrap();
+    let child_pos = Array::new();
+    child_pos.push(&JsValue::from(40.0));
+    child_pos.push(&JsValue::from(50.0));
+    child.set_position(child_pos.into());
+    group.add(JsValue::from(child)).unwrap();
+    let bbox = group.get_bounding_rect();
+    assert!(bbox.width() > 0.0);
+    zr.add(JsValue::from(group)).unwrap();
+
+    let _ = zr.refresh().unwrap();
+}

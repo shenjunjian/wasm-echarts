@@ -1,4 +1,10 @@
 import { mountExampleGallery } from '../../src/shared/example-gallery.js';
+import helloWorldSource from './hello_world.js?raw';
+import animationSource from './animation.js?raw';
+import boundingBoxSource from './bounding_box.js?raw';
+import clipPathSource from './clip_path.js?raw';
+import glitchedTextSource from './glitched_text.js?raw';
+import particlesSource from './particles.js?raw';
 import shapesSource from './shapes.js?raw';
 import textSource from './text.js?raw';
 import sectorSource from './sector.js?raw';
@@ -7,9 +13,51 @@ import stateSource from './state.js?raw';
 
 mountExampleGallery(document.getElementById('app'), {
   title: 'wasm-zrender 实例',
-  description: '左侧切换示例，右侧查看完整接入代码与 iframe 预览。',
-  defaultId: 'shapes',
+  description: '对齐官方 zrender 示例；动画 API 可调用但不播放。右侧查看完整接入代码与 iframe 预览。',
+  defaultId: 'hello_world',
   examples: [
+    {
+      id: 'hello_world',
+      title: 'Hello World!',
+      description: 'Circle + Rect + RadialGradient',
+      previewUrl: './hello_world.html',
+      source: helloWorldSource,
+    },
+    {
+      id: 'animation',
+      title: 'Animation',
+      description: 'animate().when().start()（当前为 no-op）',
+      previewUrl: './animation.html',
+      source: animationSource,
+    },
+    {
+      id: 'bounding_box',
+      title: 'Bounding Box',
+      description: 'Group.getBoundingRect + setShape',
+      previewUrl: './bounding_box.html',
+      source: boundingBoxSource,
+    },
+    {
+      id: 'clip_path',
+      title: 'ClipPath',
+      description: 'Circle.setClipPath(Heart)',
+      previewUrl: './clip_path.html',
+      source: clipPathSource,
+    },
+    {
+      id: 'glitched_text',
+      title: 'Glitched Text',
+      description: 'Text + attr(position/shape/style)',
+      previewUrl: './glitched_text.html',
+      source: glitchedTextSource,
+    },
+    {
+      id: 'particles',
+      title: 'Particles',
+      description: 'animate/during/done 可调用；粒子停在发射点',
+      previewUrl: './particles.html',
+      source: particlesSource,
+    },
     {
       id: 'shapes',
       title: '基础图形 shapes',

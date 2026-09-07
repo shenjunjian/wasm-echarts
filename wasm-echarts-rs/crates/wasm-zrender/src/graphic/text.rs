@@ -2,6 +2,9 @@
 
 use wasm_bindgen::prelude::*;
 
+use crate::element::api;
+use crate::animation::Animator;
+use crate::graphic::BoundingRect;
 use crate::registry::register_text;
 
 #[wasm_bindgen]
@@ -27,5 +30,40 @@ impl Text {
     #[wasm_bindgen(getter, js_name = type)]
     pub fn element_type(&self) -> String {
         "text".into()
+    }
+
+    pub fn animate(&self, path: JsValue, looping: JsValue) -> Animator {
+        api::element_animate(self.id, path, looping)
+    }
+
+    pub fn on(&self, event: &str, handler: JsValue) -> Text {
+        api::element_on(self.id, event, handler);
+        Text { id: self.id }
+    }
+
+    pub fn attr(&self, key: JsValue, value: JsValue) -> Text {
+        let _ = api::element_attr(self.id, key, value);
+        Text { id: self.id }
+    }
+
+    #[wasm_bindgen(js_name = setStyle)]
+    pub fn set_style(&self, style: JsValue) -> Text {
+        let _ = api::element_set_style(self.id, &style);
+        Text { id: self.id }
+    }
+
+    #[wasm_bindgen(js_name = getBoundingRect)]
+    pub fn get_bounding_rect(&self) -> BoundingRect {
+        BoundingRect::from_inner(api::element_get_bounding_rect(self.id))
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn position(&self) -> JsValue {
+        api::element_position_js(self.id)
+    }
+
+    #[wasm_bindgen(setter)]
+    pub fn set_position(&self, value: JsValue) {
+        let _ = api::element_set_position(self.id, &value);
     }
 }

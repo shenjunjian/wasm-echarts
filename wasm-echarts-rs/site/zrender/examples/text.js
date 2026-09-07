@@ -7,11 +7,10 @@ import initWasm, {
 const width = 480;
 const height = 360;
 const dpr = window.devicePixelRatio || 1;
-const FONT_URL = '/fonts/NotoSansSC-Regular.ttf';
 const FONT_FAMILY = 'Noto Sans SC';
 
-async function loadFont(url) {
-  const response = await fetch(url);
+async function loadFont() {
+  const response = await fetch('/fonts/NotoSansSC-Regular.ttf');
   if (!response.ok) {
     throw new Error(`字体加载失败: ${url}`);
   }
@@ -24,7 +23,7 @@ async function loadFont(url) {
 
 async function main() {
   await initWasm();
-  await loadFont(FONT_URL);
+  await loadFont();
 
   const canvas = document.getElementById('canvas');
   canvas.width = Math.floor(width * dpr);
@@ -58,7 +57,7 @@ async function main() {
   zr.add(new Text({
     style: {
       text: 'right align',
-      x: 440,
+      x: 24,
       y: 140,
       fill: '#666',
       fontSize: 12,

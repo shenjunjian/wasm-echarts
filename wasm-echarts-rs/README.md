@@ -398,7 +398,7 @@ Cargo：`crate-type = ["cdylib", "rlib"]`，依赖 `rust-zrender` path。
 
 #### 刻意与官方不同
 
-- 仅离屏 canvas，无 SVG、无 `zr.on('click')` 事件总线
+- 仅离屏 canvas，无 SVG；`zr.on` / `animate().when().start()` 可调用但不驱动事件或关键帧
 - `refresh()` 同步出像素，需 JS `putImageData`
 - `init(dom)` 的 dom 无用
 - 文本必须先 `registerFont`

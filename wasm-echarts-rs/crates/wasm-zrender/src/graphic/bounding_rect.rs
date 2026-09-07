@@ -144,4 +144,8 @@ impl BoundingRect {
     pub(crate) fn inner(&self) -> InnerRect {
         self.inner
     }
+
+    pub(crate) fn from_inner(inner: InnerRect) -> Self {
+        BoundingRect { inner }
+    }
 }
