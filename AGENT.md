@@ -1,9 +1,10 @@
 # wasm-echarts-rs
 
-Rust / WebAssembly workspace：用纯 Rust 重写 zrender 离屏 canvas 渲染内核，再通过 wasm-bindgen 分别暴露 **zrender 图元 API** 与 **ECharts option 管线**。目标是尽快把图表画到 canvas 上，**不追求动画中间帧**，也不做 SVG / DOM 组件。
+Rust / WebAssembly workspace：用纯 Rust 重写 zrender 离屏 canvas 渲染内核，再通过 wasm-bindgen 分别暴露 **zrender 图元 API** 与 **ECharts option 管线**。目标是尽快把图表画到 canvas 上，**不追求动画中间帧**，也不做 SVG / DOM 组件。最主要的宗旨是：wasm-zrender, wasm-echarts的目标是要尽量和官方API保持一致。
 
-本文对照 `.cursor/plans/` 中的四份规划，以及本目录源码的**实际落地情况**，按仓库梳理：目的、已实现内容、编译、启动、产物位置、文档站如何引用这些产物。
+本文按仓库梳理：目的、已实现内容、编译、启动、产物位置、文档站如何引用这些产物。
 
+后续有新需求或实现变更时，一定要同步修改本文件！所有重要的需求和约束都要记录在本文件中。
 ---
 
 ## 文档说明
