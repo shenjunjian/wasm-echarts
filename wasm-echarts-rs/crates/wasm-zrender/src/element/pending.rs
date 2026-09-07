@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use crate::bridge::opts::DraggableKind;
 use rust_zrender::{
     DisplayableProps, EcData, ImageStyle, PathStyle, PathStylePatch, Shape, TextStyle,
 };
@@ -10,6 +11,7 @@ use rust_zrender::{
 pub struct PendingGroup {
     pub x: f64,
     pub y: f64,
+    pub draggable: DraggableKind,
 }
 
 #[derive(Debug, Clone)]
@@ -25,6 +27,7 @@ pub struct PendingPath {
     pub x: f64,
     pub y: f64,
     pub clip_element_id: Option<u32>,
+    pub draggable: DraggableKind,
 }
 
 #[derive(Debug, Clone)]
@@ -39,6 +42,7 @@ pub struct PendingText {
     pub ec_data: EcData,
     pub tx: f64,
     pub ty: f64,
+    pub draggable: DraggableKind,
 }
 
 #[derive(Debug, Clone)]
@@ -50,6 +54,7 @@ pub struct PendingImage {
     pub ec_data: EcData,
     pub x: f64,
     pub y: f64,
+    pub draggable: DraggableKind,
 }
 
 #[derive(Debug, Clone)]
@@ -63,6 +68,15 @@ pub enum PendingData {
 impl PendingData {
     pub fn group() -> Self {
         Self::Group(PendingGroup::default())
+    }
+
+    pub fn draggable(&self) -> DraggableKind {
+        match self {
+            Self::Group(g) => g.draggable,
+            Self::Path(p) => p.draggable,
+            Self::Text(t) => t.draggable,
+            Self::Image(p) => p.draggable,
+        }
     }
 
     pub fn position(&self) -> (f64, f64) {

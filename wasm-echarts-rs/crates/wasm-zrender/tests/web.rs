@@ -732,3 +732,50 @@ fn official_example_apis_do_not_throw() {
 
     let _ = zr.refresh().unwrap();
 }
+
+fn pointer_at(x: f64, y: f64) -> JsValue {
+    let obj = Object::new();
+    Reflect::set(&obj, &"zrX".into(), &JsValue::from(x)).unwrap();
+    Reflect::set(&obj, &"zrY".into(), &JsValue::from(y)).unwrap();
+    obj.into()
+}
+
+#[wasm_bindgen_test]
+fn handler_dispatch_drags_draggable_circle() {
+    reset_registry();
+    let mut zr = init(JsValue::NULL, init_opts(400, 300)).unwrap();
+
+    let opts = Object::new();
+    let shape = Object::new();
+    Reflect::set(&shape, &"cx".into(), &JsValue::from(0.0)).unwrap();
+    Reflect::set(&shape, &"cy".into(), &JsValue::from(0.0)).unwrap();
+    Reflect::set(&shape, &"r".into(), &JsValue::from(20.0)).unwrap();
+    Reflect::set(&opts, &"shape".into(), &shape).unwrap();
+    let style = Object::new();
+    Reflect::set(&style, &"fill".into(), &JsValue::from_str("white")).unwrap();
+    Reflect::set(&opts, &"style".into(), &style).unwrap();
+    Reflect::set(&opts, &"draggable".into(), &JsValue::TRUE).unwrap();
+    let pos = Array::new();
+    pos.push(&JsValue::from(100.0));
+    pos.push(&JsValue::from(80.0));
+    Reflect::set(&opts, &"position".into(), &pos).unwrap();
+
+    let circle = Circle::new(opts.into()).unwrap();
+    zr.add(JsValue::from(circle)).unwrap();
+    zr.refresh().unwrap();
+    assert!(zr.find_hover(100.0, 80.0).is_some());
+
+    zr.handler()
+        .dispatch("mousedown", pointer_at(100.0, 80.0))
+        .unwrap();
+    zr.handler()
+        .dispatch("mousemove", pointer_at(140.0, 110.0))
+        .unwrap();
+    zr.handler()
+        .dispatch("mouseup", pointer_at(140.0, 110.0))
+        .unwrap();
+
+    assert!(zr.find_hover(100.0, 80.0).is_none());
+    let hover = zr.find_hover(140.0, 110.0).expect("circle should follow drag");
+    assert_eq!(hover.target().element_type(), "circle");
+}

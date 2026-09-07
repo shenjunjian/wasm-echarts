@@ -58,6 +58,16 @@ macro_rules! impl_shape {
                 }
             }
 
+            #[wasm_bindgen(getter)]
+            pub fn draggable(&self) -> JsValue {
+                crate::handler::element_draggable_js(self.path.raw_id())
+            }
+
+            #[wasm_bindgen(setter)]
+            pub fn set_draggable(&self, value: JsValue) {
+                crate::handler::element_set_draggable(self.path.raw_id(), &value);
+            }
+
             pub fn attr(&self, key: JsValue, value: JsValue) -> $name {
                 let _ = api::element_attr(self.path.raw_id(), key, value);
                 $name {

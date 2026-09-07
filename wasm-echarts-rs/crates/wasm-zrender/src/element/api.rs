@@ -18,7 +18,9 @@ pub fn element_animate(_id: u32, _path: JsValue, _looping: JsValue) -> Animator 
     new_animator()
 }
 
-pub fn element_on(_id: u32, _event: &str, _handler: JsValue) {}
+pub fn element_on(id: u32, event: &str, handler: JsValue) {
+    crate::handler::element_on(id, event, handler);
+}
 
 pub fn element_position_js(id: u32) -> JsValue {
     ELEMENT_REGISTRY.with(|reg| {
@@ -61,6 +63,10 @@ fn apply_attr_key(id: u32, key: &str, value: &JsValue) -> Result<(), JsValue> {
         "position" => element_set_position(id, value),
         "shape" => element_set_shape(id, value),
         "style" => element_set_style(id, value),
+        "draggable" => {
+            crate::handler::element_set_draggable(id, value);
+            Ok(())
+        }
         _ => Ok(()),
     }
 }
@@ -70,7 +76,7 @@ pub fn element_set_shape(id: u32, patch: &JsValue) -> Result<(), JsValue> {
         let mut reg = reg.borrow_mut();
         let type_ok = reg.kind(id) == Some(ElementKind::Path);
         if !type_ok {
-            return Ok(());
+            return Ok::<(), JsValue>(());
         }
         let new_shape = {
             let Some(PendingData::Path(pending)) = reg.pending_mut(id) else {
@@ -92,7 +98,9 @@ pub fn element_set_shape(id: u32, patch: &JsValue) -> Result<(), JsValue> {
             })?;
         }
         Ok(())
-    })
+    })?;
+    crate::handler::paint_element(id);
+    Ok(())
 }
 
 pub fn element_set_style(id: u32, style: &JsValue) -> Result<(), JsValue> {
@@ -243,8 +251,10 @@ fn apply_position(id: u32, x: f64, y: f64) -> Result<(), JsValue> {
                 Ok(())
             })?;
         }
-        Ok(())
-    })
+        Ok::<(), JsValue>(())
+    })?;
+    crate::handler::paint_element(id);
+    Ok(())
 }
 
 fn union_bbox(

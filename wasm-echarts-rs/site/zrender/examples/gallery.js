@@ -33,7 +33,7 @@ mountExampleGallery(document.getElementById('app'), {
     {
       id: 'bounding_box',
       title: 'Bounding Box',
-      description: '拖动 Circle，实时更新 Group boundingRect',
+      description: 'init(canvas) + draggable Circle，实时 Group boundingRect',
       previewUrl: './bounding_box.html',
       source: boundingBoxSource,
     },

@@ -42,12 +42,16 @@ impl ZRender {
 
     pub fn add(&self, el: JsValue) -> Result<(), JsValue> {
         let element = element_from_js(&el)?;
-        mount_element_to_zr(self.id, &element)
+        mount_element_to_zr(self.id, &element)?;
+        crate::handler::paint_if_bound(self.id);
+        Ok(())
     }
 
     pub fn remove(&self, el: JsValue) -> Result<(), JsValue> {
         let element = element_from_js(&el)?;
-        unmount_element_from_zr(self.id, &element)
+        unmount_element_from_zr(self.id, &element)?;
+        crate::handler::paint_if_bound(self.id);
+        Ok(())
     }
 
     pub fn refresh(&mut self) -> Result<Vec<u8>, JsValue> {
@@ -87,12 +91,19 @@ impl ZRender {
         self.height()
     }
 
-    pub fn on(&self, _event: &str, _handler: JsValue) -> ZRender {
+    pub fn on(&self, event: &str, handler: JsValue) -> ZRender {
+        crate::handler::add_zr_listener(self.id, event, handler);
         ZRender::from_id(self.id)
     }
 
-    pub fn off(&self, _event: JsValue, _handler: JsValue) -> ZRender {
+    pub fn off(&self, event: JsValue, _handler: JsValue) -> ZRender {
+        crate::handler::remove_zr_listeners(self.id, event.as_string().as_deref());
         ZRender::from_id(self.id)
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn handler(&self) -> crate::handler::Handler {
+        crate::handler::Handler::from_zr(self.id)
     }
 
     #[wasm_bindgen(getter)]
@@ -109,12 +120,14 @@ pub fn init(dom: JsValue, opts: JsValue) -> Result<ZRender, JsValue> {
     let zr = ZRenderer::new_with_dpr(width, height, dpr)
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
     let id = ZR_REGISTRY.with(|reg| reg.borrow_mut().insert(zr));
+    crate::handler::attach(id, &dom)?;
     Ok(ZRender::from_id(id))
 }
 
 #[wasm_bindgen]
 pub fn dispose(zr: ZRender) {
     let id = zr.id;
+    crate::handler::detach(id);
     ZR_REGISTRY.with(|reg| {
         reg.borrow_mut().remove(id);
     });
@@ -125,6 +138,7 @@ pub fn dispose(zr: ZRender) {
 
 #[wasm_bindgen(js_name = disposeAll)]
 pub fn dispose_all() {
+    crate::handler::detach_all();
     ZR_REGISTRY.with(|reg| {
         reg.borrow_mut().clear();
     });

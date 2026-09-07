@@ -9,6 +9,7 @@ use rust_zrender::{
 use wasm_bindgen::prelude::*;
 
 use crate::bridge::build::{build_pending_image, build_pending_path, build_pending_text};
+use crate::bridge::opts::DraggableKind;
 use crate::element::pending::PendingData;
 use crate::element::Element;
 
@@ -29,6 +30,8 @@ struct ElementRecord {
     mounted: bool,
     type_name: String,
     pending: PendingData,
+    listeners: HashMap<String, Vec<JsValue>>,
+    draggable: DraggableKind,
 }
 
 pub struct ElementRegistry {
@@ -47,6 +50,7 @@ impl Default for ElementRegistry {
 
 impl ElementRegistry {
     fn register(&mut self, kind: ElementKind, pending: PendingData, type_name: impl Into<String>) -> u32 {
+        let draggable = pending.draggable();
         let id = self.next_id;
         self.next_id += 1;
         self.elements.insert(
@@ -59,6 +63,8 @@ impl ElementRegistry {
                 mounted: false,
                 type_name: type_name.into(),
                 pending,
+                listeners: HashMap::new(),
+                draggable,
             },
         );
         id
@@ -156,6 +162,51 @@ impl ElementRegistry {
 
     pub fn parent_id(&self, id: u32) -> Option<u32> {
         self.elements.get(&id).and_then(|r| r.parent_id)
+    }
+
+    pub fn add_listener(&mut self, id: u32, event: &str, handler: JsValue) {
+        if handler.is_function() {
+            if let Some(record) = self.elements.get_mut(&id) {
+                record
+                    .listeners
+                    .entry(event.to_string())
+                    .or_default()
+                    .push(handler);
+            }
+        }
+    }
+
+    pub fn listeners(&self, id: u32, event: &str) -> Vec<JsValue> {
+        self.elements
+            .get(&id)
+            .and_then(|r| r.listeners.get(event))
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    pub fn draggable(&self, id: u32) -> DraggableKind {
+        self.elements
+            .get(&id)
+            .map(|r| r.draggable)
+            .unwrap_or_default()
+    }
+
+    pub fn set_draggable(&mut self, id: u32, kind: DraggableKind) {
+        if let Some(record) = self.elements.get_mut(&id) {
+            record.draggable = kind;
+        }
+    }
+
+    pub fn find_draggable_ancestor(&self, mut id: u32) -> Option<u32> {
+        loop {
+            if !self.draggable(id).is_none() {
+                return Some(id);
+            }
+            match self.parent_id(id) {
+                Some(parent) => id = parent,
+                None => return None,
+            }
+        }
     }
 
     pub fn is_mounted(&self, id: u32) -> bool {
@@ -621,7 +672,7 @@ pub(crate) fn register_image(opts: &JsValue) -> Result<Element, JsValue> {
 }
 
 pub(crate) fn group_add_child(group_id: u32, child_id: u32) -> Result<(), JsValue> {
-    ELEMENT_REGISTRY.with(|reg| {
+    let zr_id = ELEMENT_REGISTRY.with(|reg| -> Result<Option<u32>, JsValue> {
         let mut reg = reg.borrow_mut();
         reg.set_parent(child_id, group_id)?;
         if let Some(zr_id) = reg.zr_id(group_id) {
@@ -632,11 +683,16 @@ pub(crate) fn group_add_child(group_id: u32, child_id: u32) -> Result<(), JsValu
                 let child = reg.child_ref(child_id)?;
                 zr.storage.group_add_child(group_idx, child);
                 Ok(())
-            })
+            })?;
+            Ok(Some(zr_id))
         } else {
-            Ok(())
+            Ok(None)
         }
-    })
+    })?;
+    if let Some(zr_id) = zr_id {
+        crate::handler::paint_if_bound(zr_id);
+    }
+    Ok(())
 }
 
 pub(crate) fn group_remove_child(group_id: u32, child_id: u32) -> Result<(), JsValue> {
@@ -710,6 +766,7 @@ mod tests {
             x: 0.0,
             y: 0.0,
             clip_element_id: None,
+            draggable: Default::default(),
         });
         let id = reg.register(ElementKind::Path, pending, "rect");
         assert!(reg.can_add_to_zr(id));
@@ -748,6 +805,7 @@ mod tests {
             ec_data: Default::default(),
             tx: 0.0,
             ty: 0.0,
+            draggable: Default::default(),
         });
         let text_id = reg.register(ElementKind::Text, pending, "text");
         reg.set_parent(text_id, group_id).unwrap();
@@ -791,6 +849,7 @@ mod tests {
             ec_data: Default::default(),
             tx: 0.0,
             ty: 0.0,
+            draggable: Default::default(),
         });
         let text_id = reg.register(ElementKind::Text, pending, "text");
         reg.set_parent(text_id, group_id).unwrap();
@@ -830,6 +889,7 @@ mod tests {
             ec_data: Default::default(),
             tx: 0.0,
             ty: 0.0,
+            draggable: Default::default(),
         });
         let element_id = reg.register(ElementKind::Text, pending, "text");
         let mut zr = ZRenderer::new(320, 160).unwrap();

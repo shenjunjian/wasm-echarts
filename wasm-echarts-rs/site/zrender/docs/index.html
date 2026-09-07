@@ -30,7 +30,7 @@ cd ../../site && npm install && npm run dev
     <div class="doc-section">
       <h3>顶层 API</h3>
       <ul>
-        <li><code>init(dom?, opts?)</code> — 创建 ZRender（<code>dom</code> 忽略，尺寸来自 opts）</li>
+        <li><code>init(dom?, opts?)</code> — 创建 ZRender。传入 <code>HTMLCanvasElement</code>（或含 canvas 的容器）时绑定 Handler：<code>zr.on</code> / <code>el.on</code> / <code>draggable</code> 生效，并自动 <code>putImageData</code>。无 DOM 时尺寸来自 opts，可用 <code>zr.handler.dispatch</code> 注入事件</li>
         <li><code>registerFont(data, opts?)</code> — 注册字体 bytes 到全局 fontdb（<strong>Text 渲染前必调</strong>，见下节）</li>
         <li><code>clearFonts()</code> — 清空已注册字体（测试用）</li>
         <li><code>dispose(zr)</code> / <code>disposeAll()</code> — 释放实例</li>
@@ -152,11 +152,8 @@ let mut zr = ZRenderer::new(480, 360)?;</pre>
       <h3>与官方 zrender 的差异</h3>
       <ul>
         <li>仅 canvas 离屏模式，无 SVG painter；<code>animate().when().start()</code> 可调用但不播放</li>
-        <li><code>refresh()</code> 同步返回像素，需 JS 侧 <code>putImageData</code> 上屏</li>
-        <li><code>init(dom)</code> 的 dom 参数忽略</li>
-        <li><code>Text</code> 暂仅支持 <code>zr.add(text)</code> 根节点（不支持 <code>group.add(text)</code>）</li>
+        <li><code>init(null)</code> 时 <code>refresh()</code> 同步返回像素，需 JS 侧 <code>putImageData</code>；<code>init(canvas)</code> 会自动上屏</li>
         <li><strong>文本须宿主注册字体</strong>，见上文「字体加载」；无浏览器系统字体回退</li>
-        <li>无 <code>on('click')</code> 事件总线，命中检测需自行绑定 DOM 事件</li>
       </ul>
     </div>
 

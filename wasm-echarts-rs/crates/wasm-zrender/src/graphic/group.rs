@@ -61,6 +61,16 @@ impl Group {
         Group { id: self.id }
     }
 
+    #[wasm_bindgen(getter)]
+    pub fn draggable(&self) -> JsValue {
+        crate::handler::element_draggable_js(self.id)
+    }
+
+    #[wasm_bindgen(setter)]
+    pub fn set_draggable(&self, value: JsValue) {
+        crate::handler::element_set_draggable(self.id, &value);
+    }
+
     pub fn attr(&self, key: JsValue, value: JsValue) -> Group {
         let _ = api::element_attr(self.id, key, value);
         Group { id: self.id }

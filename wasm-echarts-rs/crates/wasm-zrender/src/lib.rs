@@ -6,6 +6,7 @@ mod element;
 mod export;
 mod font;
 mod graphic;
+mod handler;
 mod registry;
 mod utils;
 mod zrender;
@@ -24,6 +25,7 @@ pub use graphic::{
     Pattern, Point, Polygon, Polyline, RadialGradient, Rect, Ring, Rose, Sector, Star, Text,
     Trochoid, TSpan,
 };
+pub use handler::Handler;
 pub use zrender::{dispose, dispose_all, get_instance, init, ZRender};
 pub use font::{clear_fonts, register_font};
 

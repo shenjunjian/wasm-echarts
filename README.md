@@ -140,7 +140,7 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 
 | 导出 | 说明 |
 |------|------|
-| `init(dom?, opts?)` | 创建 ZRender 实例（dom 忽略，尺寸来自 opts） |
+| `init(dom?, opts?)` | 创建 ZRender 实例。传入 canvas 时绑定 Handler 并自动上屏 |
 | `registerFont(data, opts?)` | 注册字体 bytes（**Text 渲染前必调**，见下文） |
 | `clearFonts()` | 清空已注册字体（测试用） |
 | `dispose(zr)` / `disposeAll()` | 释放实例 |

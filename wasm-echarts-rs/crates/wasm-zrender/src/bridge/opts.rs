@@ -16,12 +16,58 @@ pub struct InitOpts {
     pub dpr: f64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum DraggableKind {
+    #[default]
+    None,
+    All,
+    Horizontal,
+    Vertical,
+}
+
+impl DraggableKind {
+    pub fn is_none(self) -> bool {
+        matches!(self, Self::None)
+    }
+
+    pub fn to_js(self) -> JsValue {
+        match self {
+            Self::None => JsValue::from(false),
+            Self::All => JsValue::from(true),
+            Self::Horizontal => JsValue::from_str("horizontal"),
+            Self::Vertical => JsValue::from_str("vertical"),
+        }
+    }
+
+    pub fn from_js(value: &JsValue) -> Self {
+        if let Some(flag) = value.as_bool() {
+            return if flag { Self::All } else { Self::None };
+        }
+        match value.as_string().as_deref() {
+            Some("horizontal") => Self::Horizontal,
+            Some("vertical") => Self::Vertical,
+            Some("true") => Self::All,
+            _ => Self::None,
+        }
+    }
+
+    pub fn clamp_delta(self, dx: f64, dy: f64) -> (f64, f64) {
+        match self {
+            Self::None => (0.0, 0.0),
+            Self::All => (dx, dy),
+            Self::Horizontal => (dx, 0.0),
+            Self::Vertical => (0.0, dy),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct ElementCommonOpts {
     pub displayable: DisplayableProps,
     pub silent: bool,
     pub name: Option<String>,
     pub ec_data: EcData,
+    pub draggable: DraggableKind,
 }
 
 pub fn parse_init_opts(_dom: &JsValue, opts: &JsValue) -> Result<InitOpts, JsValue> {
@@ -42,6 +88,7 @@ pub fn parse_element_common(opts: &JsValue) -> ElementCommonOpts {
         silent: get_bool(opts, "silent").unwrap_or(false),
         name: get_string(opts, "name"),
         ec_data: EcData::default(),
+        draggable: parse_draggable(opts),
     };
 
     if let Some(series_index) = get_i32(opts, "seriesIndex") {
@@ -207,6 +254,15 @@ fn parse_text_baseline(style: &JsValue) -> TextBaseline {
         Some("middle") => TextBaseline::Middle,
         Some("bottom") => TextBaseline::Bottom,
         _ => TextBaseline::Alphabetic,
+    }
+}
+
+pub fn parse_draggable(opts: &JsValue) -> DraggableKind {
+    let value = get_value(opts, "draggable");
+    if value.is_undefined() {
+        DraggableKind::None
+    } else {
+        DraggableKind::from_js(&value)
     }
 }
 

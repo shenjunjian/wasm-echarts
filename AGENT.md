@@ -365,7 +365,7 @@ Cargo：`crate-type = ["cdylib", "rlib"]`，依赖 `rust-zrender` path。
 
 | 导出 | 行为 |
 |------|------|
-| `init(dom?, opts?)` | 创建实例。**忽略 dom**，宽高 / dpr 来自 `opts` |
+| `init(dom?, opts?)` | 创建实例。传入 canvas 时绑定指针事件并自动上屏；否则宽高 / dpr 来自 `opts` |
 | `registerFont(data, opts?)` | `Uint8Array` → 全局 fontdb。`opts.familyName`、`opts.sansSerif` |
 | `clearFonts()` | 清空字体（测试） |
 | `dispose(zr)` / `disposeAll()` | 释放 |
@@ -375,11 +375,13 @@ Cargo：`crate-type = ["cdylib", "rlib"]`，依赖 `rust-zrender` path。
 
 | 方法 | 说明 |
 |------|------|
-| `add(el)` / `remove(el)` | 根节点增删 |
+| `add(el)` / `remove(el)` | 根节点增删；`init(canvas)` 时自动上屏 |
 | `refresh()` | 同步返回 RGBA `Uint8Array` |
 | `flush()` | 同 `refresh()`（无动画队列） |
 | `resize(opts)` | 改尺寸，不重载任何预设 scene |
 | `findHover(x, y)` | `{ target, topTarget }`，均为 wasm `Element` |
+| `on(event, handler)` / `off(event)` | 实例事件（`mousedown` / `mousemove` / `mouseup` …） |
+| `handler.dispatch(name, { zrX, zrY })` | 无 DOM 时注入指针事件（测试 / Node） |
 | `width()` / `height()` / `dpr()` / `id` | 尺寸与实例 id |
 
 #### 已实现图元（可 `new` + `zr.add` / `group.add`）
@@ -394,13 +396,12 @@ Cargo：`crate-type = ["cdylib", "rlib"]`，依赖 `rust-zrender` path。
 
 **几何值对象**（不进 Storage）：`Point`、`BoundingRect`、`OrientedBoundingRect`。
 
-构造 opts 对齐官方：`{ shape, style, z, zlevel, silent, name }`，以及 echarts 用的 `seriesIndex` / `dataIndex` 可写到 ECData。
+构造 opts 对齐官方：`{ shape, style, z, zlevel, silent, name, draggable, position }`，以及 echarts 用的 `seriesIndex` / `dataIndex` 可写到 ECData。
 
 #### 刻意与官方不同
 
-- 仅离屏 canvas，无 SVG；`zr.on` / `animate().when().start()` 可调用但不驱动事件或关键帧
-- `refresh()` 同步出像素，需 JS `putImageData`
-- `init(dom)` 的 dom 无用
+- 仅离屏 canvas，无 SVG；`animate().when().start()` 可调用但不播放
+- `init(canvas)` 绑定 Handler（`zr.on` / `el.on` / `draggable`），并自动 `putImageData`；`init(null)` 时 `refresh()` 仍返回像素，无 DOM 可用 `zr.handler.dispatch`
 - 文本必须先 `registerFont`
 - 工具模块 `color` / `matrix` / `vector` 等仍为空对象
 - `IncrementalDisplayable` 未实现

@@ -25,12 +25,22 @@ pub struct HitResult {
 pub struct Handler;
 
 impl Handler {
-    /// 反向遍历 displayList，返回最上层命中图元
+    /// 反向遍历 displayList，返回最上层命中图元。
+    /// silent 图元只作为 `top_target`，继续向下找可交互 `target`（对齐 zrender Handler）。
     pub fn find_hover(storage: &mut Storage, x: f64, y: f64) -> Option<HitResult> {
         let items: Vec<DisplayItem> = storage.get_display_list(true).to_vec();
+        let mut top: Option<HitResult> = None;
 
         for item in items.iter().rev() {
-            if let Some(result) = Self::hit_test_item(storage, item, x, y) {
+            let Some(result) = Self::hit_test_item(storage, item, x, y) else {
+                continue;
+            };
+            if top.is_none() {
+                top = Some(result.clone());
+            }
+            if !result.silent {
+                let mut result = result;
+                result.top_target = top.as_ref().map(|t| t.target).unwrap_or(result.target);
                 return Some(result);
             }
         }
@@ -84,7 +94,7 @@ impl Handler {
             }
             DisplayElementRef::Text(text_index) => {
                 let text = storage.text(text_index);
-                if text.base.ignore || text.displayable.invisible || text.silent {
+                if text.base.ignore || text.displayable.invisible {
                     return None;
                 }
                 if !text.hit_test(x, y) {
@@ -261,5 +271,41 @@ mod tests {
         storage.add_root(ChildRef::Text(text));
 
         assert!(Handler::find_hover(&mut storage, 60.0, 55.0).is_none());
+    }
+
+    #[test]
+    fn silent_overlay_does_not_block_path_below() {
+        let mut storage = Storage::new();
+        let circle = storage.create_path(Path::new(
+            Shape::Circle(CircleShape {
+                cx: 100.0,
+                cy: 100.0,
+                r: 30.0,
+            }),
+            PathStyle {
+                fill: FillStrokeStyle::color("#ee6666"),
+                ..Default::default()
+            },
+        ));
+        let overlay = storage.create_path(Path::new(
+            Shape::Rect(RectShape {
+                x: 0.0,
+                y: 0.0,
+                width: 200.0,
+                height: 200.0,
+            }),
+            PathStyle {
+                fill: FillStrokeStyle::color("#14f1ff"),
+                ..Default::default()
+            },
+        ));
+        storage.path_mut(overlay).silent = true;
+        storage.add_root(ChildRef::Path(circle));
+        storage.add_root(ChildRef::Path(overlay));
+
+        let hit = Handler::find_hover(&mut storage, 100.0, 100.0).unwrap();
+        assert_eq!(hit.target, HitTarget::Path(circle));
+        assert_eq!(hit.top_target, HitTarget::Path(overlay));
+        assert!(!hit.silent);
     }
 }

@@ -33,6 +33,7 @@ pub fn build_pending_path(type_name: &str, opts: &JsValue) -> Result<PendingData
         x,
         y,
         clip_element_id: None,
+        draggable: common.draggable,
     }))
 }
 
@@ -49,6 +50,7 @@ pub fn build_pending_image(opts: &JsValue) -> Result<PendingData, JsValue> {
         ec_data: common.ec_data,
         x,
         y,
+        draggable: common.draggable,
     }))
 }
 
@@ -71,6 +73,7 @@ pub fn build_pending_text(opts: &JsValue) -> PendingData {
         ec_data: common.ec_data,
         tx,
         ty,
+        draggable: common.draggable,
     })
 }
 
