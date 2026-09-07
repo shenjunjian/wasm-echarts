@@ -332,11 +332,13 @@ fn hit_to_js(hit: &rust_zrender::HitResult) -> JsValue {
     let obj = Object::new();
     let _ = Reflect::set(&obj, &JsValue::from_str("x"), &JsValue::from(hit.x));
     let _ = Reflect::set(&obj, &JsValue::from_str("y"), &JsValue::from(hit.y));
-    let _ = Reflect::set(
-        &obj,
-        &JsValue::from_str("pathIndex"),
-        &JsValue::from(hit.path_index as u32),
-    );
+    if let rust_zrender::HitTarget::Path(path_index) = hit.target {
+        let _ = Reflect::set(
+            &obj,
+            &JsValue::from_str("pathIndex"),
+            &JsValue::from(path_index as u32),
+        );
+    }
     let _ = Reflect::set(
         &obj,
         &JsValue::from_str("silent"),
