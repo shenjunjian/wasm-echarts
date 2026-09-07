@@ -28,9 +28,6 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@shared': resolve(root, 'src/shared'),
-      '@zrender': resolve(root, 'src/zrender'),
-      '@echarts': resolve(root, 'src/echarts'),
       '@wasm-zrender': resolve(repoRoot, 'crates/wasm-zrender/pkg'),
       '@wasm-echarts': resolve(repoRoot, 'crates/wasm-echarts/pkg'),
     },

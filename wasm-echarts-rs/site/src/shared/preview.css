@@ -15,18 +15,21 @@ body {
   box-sizing: border-box;
 }
 
+.preview-root canvas,
 .preview-root .chart-host {
-  width: 100%;
-  max-width: 520px;
-  height: 380px;
+  display: block;
   border: 1px solid #e2e5ea;
   background: #fff;
   border-radius: 8px;
   overflow: hidden;
 }
 
+.preview-root .chart-host {
+  width: 480px;
+  height: 360px;
+}
+
 .preview-root canvas {
-  display: block;
   image-rendering: pixelated;
 }
 

@@ -7,7 +7,10 @@
   <link rel="stylesheet" href="/src/shared/preview.css" />
 </head>
 <body>
-  <div id="app"></div>
-  <script type="module" src="/src/pages/echarts/bench.js"></script>
+  <div class="preview-root">
+    <div id="chart" class="chart-host"></div>
+  </div>
+  <div id="log" class="preview-log">运行基准测试…</div>
+  <script type="module" src="./bench.js"></script>
 </body>
 </html>

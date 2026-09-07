@@ -1,0 +1,82 @@
+import initWasm, {
+  init,
+  registerFont,
+  Text,
+} from '@wasm-zrender/wasm_zrender.js';
+
+const width = 480;
+const height = 360;
+const dpr = window.devicePixelRatio || 1;
+const FONT_URL = '/fonts/NotoSansSC-Regular.ttf';
+const FONT_FAMILY = 'Noto Sans SC';
+
+async function loadFont(url) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`字体加载失败: ${url}`);
+  }
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  registerFont(bytes, {
+    familyName: FONT_FAMILY,
+    sansSerif: [FONT_FAMILY],
+  });
+}
+
+async function main() {
+  await initWasm();
+  await loadFont(FONT_URL);
+
+  const canvas = document.getElementById('canvas');
+  canvas.width = Math.floor(width * dpr);
+  canvas.height = Math.floor(height * dpr);
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
+
+  const zr = init(null, { width, height, devicePixelRatio: dpr });
+
+  zr.add(new Text({
+    style: {
+      text: 'wasm-zrender 文本',
+      x: 24,
+      y: 48,
+      fill: '#333',
+      fontSize: 18,
+      fontWeight: 'bold',
+    },
+  }));
+
+  zr.add(new Text({
+    style: {
+      text: '对齐 · 中文 · fillText',
+      x: 24,
+      y: 96,
+      fill: '#5470c6',
+      fontSize: 14,
+    },
+  }));
+
+  zr.add(new Text({
+    style: {
+      text: 'right align',
+      x: 440,
+      y: 140,
+      fill: '#666',
+      fontSize: 12,
+      textAlign: 'right',
+    },
+  }));
+
+  paint(zr, canvas);
+}
+
+function paint(zr, canvas) {
+  const rgba = zr.refresh();
+  const ctx = canvas.getContext('2d');
+  ctx.putImageData(
+    new ImageData(new Uint8ClampedArray(rgba), zr.width(), zr.height()),
+    0,
+    0,
+  );
+}
+
+main();

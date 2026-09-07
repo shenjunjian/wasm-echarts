@@ -448,15 +448,9 @@ crates/wasm-zrender/pkg/
 ### 文档站如何用到本 crate
 
 1. Vite alias `@wasm-zrender` → `crates/wasm-zrender/pkg`
-2. `site/src/zrender/zrender.js`：
-
-```javascript
-import initWasm, { init, dispose } from '@wasm-zrender/wasm_zrender.js';
-```
-
-3. `createZrenderView`：`init(null, { width, height, devicePixelRatio })` → `zr.refresh()` → `putImageData`
-4. 实例页 `example-runner.js` 调 `ZRENDER_SETUPS`（`example-setups.js`）构图；catalog 里的源码字符串展示官方风格 import
-5. 字体：`site/src/zrender/fonts.js` 从同一包再 `import { registerFont } from '@wasm-zrender/wasm_zrender.js'`，默认拉取 `/fonts/NotoSansSC-Regular.ttf`
+2. 每个实例是独立完整脚本：`site/zrender/examples/shapes.js` 等同名 HTML 成对出现，直接 `import` wasm 包、建 canvas、构图、`refresh` → `putImageData`
+3. 画廊 `gallery.js` 用 Vite `?raw` 读这些 `.js` 作为左侧源码，iframe 加载同目录 HTML 预览
+4. 字体：`text.js` 内联 `fetch` + `registerFont`；可选辅助 `site/src/zrender/fonts.js` 默认拉取 `/fonts/NotoSansSC-Regular.ttf`
 
 实例页：`/zrender/examples/shapes.html`、`text.html`、`sector.html`、`hit.html`、`state.html`。
 
@@ -629,8 +623,9 @@ crate `.gitignore` 含 `pkg/`。改 Rust 后必须重新 wasm-pack，浏览器�
 import initWasm, { EChartsInstance } from '@wasm-echarts/wasm_echarts.js';
 ```
 
-3. 实例 runner `example-runner.js` 用薄壳 `echarts.init` + `setOption`；左侧展示的源码字符串写成 `from './pkg/wasm_echarts.js'`，方便读者拷到独立 HTML
-4. 页面：line / bar / pie / scatter / interactive / merge / bench
+3. 每个实例是独立完整脚本：`site/echarts/examples/line.js` 等同名 HTML 成对出现，调用薄壳 `echarts.init` + `setOption`
+4. 画廊 `gallery.js` 用 Vite `?raw` 读这些 `.js` 作为左侧源码，iframe 加载同目录 HTML 预览
+5. 页面：line / bar / pie / scatter / interactive / merge / bench
 
 ---
 
@@ -649,24 +644,29 @@ site/
 ├── vite.config.js             # 多页 HTML 入口 + alias + wasm MIME
 ├── public/                    # 静态资源（字体等，按本地/部署准备）
 ├── src/
-│   ├── shared/                # 布局 CSS、左右分栏 shell、高亮、gallery
-│   ├── zrender/               # 底层薄壳、字体、catalog、runner、setups
-│   ├── echarts/               # 图表薄壳、option 样例、catalog、runner
-│   └── pages/                 # 各实例页入口 JS
+│   ├── shared/                # 布局 CSS、画廊 UI、源码高亮
+│   ├── zrender/fonts.js       # 可选：字体加载辅助
+│   └── echarts/echarts.js     # 图表薄壳（init / tooltip / 指针事件）
 ├── zrender/
 │   ├── index.html
 │   ├── docs/index.html
-│   └── examples/*.html        # shapes / text / sector / hit / state
+│   └── examples/              # 每个示例 = html + 完整 js
+│       ├── gallery.js
+│       ├── shapes.html / shapes.js
+│       ├── text.html / text.js
+│       └── …
 └── echarts/
     ├── index.html
     ├── docs/index.html
-    └── examples/*.html        # line / bar / pie / scatter / interactive / merge / bench
+    └── examples/              # 每个示例 = html + 完整 js
+        ├── gallery.js
+        ├── line.html / line.js
+        └── …
 ```
 
 - 首页不做 API 长文、不嵌 canvas
-- 实例页：`example-shell.js` 左 textarea + 运行/重置，右 canvas；桌面左右分栏
-- zrender 预览真正执行 `example-setups.js` 里的构图函数（不是 eval 左侧全文）；左侧源码供阅读/对照
-- echarts 预览从源码/内置 option 解析后 `echarts.init` + `setOption`
+- 实例画廊：左侧菜单 + 源码（即该示例 `.js` 全文），右侧 iframe 预览
+- 每个示例 JS 自包含：导入、构图、绘制、交互都写在同一个文件里
 
 #### 实例清单
 
@@ -738,9 +738,6 @@ const repoRoot = resolve(root, '..'); // wasm-echarts-rs/
 
 resolve: {
   alias: {
-    '@shared': resolve(root, 'src/shared'),
-    '@zrender': resolve(root, 'src/zrender'),
-    '@echarts': resolve(root, 'src/echarts'),
     '@wasm-zrender': resolve(repoRoot, 'crates/wasm-zrender/pkg'),
     '@wasm-echarts': resolve(repoRoot, 'crates/wasm-echarts/pkg'),
   },
@@ -805,7 +802,7 @@ import initEcharts, { EChartsInstance } from 'wasm-echarts';
 
 （具体子路径以该包 `main` 为准。）本仓库的 site 选择 alias，避免 workspace 安装步骤，改完 Rust 只需重新 wasm-pack，Vite 会读到更新后的 `pkg/`。
 
-内部 JS 还有一层别名，与 WASM 无关：`@shared` / `@zrender` / `@echarts` 指向 `site/src/`，方便实例页短路径 import。
+实例 JS 与 HTML 放在同一目录（如 `zrender/examples/shapes.js`），画廊用 `?raw` 读取这份脚本作为源码展示。echarts 示例通过相对路径引入薄壳 `src/echarts/echarts.js`。
 
 ---
 

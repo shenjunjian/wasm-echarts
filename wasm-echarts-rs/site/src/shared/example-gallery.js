@@ -1,4 +1,4 @@
-import { highlightSource } from '@shared/highlight-source.js';
+import { highlightSource } from './highlight-source.js';
 
 /**
  * 实例画廊：左侧菜单 · 右侧源码 + iframe 预览
