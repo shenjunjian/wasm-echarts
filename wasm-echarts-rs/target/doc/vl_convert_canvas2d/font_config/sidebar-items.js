@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["font_config_to_fontdb"],"struct":["CustomFont","FontConfig","GenericFamilyMap","ResolvedFontConfig"]};
