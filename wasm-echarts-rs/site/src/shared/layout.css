@@ -369,8 +369,25 @@ a:hover {
 }
 
 /* —— 实例画廊：左侧菜单 · 右侧源码 + iframe —— */
+html:has(.example-gallery),
+body:has(.example-gallery) {
+  height: 100%;
+  overflow: hidden;
+}
+
+body:has(.example-gallery) {
+  display: flex;
+  flex-direction: column;
+}
+
+body:has(.example-gallery) .site-header {
+  flex-shrink: 0;
+}
+
 .example-gallery {
-  min-height: calc(100vh - 53px);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   min-width: 0;
 }
@@ -490,15 +507,18 @@ a:hover {
 
 .example-source-code {
   flex: 1;
+  min-height: 0;
   margin: 0;
   padding: 1rem;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: auto;
   background: var(--code-bg);
 }
 
 .example-source-code pre {
   margin: 0;
   padding: 0;
+  overflow: visible !important;
   background: transparent !important;
   font-family: var(--mono);
   font-size: 0.78rem;
@@ -512,7 +532,7 @@ a:hover {
 .example-preview-panel iframe {
   flex: 1;
   width: 100%;
-  min-height: 360px;
+  min-height: 0;
   border: 0;
   background: var(--preview-bg);
 }
