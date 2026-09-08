@@ -507,6 +507,34 @@ mod tests {
         assert!(rgba[center + 3] > 0, "rect center should be filled");
     }
 
+    /// 对齐 site/zrender/examples/animation.js：fill 透明、仅 stroke 的圆应能画出像素。
+    #[test]
+    fn animation_example_stroke_only_circle_paints() {
+        let w = 800u32;
+        let h = 600u32;
+        let r = 30.0;
+        let mut zr = ZRenderer::new(w, h).unwrap();
+        let idx = zr.storage.create_path(Path::new(
+            Shape::Circle(CircleShape {
+                cx: w as f64 - r,
+                cy: h as f64 / 2.0,
+                r,
+            }),
+            PathStyle {
+                fill: FillStrokeStyle::None,
+                stroke: FillStrokeStyle::color("#FF6EBE"),
+                line_width: 1.0,
+                ..Default::default()
+            },
+        ));
+        zr.storage.add_root(ChildRef::Path(idx));
+        let rgba = zr.refresh().unwrap();
+        assert!(
+            rgba.chunks(4).any(|px| px[3] > 0),
+            "stroke-only circle at final cx should paint at least one pixel"
+        );
+    }
+
     #[test]
     fn sector_ring_has_transparent_hole() {
         use std::f64::consts::PI;

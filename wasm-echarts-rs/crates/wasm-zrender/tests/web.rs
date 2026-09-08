@@ -1028,6 +1028,54 @@ fn polygon_smooth_paints() {
     assert!(rgba.chunks(4).any(|px| px[3] > 0));
 }
 
+/// 对齐 site/zrender/examples/animation.js：透明 fill + stroke，animate 终态后再 add/refresh。
+#[wasm_bindgen_test]
+fn animation_example_stroke_circle_paints_at_last_when() {
+    reset_registry();
+    let width = 800u32;
+    let height = 600u32;
+    let r = 30.0;
+    let mut zr = init(JsValue::NULL, init_opts(width, height)).unwrap();
+
+    let shape = Object::new();
+    Reflect::set(&shape, &"cx".into(), &JsValue::from(r)).unwrap();
+    Reflect::set(&shape, &"cy".into(), &JsValue::from(height as f64 / 2.0)).unwrap();
+    Reflect::set(&shape, &"r".into(), &JsValue::from(r)).unwrap();
+    let style = Object::new();
+    Reflect::set(&style, &"fill".into(), &JsValue::from_str("transparent")).unwrap();
+    Reflect::set(&style, &"stroke".into(), &JsValue::from_str("#FF6EBE")).unwrap();
+    let opts = Object::new();
+    Reflect::set(&opts, &"shape".into(), &shape).unwrap();
+    Reflect::set(&opts, &"style".into(), &style).unwrap();
+    Reflect::set(&opts, &"silent".into(), &JsValue::TRUE).unwrap();
+
+    let circle = Circle::new(opts.into()).unwrap();
+    let mid = Object::new();
+    Reflect::set(&mid, &"cx".into(), &JsValue::from(r)).unwrap();
+    let last = Object::new();
+    Reflect::set(&last, &"cx".into(), &JsValue::from(width as f64 - r)).unwrap();
+    circle
+        .animate(JsValue::from_str("shape"), JsValue::TRUE)
+        .when(5000.0, mid.into())
+        .when(10000.0, last.into())
+        .start(JsValue::UNDEFINED);
+
+    let bbox = circle.get_bounding_rect();
+    assert!(
+        (bbox.x() - (width as f64 - r * 2.0)).abs() < 1.0,
+        "last when should move circle to the right, bbox.x={}, expected ~{}",
+        bbox.x(),
+        width as f64 - r * 2.0
+    );
+
+    zr.add(JsValue::from(circle)).unwrap();
+    let rgba = zr.refresh().unwrap();
+    assert!(
+        rgba.chunks(4).any(|px| px[3] > 0),
+        "animation example circle should paint at least one pixel"
+    );
+}
+
 #[wasm_bindgen_test]
 fn animator_start_writes_last_when_shape() {
     reset_registry();

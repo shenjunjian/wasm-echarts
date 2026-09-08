@@ -461,7 +461,7 @@ Cargo：`crate-type = ["cdylib", "rlib"]`，依赖 `rust-zrender` path。公开 
 
 `crates/wasm-zrender/tests/web.rs`：`wasm-bindgen-test`，覆盖 init+Group+Rect 出 RGBA、findHover、渐变、各 shape、Image、Text/字体、几何类、stub 抛错等。字体夹具：`crates/wasm-zrender/tests/fixtures/NotoSansSC-Regular.ttf`。
 
-纯 JS 工具模块：`node crates/wasm-zrender/js/tool/selftest.js`（matrix / vector / color / util / morph / Animator 终态，不启 WASM）。
+纯 JS 工具模块：`node crates/wasm-zrender/js/tool/selftest.js`（matrix / vector / color / util / morph / Animator 终态 / PathRecorder / Point 静态方法，不启 WASM）。
 
 ```bash
 cd wasm-echarts-rs/crates/wasm-zrender

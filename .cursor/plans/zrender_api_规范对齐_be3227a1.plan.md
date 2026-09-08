@@ -25,7 +25,7 @@ todos:
     status: completed
   - id: docs-verify
     content: 更新 AGENT.md/文档/示例；手工走通 shapes/text/animation/bounding_box
-    status: completed
+    status: pending
 isProject: false
 ---
 

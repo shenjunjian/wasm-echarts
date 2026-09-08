@@ -436,8 +436,10 @@ impl ElementRegistry {
         }
         if let Some(clip_id) = pending.clip_element_id {
             self.materialize_element(zr, zr_id, clip_id)?;
-            if let Some(clip_idx) = self.storage_index(clip_id) {
-                zr.storage.group_mut(idx).clip_path = Some(clip_idx);
+            if self.kind(clip_id) == Some(ElementKind::Path) {
+                if let Some(clip_idx) = self.storage_index(clip_id) {
+                    zr.storage.group_mut(idx).clip_path = Some(clip_idx);
+                }
             }
         }
         Ok(())
@@ -479,8 +481,10 @@ impl ElementRegistry {
 
         if let Some(clip_id) = pending.clip_element_id {
             self.materialize_element(zr, zr_id, clip_id)?;
-            if let Some(clip_idx) = self.storage_index(clip_id) {
-                path.clip_path = Some(clip_idx);
+            if self.kind(clip_id) == Some(ElementKind::Path) {
+                if let Some(clip_idx) = self.storage_index(clip_id) {
+                    path.clip_path = Some(clip_idx);
+                }
             }
         }
 
@@ -526,8 +530,10 @@ impl ElementRegistry {
         }
         if let Some(clip_id) = pending.clip_element_id {
             self.materialize_element(zr, zr_id, clip_id)?;
-            if let Some(clip_idx) = self.storage_index(clip_id) {
-                zr.storage.text_mut(idx).clip_path = Some(clip_idx);
+            if self.kind(clip_id) == Some(ElementKind::Path) {
+                if let Some(clip_idx) = self.storage_index(clip_id) {
+                    zr.storage.text_mut(idx).clip_path = Some(clip_idx);
+                }
             }
         }
         Ok(())
@@ -566,8 +572,10 @@ impl ElementRegistry {
         }
         if let Some(clip_id) = pending.clip_element_id {
             self.materialize_element(zr, zr_id, clip_id)?;
-            if let Some(clip_idx) = self.storage_index(clip_id) {
-                zr.storage.image_mut(idx).clip_path = Some(clip_idx);
+            if self.kind(clip_id) == Some(ElementKind::Path) {
+                if let Some(clip_idx) = self.storage_index(clip_id) {
+                    zr.storage.image_mut(idx).clip_path = Some(clip_idx);
+                }
             }
         }
         Ok(())

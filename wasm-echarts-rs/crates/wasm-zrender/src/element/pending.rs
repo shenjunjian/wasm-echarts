@@ -202,15 +202,6 @@ impl PendingData {
         }
     }
 
-    pub fn clip_element_id(&self) -> Option<u32> {
-        match self {
-            Self::Group(g) => g.clip_element_id,
-            Self::Path(p) => p.clip_element_id,
-            Self::Text(t) => t.clip_element_id,
-            Self::Image(p) => p.clip_element_id,
-        }
-    }
-
     pub fn set_clip_element_id(&mut self, id: Option<u32>) {
         match self {
             Self::Group(g) => g.clip_element_id = id,

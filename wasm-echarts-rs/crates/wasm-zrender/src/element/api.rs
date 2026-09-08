@@ -256,7 +256,11 @@ fn apply_clip_to_storage(
         with_zr(zr_id, |zr| {
             let clip_idx = if let Some(clip_id) = clip_id {
                 reg.materialize_element(zr, zr_id, clip_id)?;
-                reg.storage_index(clip_id)
+                if reg.kind(clip_id) == Some(ElementKind::Path) {
+                    reg.storage_index(clip_id)
+                } else {
+                    None
+                }
             } else {
                 None
             };
