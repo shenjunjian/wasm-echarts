@@ -33,10 +33,6 @@ pub fn brush(
 
     storage.path_mut(path_index).ensure_path();
 
-    if let Some(clip_idx) = storage.path(path_index).clip_path {
-        apply_clip_path(ctx, storage, clip_idx)?;
-    }
-
     let transform = *storage.path(path_index).base.transform();
     ctx.save();
     ctx.set_transform(&transform);
@@ -126,7 +122,9 @@ pub fn brush(
     Ok(())
 }
 
-fn apply_clip_path(
+/// 把 clipPath 录进当前路径后 `clip()`。
+/// 先 restore 变换再 clip：path 已是设备坐标，clip 区域不会被随后的 restore 清掉。
+pub(crate) fn apply_clip_path(
     ctx: &mut dyn CanvasContext,
     storage: &mut Storage,
     clip_idx: usize,
@@ -137,8 +135,19 @@ fn apply_clip_path(
     ctx.set_transform(&transform);
     ctx.begin_path();
     storage.path(clip_idx).path_proxy().replay(ctx);
-    ctx.clip();
     ctx.restore();
+    ctx.clip();
+    Ok(())
+}
+
+pub(crate) fn apply_clip_chain(
+    ctx: &mut dyn CanvasContext,
+    storage: &mut Storage,
+    clip_chain: &[usize],
+) -> Result<(), BackendError> {
+    for &clip_idx in clip_chain {
+        apply_clip_path(ctx, storage, clip_idx)?;
+    }
     Ok(())
 }
 

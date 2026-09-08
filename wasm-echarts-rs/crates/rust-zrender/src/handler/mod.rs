@@ -219,6 +219,44 @@ mod tests {
     }
 
     #[test]
+    fn group_clip_filters_child_hit() {
+        let mut storage = Storage::new();
+        let clip = storage.create_path(Path::new(
+            Shape::Rect(RectShape {
+                x: 40.0,
+                y: 40.0,
+                width: 20.0,
+                height: 20.0,
+                ..Default::default()
+            }),
+            PathStyle {
+                fill: FillStrokeStyle::color("#000"),
+                ..Default::default()
+            },
+        ));
+        let child = storage.create_path(Path::new(
+            Shape::Rect(RectShape {
+                x: 0.0,
+                y: 0.0,
+                width: 100.0,
+                height: 100.0,
+                ..Default::default()
+            }),
+            PathStyle {
+                fill: FillStrokeStyle::color("#5470c6"),
+                ..Default::default()
+            },
+        ));
+        let group = storage.create_group();
+        storage.group_mut(group).clip_path = Some(clip);
+        storage.group_add_child(group, ChildRef::Path(child));
+        storage.add_root(ChildRef::Group(group));
+
+        assert!(Handler::find_hover(&mut storage, 50.0, 50.0).is_some());
+        assert!(Handler::find_hover(&mut storage, 10.0, 10.0).is_none());
+    }
+
+    #[test]
     fn image_hit_test() {
         let mut storage = Storage::new();
         let mut data = vec![255u8, 0, 0, 255];

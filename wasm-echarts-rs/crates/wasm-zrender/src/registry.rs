@@ -434,6 +434,12 @@ impl ElementRegistry {
             record.storage_index = Some(idx);
             record.zr_id = Some(zr_id);
         }
+        if let Some(clip_id) = pending.clip_element_id {
+            self.materialize_element(zr, zr_id, clip_id)?;
+            if let Some(clip_idx) = self.storage_index(clip_id) {
+                zr.storage.group_mut(idx).clip_path = Some(clip_idx);
+            }
+        }
         Ok(())
     }
 
@@ -466,8 +472,9 @@ impl ElementRegistry {
         for (state, patch) in &pending.state_patches {
             path.states.set_state_patch(state, patch.clone());
         }
-        for state in &pending.active_states {
-            path.use_state(state);
+        if !pending.active_states.is_empty() {
+            let names: Vec<&str> = pending.active_states.iter().map(|s| s.as_str()).collect();
+            path.use_states(&names);
         }
 
         if let Some(clip_id) = pending.clip_element_id {
@@ -517,6 +524,12 @@ impl ElementRegistry {
             record.storage_index = Some(idx);
             record.zr_id = Some(zr_id);
         }
+        if let Some(clip_id) = pending.clip_element_id {
+            self.materialize_element(zr, zr_id, clip_id)?;
+            if let Some(clip_idx) = self.storage_index(clip_id) {
+                zr.storage.text_mut(idx).clip_path = Some(clip_idx);
+            }
+        }
         Ok(())
     }
 
@@ -551,6 +564,12 @@ impl ElementRegistry {
             record.storage_index = Some(idx);
             record.zr_id = Some(zr_id);
         }
+        if let Some(clip_id) = pending.clip_element_id {
+            self.materialize_element(zr, zr_id, clip_id)?;
+            if let Some(clip_idx) = self.storage_index(clip_id) {
+                zr.storage.image_mut(idx).clip_path = Some(clip_idx);
+            }
+        }
         Ok(())
     }
 
@@ -571,6 +590,28 @@ impl ElementRegistry {
         let path_index = self.storage_index(element_id).unwrap();
         with_zr(zr_id, |zr| {
             zr.set_path_state(path_index, state);
+            Ok(())
+        })
+    }
+
+    pub fn apply_path_states(&mut self, element_id: u32, states: &[String]) -> Result<(), JsValue> {
+        if self.storage_index(element_id).is_none() {
+            if let Some(record) = self.elements.get_mut(&element_id) {
+                if let PendingData::Path(pending) = &mut record.pending {
+                    pending.active_states = states.to_vec();
+                    return Ok(());
+                }
+            }
+            return Err(JsValue::from_str("invalid path element"));
+        }
+
+        let zr_id = self
+            .zr_id(element_id)
+            .ok_or_else(|| JsValue::from_str("element is not attached to a ZRender instance"))?;
+        let path_index = self.storage_index(element_id).unwrap();
+        let refs: Vec<&str> = states.iter().map(|s| s.as_str()).collect();
+        with_zr(zr_id, |zr| {
+            zr.set_path_states(path_index, &refs);
             Ok(())
         })
     }
@@ -888,6 +929,12 @@ pub(crate) fn path_use_state(element_id: u32, state: &str) -> Result<(), JsValue
     })
 }
 
+pub(crate) fn path_use_states(element_id: u32, states: &[String]) -> Result<(), JsValue> {
+    ELEMENT_REGISTRY.with(|reg| {
+        reg.borrow_mut().apply_path_states(element_id, states)
+    })
+}
+
 pub(crate) fn path_set_state_style(
     element_id: u32,
     state: &str,
@@ -971,6 +1018,7 @@ mod tests {
             ec_data: Default::default(),
             transform: Default::default(),
             draggable: Default::default(),
+            clip_element_id: None,
         });
         let text_id = reg.register(ElementKind::Text, pending, "text");
         reg.set_parent(text_id, group_id).unwrap();
@@ -1015,6 +1063,7 @@ mod tests {
             ec_data: Default::default(),
             transform: Default::default(),
             draggable: Default::default(),
+            clip_element_id: None,
         });
         let text_id = reg.register(ElementKind::Text, pending, "text");
         reg.set_parent(text_id, group_id).unwrap();
@@ -1055,6 +1104,7 @@ mod tests {
             ec_data: Default::default(),
             transform: Default::default(),
             draggable: Default::default(),
+            clip_element_id: None,
         });
         let element_id = reg.register(ElementKind::Text, pending, "text");
         let mut zr = ZRenderer::new(320, 160).unwrap();

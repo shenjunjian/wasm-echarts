@@ -67,6 +67,7 @@ pub struct PendingGroup {
     pub ignore: bool,
     pub silent: bool,
     pub draggable: DraggableKind,
+    pub clip_element_id: Option<u32>,
 }
 
 #[derive(Debug, Clone)]
@@ -97,6 +98,7 @@ pub struct PendingText {
     pub ignore: bool,
     pub ec_data: EcData,
     pub transform: PendingTransform,
+    pub clip_element_id: Option<u32>,
     pub draggable: DraggableKind,
 }
 
@@ -109,6 +111,7 @@ pub struct PendingImage {
     pub ignore: bool,
     pub ec_data: EcData,
     pub transform: PendingTransform,
+    pub clip_element_id: Option<u32>,
     pub draggable: DraggableKind,
 }
 
@@ -196,6 +199,24 @@ impl PendingData {
             Self::Path(p) => Some(&mut p.displayable),
             Self::Text(t) => Some(&mut t.displayable),
             Self::Image(p) => Some(&mut p.displayable),
+        }
+    }
+
+    pub fn clip_element_id(&self) -> Option<u32> {
+        match self {
+            Self::Group(g) => g.clip_element_id,
+            Self::Path(p) => p.clip_element_id,
+            Self::Text(t) => t.clip_element_id,
+            Self::Image(p) => p.clip_element_id,
+        }
+    }
+
+    pub fn set_clip_element_id(&mut self, id: Option<u32>) {
+        match self {
+            Self::Group(g) => g.clip_element_id = id,
+            Self::Path(p) => p.clip_element_id = id,
+            Self::Text(t) => t.clip_element_id = id,
+            Self::Image(p) => p.clip_element_id = id,
         }
     }
 }

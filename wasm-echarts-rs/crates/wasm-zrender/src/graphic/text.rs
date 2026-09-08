@@ -64,6 +64,18 @@ impl Text {
         Text { id: self.id }
     }
 
+    #[wasm_bindgen(js_name = setClipPath)]
+    pub fn set_clip_path(&self, clip: JsValue) -> Text {
+        let _ = api::element_set_clip_path(self.id, clip);
+        Text { id: self.id }
+    }
+
+    #[wasm_bindgen(js_name = removeClipPath)]
+    pub fn remove_clip_path(&self) -> Text {
+        let _ = api::element_remove_clip_path(self.id);
+        Text { id: self.id }
+    }
+
     #[wasm_bindgen(js_name = setStyle)]
     pub fn set_style(&self, style: JsValue) -> Text {
         let _ = api::element_set_style(self.id, &style);

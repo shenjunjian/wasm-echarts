@@ -42,6 +42,11 @@ macro_rules! impl_shape {
                 path_use_state(self.path.raw_id(), state)
             }
 
+            #[wasm_bindgen(js_name = useStates)]
+            pub fn use_states(&self, states: JsValue) -> Result<(), JsValue> {
+                api::element_use_states(self.path.raw_id(), states)
+            }
+
             #[wasm_bindgen(js_name = setStateStyle)]
             pub fn set_state_style(&self, state: &str, style: JsValue) -> Result<(), JsValue> {
                 let patch = parse_path_style_patch(&style);
@@ -117,6 +122,14 @@ macro_rules! impl_shape {
             #[wasm_bindgen(js_name = setClipPath)]
             pub fn set_clip_path(&self, clip: JsValue) -> $name {
                 let _ = api::element_set_clip_path(self.path.raw_id(), clip);
+                $name {
+                    path: Path::from_id(self.path.raw_id()),
+                }
+            }
+
+            #[wasm_bindgen(js_name = removeClipPath)]
+            pub fn remove_clip_path(&self) -> $name {
+                let _ = api::element_remove_clip_path(self.path.raw_id());
                 $name {
                     path: Path::from_id(self.path.raw_id()),
                 }

@@ -242,6 +242,9 @@ impl Storage {
                     self.groups[gi].base.dirty = 0;
                     return;
                 }
+                if let Some(clip_idx) = self.groups[gi].clip_path {
+                    clip_chain.push(clip_idx);
+                }
                 let group_dirty = self.groups[gi].base.dirty;
                 let children = self.groups[gi].children.clone();
                 {
@@ -286,6 +289,9 @@ impl Storage {
                 });
             }
             ChildRef::Image(ii) => {
+                if let Some(clip_idx) = self.images[ii].clip_path {
+                    clip_chain.push(clip_idx);
+                }
                 let image = &mut self.images[ii];
                 image.base.update_transform(parent_transform);
                 normalize_z(&mut image.displayable);
@@ -303,6 +309,9 @@ impl Storage {
                 });
             }
             ChildRef::Text(ti) => {
+                if let Some(clip_idx) = self.texts[ti].clip_path {
+                    clip_chain.push(clip_idx);
+                }
                 let text = &mut self.texts[ti];
                 text.base.update_transform(parent_transform);
                 normalize_z(&mut text.displayable);

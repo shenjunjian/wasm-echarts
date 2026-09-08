@@ -148,6 +148,17 @@ impl ZRender {
         dispose_zr_id(self.id);
     }
 
+    #[wasm_bindgen(js_name = setCursorStyle)]
+    pub fn set_cursor_style(&self, cursor_style: &str) {
+        crate::handler::set_cursor_style(self.id, cursor_style);
+    }
+
+    #[wasm_bindgen(js_name = configLayer)]
+    pub fn config_layer(&self, _z_level: JsValue, _config: JsValue) -> Result<(), JsValue> {
+        crate::handler::paint_if_bound(self.id);
+        Ok(())
+    }
+
     #[wasm_bindgen(getter)]
     pub fn handler(&self) -> crate::handler::Handler {
         crate::handler::Handler::from_zr(self.id)

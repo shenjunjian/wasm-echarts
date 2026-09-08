@@ -56,6 +56,11 @@ impl Path {
         self.use_state_inner(state)
     }
 
+    #[wasm_bindgen(js_name = useStates)]
+    pub fn use_states(&self, states: JsValue) -> Result<(), JsValue> {
+        api::element_use_states(self.id, states)
+    }
+
     #[wasm_bindgen(js_name = setStateStyle)]
     pub fn set_state_style(&self, state: &str, style: JsValue) -> Result<(), JsValue> {
         self.set_state_style_inner(state, &style)
@@ -118,6 +123,12 @@ impl Path {
     #[wasm_bindgen(js_name = setClipPath)]
     pub fn set_clip_path(&self, clip: JsValue) -> Path {
         let _ = api::element_set_clip_path(self.id, clip);
+        Path::from_id(self.id)
+    }
+
+    #[wasm_bindgen(js_name = removeClipPath)]
+    pub fn remove_clip_path(&self) -> Path {
+        let _ = api::element_remove_clip_path(self.id);
         Path::from_id(self.id)
     }
 

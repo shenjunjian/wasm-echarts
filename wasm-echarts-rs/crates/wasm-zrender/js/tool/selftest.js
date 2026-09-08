@@ -9,6 +9,8 @@ import * as util from './util.js';
 import * as morph from './morph.js';
 import { setPlatformAPI, platformApi } from './platform.js';
 import { Animator } from '../animator.js';
+import { PathRecorder } from '../path_recorder.js';
+import { attachPointStatics } from '../point_statics.js';
 
 let failed = 0;
 
@@ -116,6 +118,37 @@ function almost(a, b, eps) {
     .start();
   assert(el.shape.cx === 90, 'Animator writes last when');
   assert(duringPct === 1 && done, 'Animator during/done at end');
+}
+
+{
+  const rec = new PathRecorder();
+  rec.moveTo(0, 0).lineTo(10, 0).lineTo(5, 8).closePath();
+  assert(rec.toString() === 'M 0 0 L 10 0 L 5 8 Z', 'PathRecorder triangle');
+}
+
+{
+  const a = { x: 10, y: 20, width: 20, height: 40 };
+  const b = { x: 0, y: 0, width: 40, height: 80 };
+  const sx = b.width / a.width;
+  const sy = b.height / a.height;
+  const out = matrix.identity([]);
+  matrix.translate(out, out, [-a.x, -a.y]);
+  matrix.scale(out, out, [sx, sy]);
+  matrix.translate(out, out, [b.x, b.y]);
+  assert(out[0] === 2 && out[3] === 2 && out[4] === -20 && out[5] === -40, 'BoundingRect.calculateTransform');
+}
+
+{
+  const Point = {};
+  attachPointStatics(Point);
+  const p = { x: 0, y: 0 };
+  Point.set(p, 3, 4);
+  assert(Point.len(p) === 5, 'Point.len');
+  const out = { x: 0, y: 0 };
+  Point.add(out, p, { x: 1, y: 2 });
+  assert(out.x === 4 && out.y === 6, 'Point.add');
+  Point.lerp(out, { x: 0, y: 0 }, { x: 10, y: 10 }, 0.5);
+  assert(out.x === 5 && out.y === 5, 'Point.lerp');
 }
 
 if (failed) {

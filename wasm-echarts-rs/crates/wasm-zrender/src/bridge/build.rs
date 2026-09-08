@@ -51,6 +51,7 @@ pub fn build_pending_image(opts: &JsValue) -> Result<PendingData, JsValue> {
         ec_data: common.ec_data,
         transform,
         draggable: common.draggable,
+        clip_element_id: None,
     }))
 }
 
@@ -74,6 +75,7 @@ pub fn build_pending_text(opts: &JsValue) -> PendingData {
         ec_data: common.ec_data,
         transform,
         draggable: common.draggable,
+        clip_element_id: None,
     })
 }
 

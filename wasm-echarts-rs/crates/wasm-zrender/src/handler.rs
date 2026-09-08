@@ -23,6 +23,7 @@ struct HandlerState {
     dragging_id: Option<u32>,
     drag_x: f64,
     drag_y: f64,
+    cursor_style: String,
     closures: Vec<Closure<dyn FnMut(PointerEvent)>>,
 }
 
@@ -34,6 +35,7 @@ impl Default for HandlerState {
             dragging_id: None,
             drag_x: 0.0,
             drag_y: 0.0,
+            cursor_style: "default".into(),
             closures: Vec::new(),
         }
     }
@@ -66,6 +68,11 @@ impl Handler {
             .or_else(|| get_f64(&event, "offsetY"))
             .unwrap_or(0.0);
         dispatch_pointer(self.zr_id, event_name, x, y, event)
+    }
+
+    #[wasm_bindgen(js_name = setCursorStyle)]
+    pub fn set_cursor_style(&self, cursor_style: &str) {
+        set_cursor_style(self.zr_id, cursor_style);
     }
 }
 
@@ -431,15 +438,41 @@ fn set_cursor(zr_id: u32, target_id: Option<u32>) {
             .is_some()
     });
     let cursor = if dragging {
-        "grabbing"
+        "grabbing".to_string()
     } else if target_id.is_some_and(|id| {
         ELEMENT_REGISTRY.with(|reg| !reg.borrow().draggable(id).is_none())
     }) {
-        "move"
+        "move".to_string()
     } else {
-        "default"
+        HANDLER_REGISTRY.with(|reg| {
+            reg.borrow()
+                .get(&zr_id)
+                .map(|s| s.cursor_style.clone())
+                .unwrap_or_else(|| "default".into())
+        })
     };
-    let _ = canvas.style().set_property("cursor", cursor);
+    let _ = canvas.style().set_property("cursor", &cursor);
+}
+
+pub fn set_cursor_style(zr_id: u32, cursor_style: &str) {
+    let style = if cursor_style.is_empty() {
+        "default"
+    } else {
+        cursor_style
+    };
+    HANDLER_REGISTRY.with(|reg| {
+        if let Some(state) = reg.borrow_mut().get_mut(&zr_id) {
+            state.cursor_style = style.to_string();
+        }
+    });
+    let canvas = HANDLER_REGISTRY.with(|reg| {
+        reg.borrow()
+            .get(&zr_id)
+            .and_then(|s| s.canvas.clone())
+    });
+    if let Some(canvas) = canvas {
+        let _ = canvas.style().set_property("cursor", style);
+    }
 }
 
 fn blit_canvas(

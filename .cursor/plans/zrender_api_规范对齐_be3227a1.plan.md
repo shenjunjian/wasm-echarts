@@ -22,7 +22,7 @@ todos:
     status: completed
   - id: remaining-api
     content: clipPath 全图元、useStates、Path.extend、IncrementalDisplayable、Point 静态方法
-    status: pending
+    status: completed
   - id: docs-verify
     content: 更新 AGENT.md/文档/示例；手工走通 shapes/text/animation/bounding_box
     status: pending

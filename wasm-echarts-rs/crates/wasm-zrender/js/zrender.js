@@ -139,6 +139,23 @@ export class ZRender {
     this._native.off(event, handler);
     return this;
   }
+
+  setCursorStyle(cursorStyle) {
+    this._cursorStyle = cursorStyle || 'default';
+    if (this._native && typeof this._native.setCursorStyle === 'function') {
+      this._native.setCursorStyle(this._cursorStyle);
+    }
+    return this;
+  }
+
+  configLayer(zLevel, config) {
+    if (this._native && typeof this._native.configLayer === 'function') {
+      this._native.configLayer(zLevel, config);
+    } else if (this._native && typeof this._native.refresh === 'function') {
+      this._native.refresh();
+    }
+    return this;
+  }
 }
 
 function wrap(handle) {

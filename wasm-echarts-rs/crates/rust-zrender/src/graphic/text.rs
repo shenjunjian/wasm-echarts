@@ -50,6 +50,8 @@ pub struct Text {
     pub style: TextStyle,
     /// 不参与命中检测（轴标签等）
     pub silent: bool,
+    /// clipPath 引用（paths 数组中的索引）
+    pub clip_path: Option<usize>,
 }
 
 impl Text {
@@ -63,6 +65,7 @@ impl Text {
             y,
             style: TextStyle::default(),
             silent: false,
+            clip_path: None,
         }
     }
 
@@ -73,6 +76,11 @@ impl Text {
 
     pub fn with_displayable(mut self, props: DisplayableProps) -> Self {
         self.displayable = props;
+        self
+    }
+
+    pub fn with_clip_path(mut self, clip_index: usize) -> Self {
+        self.clip_path = Some(clip_index);
         self
     }
 

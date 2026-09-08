@@ -94,6 +94,12 @@ impl ZRenderer {
         path.use_state(state);
     }
 
+    /// 同时应用多个状态（后写覆盖）
+    pub fn set_path_states(&mut self, path_index: usize, states: &[&str]) {
+        let path = self.storage.path_mut(path_index);
+        path.use_states(states);
+    }
+
     /// 注册状态样式补丁
     pub fn set_path_state_style(
         &mut self,
@@ -280,6 +286,87 @@ mod tests {
 
         zr.set_path_state(idx, STATE_NORMAL);
         assert!(!zr.storage.path(idx).states.is_emphasis());
+    }
+
+    #[test]
+    fn use_states_merges_style_patches() {
+        let mut zr = ZRenderer::new(80, 40).unwrap();
+        let idx = zr.storage.create_path(Path::new(
+            Shape::Rect(RectShape {
+                x: 0.0,
+                y: 0.0,
+                width: 40.0,
+                height: 40.0,
+                ..Default::default()
+            }),
+            PathStyle {
+                fill: FillStrokeStyle::color("#5470c6"),
+                line_width: 1.0,
+                ..Default::default()
+            },
+        ));
+        zr.set_path_state_style(
+            idx,
+            "selected",
+            PathStylePatch {
+                fill: Some(FillStrokeStyle::color("#ee6666")),
+                ..Default::default()
+            },
+        );
+        zr.set_path_state_style(
+            idx,
+            STATE_EMPHASIS,
+            PathStylePatch {
+                line_width: Some(8.0),
+                ..Default::default()
+            },
+        );
+        zr.set_path_states(idx, &["selected", STATE_EMPHASIS]);
+        let path = zr.storage.path(idx);
+        assert_eq!(path.states.current, vec!["selected", STATE_EMPHASIS]);
+        assert_eq!(path.style.line_width, 8.0);
+        match &path.style.fill {
+            FillStrokeStyle::Color(c) => assert_eq!(c, "#ee6666"),
+            other => panic!("expected merged fill, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn group_clip_path_masks_child_pixels() {
+        let mut zr = ZRenderer::new(80, 80).unwrap();
+        let clip = zr.storage.create_path(Path::new(
+            Shape::Rect(RectShape {
+                x: 30.0,
+                y: 30.0,
+                width: 20.0,
+                height: 20.0,
+                ..Default::default()
+            }),
+            PathStyle::default(),
+        ));
+        let child = zr.storage.create_path(Path::new(
+            Shape::Rect(RectShape {
+                x: 0.0,
+                y: 0.0,
+                width: 80.0,
+                height: 80.0,
+                ..Default::default()
+            }),
+            PathStyle {
+                fill: FillStrokeStyle::color("#ff0000"),
+                ..Default::default()
+            },
+        ));
+        let group = zr.storage.create_group();
+        zr.storage.group_mut(group).clip_path = Some(clip);
+        zr.storage.group_add_child(group, ChildRef::Path(child));
+        zr.storage.add_root(ChildRef::Group(group));
+
+        let rgba = zr.refresh().unwrap();
+        let inside = ((40 * 80 + 40) * 4) as usize;
+        let outside = ((5 * 80 + 5) * 4) as usize;
+        assert!(rgba[inside + 3] > 0, "pixels inside group clip should paint");
+        assert_eq!(rgba[outside + 3], 0, "pixels outside group clip should be empty");
     }
 
     #[test]

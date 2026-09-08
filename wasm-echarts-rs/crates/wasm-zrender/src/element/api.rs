@@ -227,23 +227,61 @@ pub fn element_set_clip_path(id: u32, clip: JsValue) -> Result<(), JsValue> {
     };
     ELEMENT_REGISTRY.with(|reg| {
         let mut reg = reg.borrow_mut();
-        if let Some(PendingData::Path(pending)) = reg.pending_mut(id) {
-            pending.clip_element_id = Some(clip_id);
+        if let Some(pending) = reg.pending_mut(id) {
+            pending.set_clip_element_id(Some(clip_id));
         }
-        let zr_id = reg.zr_id(id);
-        let host_idx = reg.storage_index(id);
-        if let (Some(zr_id), Some(host_idx)) = (zr_id, host_idx) {
-            with_zr(zr_id, |zr| {
-                reg.materialize_element(zr, zr_id, clip_id)?;
-                if let Some(clip_idx) = reg.storage_index(clip_id) {
-                    zr.storage.path_mut(host_idx).clip_path = Some(clip_idx);
-                    zr.storage.mark_display_dirty();
-                }
-                Ok(())
-            })?;
-        }
-        Ok(())
+        apply_clip_to_storage(&mut reg, id, Some(clip_id))
     })
+}
+
+pub fn element_remove_clip_path(id: u32) -> Result<(), JsValue> {
+    ELEMENT_REGISTRY.with(|reg| {
+        let mut reg = reg.borrow_mut();
+        if let Some(pending) = reg.pending_mut(id) {
+            pending.set_clip_element_id(None);
+        }
+        apply_clip_to_storage(&mut reg, id, None)
+    })
+}
+
+fn apply_clip_to_storage(
+    reg: &mut crate::registry::ElementRegistry,
+    host_id: u32,
+    clip_id: Option<u32>,
+) -> Result<(), JsValue> {
+    let zr_id = reg.zr_id(host_id);
+    let host_idx = reg.storage_index(host_id);
+    let kind = reg.kind(host_id);
+    if let (Some(zr_id), Some(host_idx), Some(kind)) = (zr_id, host_idx, kind) {
+        with_zr(zr_id, |zr| {
+            let clip_idx = if let Some(clip_id) = clip_id {
+                reg.materialize_element(zr, zr_id, clip_id)?;
+                reg.storage_index(clip_id)
+            } else {
+                None
+            };
+            match kind {
+                ElementKind::Path => zr.storage.path_mut(host_idx).clip_path = clip_idx,
+                ElementKind::Text => zr.storage.text_mut(host_idx).clip_path = clip_idx,
+                ElementKind::Image => zr.storage.image_mut(host_idx).clip_path = clip_idx,
+                ElementKind::Group => zr.storage.group_mut(host_idx).clip_path = clip_idx,
+            }
+            zr.storage.mark_display_dirty();
+            Ok(())
+        })?;
+    }
+    Ok(())
+}
+
+pub fn element_use_states(id: u32, states: JsValue) -> Result<(), JsValue> {
+    let arr = js_sys::Array::from(&states);
+    let mut names = Vec::new();
+    for i in 0..arr.length() {
+        if let Some(s) = arr.get(i).as_string() {
+            names.push(s);
+        }
+    }
+    crate::registry::path_use_states(id, &names)
 }
 
 pub fn element_get_bounding_rect(id: u32) -> InnerRect {

@@ -3,9 +3,9 @@
 use std::collections::BTreeMap;
 
 use crate::canvas::backend::CanvasBackend;
-use crate::canvas::brush::{BrushScope, brush};
+use crate::canvas::brush::{apply_clip_chain, BrushScope, brush};
 use crate::canvas::image_brush::brush_image;
-use crate::storage::DisplayElementRef;
+use crate::storage::{DisplayElementRef, DisplayItem};
 use crate::canvas::layer::Layer;
 use crate::canvas::text_brush::brush_text;
 use crate::core::types::RgbaBuffer;
@@ -41,15 +41,15 @@ impl<B: CanvasBackend> Painter<B> {
         let items: Vec<_> = storage
             .get_display_list(true)
             .iter()
-            .map(|item| (item.zlevel, item.element))
+            .cloned()
             .collect();
 
         let scope = BrushScope::new(self.width as f64, self.height as f64);
 
-        let mut by_zlevel: BTreeMap<i64, Vec<DisplayElementRef>> = BTreeMap::new();
-        for (zlevel, element) in items {
-            let key = zlevel_to_key(zlevel);
-            by_zlevel.entry(key).or_default().push(element);
+        let mut by_zlevel: BTreeMap<i64, Vec<DisplayItem>> = BTreeMap::new();
+        for item in items {
+            let key = zlevel_to_key(item.zlevel);
+            by_zlevel.entry(key).or_default().push(item);
         }
 
         if by_zlevel.len() <= 1 {
@@ -63,7 +63,7 @@ impl<B: CanvasBackend> Painter<B> {
         &mut self,
         storage: &mut Storage,
         scope: &BrushScope,
-        by_zlevel: &BTreeMap<i64, Vec<DisplayElementRef>>,
+        by_zlevel: &BTreeMap<i64, Vec<DisplayItem>>,
         background_color: Option<&str>,
     ) -> Result<RgbaBuffer, crate::canvas::backend::BackendError> {
         self.base_layer.clear();
@@ -79,7 +79,7 @@ impl<B: CanvasBackend> Painter<B> {
         &mut self,
         storage: &mut Storage,
         scope: &BrushScope,
-        by_zlevel: &BTreeMap<i64, Vec<DisplayElementRef>>,
+        by_zlevel: &BTreeMap<i64, Vec<DisplayItem>>,
         background_color: Option<&str>,
     ) -> Result<RgbaBuffer, crate::canvas::backend::BackendError> {
         self.base_layer.clear();
@@ -135,24 +135,27 @@ fn zlevel_to_key(zlevel: f64) -> i64 {
 fn brush_elements(
     ctx: &mut dyn crate::canvas::backend::CanvasContext,
     storage: &mut Storage,
-    elements: &[DisplayElementRef],
+    elements: &[DisplayItem],
     scope: &BrushScope,
 ) -> Result<(), crate::canvas::backend::BackendError> {
-    for element in elements {
-        match element {
+    for item in elements {
+        ctx.save();
+        apply_clip_chain(ctx, storage, &item.clip_chain)?;
+        match item.element {
             DisplayElementRef::Path(path_index) => {
-                brush(ctx, storage, *path_index, scope)?;
+                brush(ctx, storage, path_index, scope)?;
             }
             DisplayElementRef::Image(image_index) => {
-                brush_image(ctx, storage, *image_index, scope)?;
+                brush_image(ctx, storage, image_index, scope)?;
             }
             DisplayElementRef::Text(text_index) => {
-                let text = storage.text(*text_index);
+                let text = storage.text(text_index);
                 if !text.base.ignore && !text.displayable.invisible {
                     brush_text(ctx, text)?;
                 }
             }
         }
+        ctx.restore();
     }
     Ok(())
 }

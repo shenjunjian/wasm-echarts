@@ -152,6 +152,17 @@ impl BoundingRect {
         !(ax1 < bx0 || bx1 < ax0 || ay1 < by0 || by1 < ay0)
     }
 
+    /// 从矩形 a 映射到矩形 b 的 3x2 矩阵（官方 BoundingRect.calculateTransform）。
+    pub fn calculate_transform(a: &BoundingRect, b: &BoundingRect) -> Matrix6 {
+        let sx = if a.width == 0.0 { 1.0 } else { b.width / a.width };
+        let sy = if a.height == 0.0 {
+            1.0
+        } else {
+            b.height / a.height
+        };
+        [sx, 0.0, 0.0, sy, b.x - a.x * sx, b.y - a.y * sy]
+    }
+
     fn normalize_negative_size(&mut self) {
         if self.width < 0.0 {
             self.x += self.width;
@@ -202,5 +213,19 @@ mod tests {
         let mut target = BoundingRect::default();
         BoundingRect::apply_transform(&mut target, &source, Some(&m));
         assert_eq!(target, BoundingRect::new(15.0, 26.0, 30.0, 40.0));
+    }
+
+    #[test]
+    fn calculate_transform_maps_rect_a_to_b() {
+        let a = BoundingRect::new(10.0, 20.0, 20.0, 40.0);
+        let b = BoundingRect::new(0.0, 0.0, 40.0, 80.0);
+        let m = BoundingRect::calculate_transform(&a, &b);
+        assert_eq!(m[0], 2.0);
+        assert_eq!(m[3], 2.0);
+        assert_eq!(m[4], -20.0);
+        assert_eq!(m[5], -40.0);
+        let mut mapped = BoundingRect::default();
+        BoundingRect::apply_transform(&mut mapped, &a, Some(&m));
+        assert_eq!(mapped, b);
     }
 }

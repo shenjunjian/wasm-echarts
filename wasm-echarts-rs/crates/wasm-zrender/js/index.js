@@ -50,13 +50,13 @@ export {
   LinearGradient,
   RadialGradient,
   Pattern,
-  Point,
-  BoundingRect,
   OrientedBoundingRect,
   Animation,
   Handler,
   HoverResult,
 } from './native.js';
+export { Point } from './point.js';
+export { BoundingRect } from './bounding_rect.js';
 
 export * as matrix from './tool/matrix.js';
 export * as vector from './tool/vector.js';

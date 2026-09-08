@@ -54,6 +54,8 @@ pub struct Image {
     pub style: ImageStyle,
     pub ec_data: EcData,
     pub silent: bool,
+    /// clipPath 引用（paths 数组中的索引）
+    pub clip_path: Option<usize>,
 }
 
 impl Image {
@@ -64,11 +66,17 @@ impl Image {
             style,
             ec_data: EcData::default(),
             silent: false,
+            clip_path: None,
         }
     }
 
     pub fn with_displayable(mut self, displayable: DisplayableProps) -> Self {
         self.displayable = displayable;
+        self
+    }
+
+    pub fn with_clip_path(mut self, clip_index: usize) -> Self {
+        self.clip_path = Some(clip_index);
         self
     }
 

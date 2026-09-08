@@ -38,6 +38,10 @@ export class Element {
     this._silent = false;
     this.parent = null;
     this.isGroup = false;
+    this.clipPath = null;
+    this.states = {};
+    this.currentStates = [];
+    this._normalState = null;
   }
 
   _bindNative(handle) {
@@ -173,7 +177,11 @@ export class Element {
 
   attrKV(key, value) {
     if (key === 'clipPath') {
-      this.setClipPath(value);
+      if (!value) {
+        this.removeClipPath();
+      } else {
+        this.setClipPath(value);
+      }
     } else {
       this[key] = value;
     }
@@ -196,6 +204,100 @@ export class Element {
     this.clipPath = clip;
     if (this._native && typeof this._native.setClipPath === 'function') {
       this._native.setClipPath(nativeHandle(clip));
+    }
+    return this;
+  }
+
+  getClipPath() {
+    return this.clipPath;
+  }
+
+  removeClipPath() {
+    this.clipPath = null;
+    if (this._native && typeof this._native.removeClipPath === 'function') {
+      this._native.removeClipPath();
+    }
+    return this;
+  }
+
+  hasState() {
+    return this.currentStates.length > 0;
+  }
+
+  getState(name) {
+    return this.states[name];
+  }
+
+  ensureState(name) {
+    if (!this.states[name]) {
+      this.states[name] = {};
+    }
+    return this.states[name];
+  }
+
+  useState(stateName, keepCurrentStates) {
+    if (!stateName) {
+      return this.clearStates();
+    }
+    if (keepCurrentStates && this.currentStates.indexOf(stateName) < 0) {
+      return this.useStates(this.currentStates.concat(stateName));
+    }
+    return this.useStates([stateName]);
+  }
+
+  useStates(states) {
+    const names = !states ? [] : Array.isArray(states) ? states.slice() : [states];
+    if (!names.length) {
+      return this.clearStates();
+    }
+    if (!this._normalState) {
+      this._normalState = captureNormalState(this);
+    } else {
+      restoreNormalState(this, this._normalState);
+    }
+    const merged = {};
+    for (let i = 0; i < names.length; i++) {
+      const stateObj = this.states[names[i]];
+      if (stateObj && typeof stateObj === 'object') {
+        mergeState(merged, stateObj);
+      }
+    }
+    applyStateObj(this, merged);
+    this.currentStates = names;
+    if (this._native && typeof this._native.useStates === 'function') {
+      this._native.useStates(names);
+    } else if (this._native && typeof this._native.useState === 'function' && names.length === 1) {
+      this._native.useState(names[0]);
+    }
+    return this;
+  }
+
+  clearStates() {
+    if (this._normalState) {
+      restoreNormalState(this, this._normalState);
+    }
+    this.currentStates = [];
+    if (this._native && typeof this._native.useState === 'function') {
+      this._native.useState('');
+    }
+    return this;
+  }
+
+  removeState(state) {
+    const idx = this.currentStates.indexOf(state);
+    if (idx >= 0) {
+      const next = this.currentStates.slice();
+      next.splice(idx, 1);
+      this.useStates(next);
+    }
+    return this;
+  }
+
+  toggleState(state, enable) {
+    if (enable) {
+      this.useState(state, true);
+    } else {
+      this.removeState(state);
     }
     return this;
   }
@@ -252,6 +354,63 @@ export class Element {
       return this._native.getBoundingRect();
     }
     return undefined;
+  }
+}
+
+function captureNormalState(el) {
+  return {
+    x: el.x,
+    y: el.y,
+    scaleX: el.scaleX,
+    scaleY: el.scaleY,
+    rotation: el.rotation,
+    originX: el.originX,
+    originY: el.originY,
+    z: el.z,
+    z2: el.z2,
+    zlevel: el.zlevel,
+    silent: el.silent,
+    ignore: el.ignore,
+    style: el.style ? { ...el.style } : undefined,
+    shape: el.shape ? { ...el.shape } : undefined,
+  };
+}
+
+function restoreNormalState(el, normal) {
+  applyStateObj(el, normal);
+}
+
+function mergeState(target, source) {
+  const keys = Object.keys(source);
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
+    const value = source[key];
+    if (value && typeof value === 'object' && !Array.isArray(value) && target[key] && typeof target[key] === 'object') {
+      target[key] = { ...target[key], ...value };
+    } else {
+      target[key] = value;
+    }
+  }
+  return target;
+}
+
+function applyStateObj(el, state) {
+  if (!state) {
+    return;
+  }
+  if (state.style && typeof el.setStyle === 'function') {
+    el.setStyle(state.style);
+  }
+  if (state.shape && typeof el.setShape === 'function') {
+    el.setShape(state.shape);
+  }
+  const skip = { style: true, shape: true };
+  const keys = Object.keys(state);
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
+    if (!skip[key] && state[key] !== undefined) {
+      el.attrKV(key, state[key]);
+    }
   }
 }
 

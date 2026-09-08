@@ -633,6 +633,44 @@ fn rect_set_state_style_and_use_state() {
     assert!(rgba.chunks(4).any(|px| px[3] > 0));
 }
 
+#[wasm_bindgen_test]
+fn rect_use_states() {
+    reset_registry();
+    let mut zr = init(JsValue::NULL, init_opts(200, 100)).unwrap();
+    let rect = Rect::new(rect_opts()).unwrap();
+    rect.set_state_style("selected", emphasis_style()).unwrap();
+    let states = Array::new();
+    states.push(&JsValue::from_str("selected"));
+    rect.use_states(states.into()).unwrap();
+    zr.add(JsValue::from(rect)).unwrap();
+    let rgba = zr.refresh().unwrap();
+    assert!(rgba.chunks(4).any(|px| px[3] > 0));
+}
+
+#[wasm_bindgen_test]
+fn group_clip_path_and_remove() {
+    reset_registry();
+    let mut zr = init(JsValue::NULL, init_opts(200, 100)).unwrap();
+    let group = Group::new();
+    let clip = Rect::new(rect_opts()).unwrap();
+    group.set_clip_path(JsValue::from(clip));
+    group.remove_clip_path();
+    let child = Rect::new(rect_opts()).unwrap();
+    group.add(JsValue::from(child)).unwrap();
+    zr.add(JsValue::from(group)).unwrap();
+    let rgba = zr.refresh().unwrap();
+    assert_eq!(rgba.len(), 200 * 100 * 4);
+}
+
+#[wasm_bindgen_test]
+fn zr_set_cursor_style_and_config_layer() {
+    reset_registry();
+    let mut zr = init(JsValue::NULL, init_opts(80, 40)).unwrap();
+    zr.set_cursor_style("crosshair");
+    zr.config_layer(JsValue::from(0), JsValue::UNDEFINED).unwrap();
+    let _ = zr.refresh().unwrap();
+}
+
 fn emphasis_style() -> JsValue {
     let style = Object::new();
     Reflect::set(&style, &"fill".into(), &JsValue::from_str("#ee6666")).unwrap();
@@ -648,6 +686,17 @@ fn point_basic_ops() {
     assert_eq!(p.x(), 4.0);
     assert_eq!(p.y(), 6.0);
     assert_eq!(p.distance(&Point::new(Some(4.0), Some(6.0))), 0.0);
+}
+
+#[wasm_bindgen_test]
+fn bounding_rect_calculate_transform() {
+    let a = BoundingRect::new(10.0, 20.0, 20.0, 40.0);
+    let b = BoundingRect::new(0.0, 0.0, 40.0, 80.0);
+    let m = a.calculate_transform(&b);
+    assert_eq!(m[0], 2.0);
+    assert_eq!(m[3], 2.0);
+    assert_eq!(m[4], -20.0);
+    assert_eq!(m[5], -40.0);
 }
 
 #[wasm_bindgen_test]

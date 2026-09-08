@@ -14,6 +14,8 @@ pub enum ChildRef {
 pub struct Group {
     pub base: ElementBase,
     pub children: Vec<ChildRef>,
+    /// clipPath 引用（paths 数组中的索引）；对子树生效
+    pub clip_path: Option<usize>,
 }
 
 impl Default for Group {
@@ -21,6 +23,7 @@ impl Default for Group {
         Self {
             base: ElementBase::default(),
             children: Vec::new(),
+            clip_path: None,
         }
     }
 }
@@ -28,6 +31,11 @@ impl Default for Group {
 impl Group {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn with_clip_path(mut self, clip_index: usize) -> Self {
+        self.clip_path = Some(clip_index);
+        self
     }
 
     pub fn add_child(&mut self, child: ChildRef) {

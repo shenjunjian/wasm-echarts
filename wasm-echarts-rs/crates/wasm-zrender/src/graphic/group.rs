@@ -115,6 +115,18 @@ impl Group {
         Group { id: self.id }
     }
 
+    #[wasm_bindgen(js_name = setClipPath)]
+    pub fn set_clip_path(&self, clip: JsValue) -> Group {
+        let _ = api::element_set_clip_path(self.id, clip);
+        Group { id: self.id }
+    }
+
+    #[wasm_bindgen(js_name = removeClipPath)]
+    pub fn remove_clip_path(&self) -> Group {
+        let _ = api::element_remove_clip_path(self.id);
+        Group { id: self.id }
+    }
+
     #[wasm_bindgen(js_name = getBoundingRect)]
     pub fn get_bounding_rect(&self) -> BoundingRect {
         BoundingRect::from_inner(api::element_get_bounding_rect(self.id))

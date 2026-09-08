@@ -106,6 +106,11 @@ impl BoundingRect {
         self.inner.is_zero()
     }
 
+    #[wasm_bindgen(js_name = calculateTransform)]
+    pub fn calculate_transform(&self, b: &BoundingRect) -> Vec<f64> {
+        InnerRect::calculate_transform(&self.inner, &b.inner).to_vec()
+    }
+
     #[wasm_bindgen(js_name = create)]
     pub fn create(rect: JsValue) -> BoundingRect {
         if let Some(rect) = parse_rect_like(&rect) {

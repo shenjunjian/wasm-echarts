@@ -159,9 +159,9 @@ site JS 薄壳（创建 canvas、putImageData、tooltip DOM、ResizeObserver）
 | **6 交互完善** | hover/tooltip/dataZoom/axisPointer | **部分完成**。hover 高亮、toggleSelect、string tooltip、wheel inside dataZoom、竖线 axisPointer。pinch、slider、HTMLElement tooltip、十字/多轴 **未完成** |
 | **7 扩展与优化** | pie/scatter、RichText、脏矩形、视觉回归 | **部分完成**。pie/scatter、轴标签 Text、`benchmark_render`、feature flags。legend、gauge、polar、面积图、RichText、脏矩形、golden PNG **未完成** |
 
-### wasm-zrender API 规范对齐（波次 0–4 已完成）
+### wasm-zrender API 规范对齐（波次 0–6 已完成）
 
-规范已写入上文「目标与约束」；JS facade 骨架在 `crates/wasm-zrender/js/`，site 从 `@wasm-zrender` 导入。波次 2：变换主属性、`attr`/`setShape`/`setStyle` 双参数、Group opts 与子树 API。波次 3：`Sector.r0` / `clockwise` / `cornerRadius`、`Rect.r`、Polygon.smooth、Line·Text 默认 style、`miterLimit`、`lineDash` 字符串、`LinearGradient.addColorStop`。波次 4：`js/tool/` 按官方签名实现 `matrix` / `vector` / `color` / `util` / `path`；`morph` / `parseSVG` / `showDebugDirtyRect` / `setPlatformAPI` 为签名齐全的最小实现。波次 5：`Animator` 写最后一组 `when`；`zr.clear` / 实例 `dispose` / `setBackgroundColor` / `trigger`；`el.hide`/`show`/`off`/`trigger`。余下波次见该计划 YAML。
+规范已写入上文「目标与约束」；JS facade 骨架在 `crates/wasm-zrender/js/`，site 从 `@wasm-zrender` 导入。波次 2：变换主属性、`attr`/`setShape`/`setStyle` 双参数、Group opts 与子树 API。波次 3：`Sector.r0` / `clockwise` / `cornerRadius`、`Rect.r`、Polygon.smooth、Line·Text 默认 style、`miterLimit`、`lineDash` 字符串、`LinearGradient.addColorStop`。波次 4：`js/tool/` 按官方签名实现 `matrix` / `vector` / `color` / `util` / `path`；`morph` / `parseSVG` / `showDebugDirtyRect` / `setPlatformAPI` 为签名齐全的最小实现。波次 5：`Animator` 写最后一组 `when`；`zr.clear` / 实例 `dispose` / `setBackgroundColor` / `trigger`；`el.hide`/`show`/`off`/`trigger`。波次 6：`getClipPath` / `removeClipPath`，clip 扩到 Group/Text/Image（Group clip 对子树生效）；`useStates` / `getState` / `ensureState` / `clearStates`；`zr.setCursorStyle` / `configLayer`；`Path.extend` 把 `buildPath` 录成 pathData；`IncrementalDisplayable` 按普通 Group 语义可构造；Point 静态方法、`BoundingRect.calculateTransform`。余下后置项见该计划「本波不挡主路径」。
 
 ### wasm-zrender API 对齐（规划 todos 全部 completed）
 
@@ -249,7 +249,7 @@ Cargo 包名 `rust-zrender`，库名 `rust_zrender`。代码里写 `use rust_zre
 - `ChildRef`：`Group` | `Path` | `Image` | `Text`
 - `add_root` / `del_root`、`group_add_child` / `group_remove_child`
 - DFS 生成 `displayList`，按 z / z2 / zlevel timsort
-- clipPath 链写入 `DisplayItem`
+- clipPath 链写入 `DisplayItem`（Path / Group / Text / Image 均可挂 clip；Group clip 对子树生效），Painter 绘制前 `clip()`
 
 #### `canvas/` — Painter 与后端
 
@@ -382,7 +382,7 @@ Cargo：`crate-type = ["cdylib", "rlib"]`，依赖 `rust-zrender` path。公开 
 | `index.js` | 官方命名导出；`default` 仍是 `initWasm`；`version = '6.1.0'` |
 | `element.js` / `displayable.js` / `path.js` / `group.js` / `text.js` / `image.js` / `shapes/` | 原型链；实例持有 `_native` handle。变换主属性与 Group `_children` 在 JS 维护，变更同步 rust。`hide`/`show`/`on`/`off`/`trigger` |
 | `animator.js` | `animate` / `when` / `start` 终态：写入最后一组目标，调用 `during(1)` / `done` |
-| `zrender.js` | 包装 `init` / `dispose` / `getInstance` / `registerPainter`；`clear` / `setBackgroundColor` / `trigger` |
+| `zrender.js` | 包装 `init` / `dispose` / `getInstance` / `registerPainter`；`clear` / `setBackgroundColor` / `trigger` / `setCursorStyle` / `configLayer` |
 | `wasm_zrender.js` | 兼容旧路径 `@wasm-zrender/wasm_zrender.js` |
 | `tool/` | `matrix` / `vector` / `color` / `util` / `path` 按官方签名实现；`morph`（终态）/ `parseSVG`（基本 path）/ `showDebugDirtyRect`（no-op）/ `setPlatformAPI` |
 
@@ -393,7 +393,7 @@ Cargo：`crate-type = ["cdylib", "rlib"]`，依赖 `rust-zrender` path。公开 
 | 模块 | 职责 |
 |------|------|
 | `lib.rs` | 导出全部 wasm 类型与 `init` / `dispose` / `registerFont` |
-| `zrender.rs` | `ZRender` 类 + 实例表；`init` / `dispose` / `disposeAll` / `getInstance` / `clear` / `setBackgroundColor` / `trigger` |
+| `zrender.rs` | `ZRender` 类 + 实例表；`init` / `dispose` / `disposeAll` / `getInstance` / `clear` / `setBackgroundColor` / `trigger` / `setCursorStyle` / `configLayer` |
 | `animation.rs` | `Animator`：记录最后 `when`，`start()` 写回 shape/style/attr |
 | `registry.rs` | `ElementRegistry`：JS 对象 ↔ Storage 索引；父子挂载；延迟 materialize |
 | `bridge/opts.rs` | 解析 `{ shape, style, z, zlevel, silent, name, ... }` |
@@ -427,6 +427,8 @@ Cargo：`crate-type = ["cdylib", "rlib"]`，依赖 `rust-zrender` path。公开 
 | `findHover(x, y)` | `{ target, topTarget }`，均为 wasm `Element` |
 | `on(event, handler)` / `off(event, handler?)` / `trigger(event, packet?)` | 实例事件；`off` 可按函数取消 |
 | `setBackgroundColor(color)` / `getBackgroundColor()` | 背景色（字符串）；下次 `refresh` 填底 |
+| `setCursorStyle(cursor)` | 设置默认光标（有 canvas 时写 `style.cursor`） |
+| `configLayer(zlevel, config)` | 无图层配置；触发 refresh |
 | `dispose()` | 实例释放（与顶层 `dispose(zr)` 相同） |
 | `handler.dispatch(name, { zrX, zrY })` | 无 DOM 时注入指针事件（测试 / Node） |
 | `width()` / `height()` / `dpr()` / `id` | 尺寸与实例 id |
@@ -435,9 +437,9 @@ Cargo：`crate-type = ["cdylib", "rlib"]`，依赖 `rust-zrender` path。公开 
 
 **容器 / 基类**：`Group`（`new Group(opts)`，`add` / `addBefore` / `replace` / `remove` / `removeAll` / `children` / `childAt` / `childOfName` / `childCount` / `eachChild` / `traverse`）、`Path`（通用，`shape.pathData`）、`Displayable`（抽象，构造抛错说明）。
 
-**Path 子类**（均有 `useState` / `setStateStyle`）：`Rect`、`Circle`、`Line`、`Polygon`、`Polyline`、`Sector`、`Arc`、`Ellipse`、`Ring`、`BezierCurve`、`Isogon`、`Star`、`Heart`、`Droplet`、`Rose`、`Trochoid`、`CompoundPath`。
+**Path 子类**（均有 `useState` / `useStates` / `setStateStyle`）：`Rect`、`Circle`、`Line`、`Polygon`、`Polyline`、`Sector`、`Arc`、`Ellipse`、`Ring`、`BezierCurve`、`Isogon`、`Star`、`Heart`、`Droplet`、`Rose`、`Trochoid`、`CompoundPath`。`Path.extend({ buildPath })` 把命令录成 `shape.pathData`。
 
-**其它图元**：`Text`、`TSpan`（单 run MVP）、`Image`。
+**其它图元**：`Text`、`TSpan`（单 run MVP）、`Image`、`IncrementalDisplayable`（普通 Group 语义，非增量图层）。
 
 **样式对象**：`LinearGradient(x, y, x2, y2, colorStops?, global?)`（`addColorStop`）、`RadialGradient(x, y, r, colorStops?, global?, r0?)`、`Pattern(image, repeat?)`。
 
@@ -451,7 +453,9 @@ Cargo：`crate-type = ["cdylib", "rlib"]`，依赖 `rust-zrender` path。公开 
 
 - 动画为终态语义：`animate` / `animateTo` / `when().start()` 立刻写入最后一组目标；`during(percent=1)` 与 `done` 会调用；不播中间帧
 - `morph` 只返回终点 path（形变后置）；`parseSVG` 只覆盖 g/path/基础图形
-- `IncrementalDisplayable` 构造仍抛错（波次 6）
+- `IncrementalDisplayable` 按普通 Group 语义（`addDisplayable`），不做增量图层
+- `Path.extend` 把 `buildPath` 录成 `shape.pathData`，不走完整 PathProxy 引擎循环
+- `configLayer` 不改变图层合成，只触发 refresh
 
 #### 浏览器测试
 
@@ -899,9 +903,10 @@ npm run dev
 
 ### wasm-zrender
 
-对照 [`.cursor/plans/zrender_api_规范对齐_be3227a1.plan.md`](../.cursor/plans/zrender_api_规范对齐_be3227a1.plan.md) 余下波次，不混进「已对齐」：
+对照 [`.cursor/plans/zrender_api_规范对齐_be3227a1.plan.md`](../.cursor/plans/zrender_api_规范对齐_be3227a1.plan.md) 余下后置项，不混进「已对齐」：
 
-- 波次 6：clipPath 全图元、`useStates`、`Path.extend`、`IncrementalDisplayable`、Point 静态方法
+- `skewX/Y` `anchorX/Y`、`textContent` 自动布局、RichText
+- `morph` 形变、`IncrementalDisplayable` 增量语义、`Path.extend` 自定义 `buildPath` 走完整 PathProxy
 
 ### wasm-echarts
 
