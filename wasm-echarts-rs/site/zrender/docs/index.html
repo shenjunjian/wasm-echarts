@@ -120,6 +120,8 @@ let mut zr = ZRenderer::new(480, 360)?;</pre>
         <li><code>getWidth()</code> / <code>getHeight()</code> — 逻辑宽高（同 <code>width()</code> / <code>height()</code>）</li>
         <li><code>on(event, handler)</code> / <code>off(event, handler?)</code> / <code>trigger(event)</code> — 实例事件；<code>animation.on('frame')</code> 为空操作（无帧循环）</li>
         <li><code>setBackgroundColor(color)</code> / <code>getBackgroundColor()</code> — 背景色</li>
+        <li><code>setCursorStyle(cursor)</code> — 默认光标（有 canvas 时写 <code>style.cursor</code>）</li>
+        <li><code>configLayer(zlevel, config)</code> — 无图层配置，触发 refresh</li>
         <li><code>dispose()</code> — 释放本实例</li>
       </ul>
     </div>
@@ -139,7 +141,18 @@ let mut zr = ZRenderer::new(480, 360)?;</pre>
       <p>
         几何值对象（不参与 Storage）：<code>Point</code>、<code>BoundingRect</code>、<code>OrientedBoundingRect</code>。
       </p>
-      <p>Path 子类支持 <code>useState(state)</code>、<code>setStateStyle(state, style)</code>、<code>attr</code>、<code>setShape</code>、<code>setStyle</code>、<code>setClipPath</code>、<code>getBoundingRect</code>、<code>position</code>。<code>hide</code> / <code>show</code> / <code>on</code> / <code>off</code> / <code>trigger</code>。<code>animate().when().start()</code> 立刻写入最后一组目标属性。</p>
+      <p>
+        图元原型链：<code>Rect instanceof Path instanceof Displayable instanceof Element</code>（<code>Group</code> 亦 <code>instanceof Element</code>）。
+        变换主属性：<code>x</code> / <code>y</code> / <code>scaleX</code> / <code>scaleY</code> / <code>rotation</code> / <code>originX</code> / <code>originY</code>。
+        <code>attr</code> / <code>setShape</code> / <code>setStyle</code> 支持对象与 <code>key, value</code>。
+      </p>
+      <p>
+        Path 子类支持 <code>useState</code> / <code>useStates</code> / <code>getState</code> / <code>ensureState</code> / <code>clearStates</code>、<code>setStateStyle</code>、<code>setClipPath</code> / <code>getClipPath</code> / <code>removeClipPath</code>、<code>getBoundingRect</code>、<code>position</code>。
+        <code>hide</code> / <code>show</code> / <code>on</code> / <code>off</code> / <code>trigger</code>。
+        <code>Path.extend({ buildPath })</code> 把命令录成 <code>shape.pathData</code>。
+        <code>IncrementalDisplayable</code> 按普通 Group 语义可构造（非增量图层）。
+        <code>animate().when().start()</code> 立刻写入最后一组目标属性。
+      </p>
     </div>
 
     <div class="doc-section">
@@ -153,19 +166,18 @@ let mut zr = ZRenderer::new(480, 360)?;</pre>
     </div>
 
     <div class="doc-section">
-      <h3>Stub 导出（构造时抛错或未实现）</h3>
-      <p>
-        <code>IncrementalDisplayable</code>。
-      </p>
-    </div>
-
-    <div class="doc-section">
-      <h3>与官方 zrender 的差异</h3>
+      <h3>与官方 zrender 的差异（仅此四条例外）</h3>
       <ul>
-        <li>仅 canvas 离屏模式，无 SVG painter；<code>animate().when().start()</code> 立刻写入最后一组 <code>when</code>，不播中间帧</li>
-        <li><code>init(null)</code> 时 <code>refresh()</code> 同步返回像素，需 JS 侧 <code>putImageData</code>；<code>init(canvas)</code> 会自动上屏</li>
-        <li><strong>文本须宿主注册字体</strong>，见上文「字体加载」；无浏览器系统字体回退</li>
+        <li>字体：必须 <code>registerFont</code> / <code>register_font</code>，WASM 不读系统字体</li>
+        <li>动画：不播中间帧；<code>animate</code> / <code>animateTo</code> / <code>when().start()</code> 立刻写入最后一组目标属性</li>
+        <li>离屏：仅 canvas；<code>refresh()</code> / <code>flush()</code> 同步返回 RGBA；无 SVG painter / hover layer / dirty rect</li>
+        <li>宿主：<code>init(canvas)</code> 可自动 <code>putImageData</code>；<code>init(null)</code> 仍用 opts 宽高</li>
       </ul>
+      <p>
+        本波不挡主路径（后置，不混进「已对齐」）：<code>skewX/Y</code> <code>anchorX/Y</code>、
+        <code>textContent</code> 自动布局、RichText、<code>morph</code> 形变、
+        <code>IncrementalDisplayable</code> 增量语义、<code>Path.extend</code> 自定义 <code>buildPath</code> 走完整 PathProxy。
+      </p>
     </div>
 
     <div class="doc-section">

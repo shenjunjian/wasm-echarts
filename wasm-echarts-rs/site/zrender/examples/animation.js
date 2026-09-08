@@ -30,11 +30,15 @@ async function main() {
     silent: true,
   });
 
-  // 终态语义：不播中间帧，start() 立刻写入最后一组 when。
+  // 终态语义：不播中间帧，start() 立刻写入最后一组 when（圆停在右侧）。
   circle.animate('shape', true)
     .when(5000, { cx: r })
     .when(10000, { cx: w - r })
     .start();
+
+  if (circle.shape.cx !== w - r) {
+    throw new Error('animate 终态应为最后一组 when 的 cx');
+  }
 
   zr.add(circle);
   paint(zr, canvas);

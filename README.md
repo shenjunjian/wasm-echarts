@@ -104,8 +104,9 @@ cargo test -p wasm-zrender
 `wasm-pack build` 成功后，各 crate 产物位于对应 `pkg/`：
 
 ```
-wasm-echarts-rs/crates/wasm-echarts/pkg/   # EChartsInstance
-wasm-echarts-rs/crates/wasm-zrender/pkg/   # init / Group / Rect / …（export.ts 对齐）
+wasm-echarts-rs/crates/wasm-echarts/pkg/   # EChartsInstance（公开 import）
+wasm-echarts-rs/crates/wasm-zrender/js/    # 公开 API（@wasm-zrender）
+wasm-echarts-rs/crates/wasm-zrender/pkg/   # wasm-bindgen 内部 handle，勿直接 import
 ```
 
 以 wasm-echarts 为例：
@@ -134,7 +135,13 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 | `dispatch_action(action)` | 触发 highlight / downplay 等 |
 | `dispose()` | 释放 option |
 
-### wasm-zrender 对外 API（`wasm_zrender.d.ts`）
+### wasm-zrender 对外 API（公开入口是 `js/`，不是 `pkg/`）
+
+site 与文档站用 Vite alias `@wasm-zrender` → `crates/wasm-zrender/js`。`js/index.js` 再加载内部 `pkg/wasm_zrender.js`。请勿把 `pkg/` 当作公开 import。
+
+```javascript
+import initWasm, { init, registerFont, Group, Rect, Text } from '@wasm-zrender';
+```
 
 对齐官方 zrender `export.ts` 命名空间导出：
 
@@ -143,24 +150,27 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 | `init(dom?, opts?)` | 创建 ZRender 实例。传入 canvas 时绑定 Handler 并自动上屏 |
 | `registerFont(data, opts?)` | 注册字体 bytes（**Text 渲染前必调**，见下文） |
 | `clearFonts()` | 清空已注册字体（测试用） |
-| `dispose(zr)` / `disposeAll()` | 释放实例 |
-| `Group` / `Rect` / `Circle` / `Line` / `Polygon` / `Polyline` / `Sector` / `Text` | 已实现图元 |
-| `ZRender.add(el)` / `remove(el)` | 根节点增删 |
-| `ZRender.refresh()` | 同步返回 RGBA 像素 |
+| `dispose(zr)` / `disposeAll()` / `getInstance(id)` | 实例生命周期 |
+| `version` / `registerPainter` | `version = '6.1.0'`；非 canvas painter 忽略 |
+| `Group` / `Rect` / `Circle` / `Line` / `Polygon` / `Polyline` / `Sector` / `Text` / … | 已实现图元（`Rect instanceof Path instanceof Displayable instanceof Element`） |
+| `ZRender.add` / `remove` / `clear` / `dispose` | 根节点与实例释放 |
+| `ZRender.refresh()` / `flush()` | 同步返回 RGBA 像素 |
 | `ZRender.findHover(x, y)` | 返回 `{ target, topTarget }` |
-| `Path.useState` / `setStateStyle` | emphasis 等状态切换 |
+| `ZRender.setBackgroundColor` / `trigger` / `setCursorStyle` | 背景、事件、光标 |
+| `el.hide` / `show` / `on` / `off` / `trigger` / `clipPath` | 元素可见性、事件、裁剪 |
+| `animate` / `animateTo` / `when().start()` | 立刻写入最后一组目标属性（不播中间帧） |
 | `matrix` / `vector` / `color` / `path` / `util` | 官方签名工具模块（`js/tool/`） |
 | `morph` / `parseSVG` | 最小实现：morph 返回终点 path；parseSVG 解析基本图形 |
-| `IncrementalDisplayable` | stub，构造时抛 `not implemented` |
+| `IncrementalDisplayable` | 按普通 Group 语义可构造（非增量图层） |
 
-**与官方差异**：仅离屏 canvas、`refresh()` 同步上屏、无 animation / 事件总线。详见 [zrender 文档](wasm-echarts-rs/site/zrender/docs/index.html)。
+**允许例外（仅此四条）**：字体必须 `registerFont`；动画只写终点；仅 canvas 离屏（无 SVG / hover layer / dirty rect）；`init(canvas)` 可自动 `putImageData`，`init(null)` 仍用 opts 宽高。详见 [zrender 文档](wasm-echarts-rs/site/zrender/docs/index.html) 与 [AGENT.md](AGENT.md)。
 
 ### 字体加载（Text 必看）
 
 wasm-zrender 在 Rust 离屏 Canvas 中绘制文字，**WASM 环境无法读取系统字体**。使用 `Text` 图元前，须由宿主将字体文件 bytes 注册到 fontdb：
 
 ```javascript
-import initWasm, { init, registerFont, Text } from './pkg/wasm_zrender.js';
+import initWasm, { init, registerFont, Text } from '@wasm-zrender';
 
 await initWasm();
 
@@ -191,7 +201,7 @@ site 文档站提供辅助模块 `site/src/zrender/fonts.js`（`loadFontFromUrl`
 
 ### 1. 跑 Demo（最快验证）
 
-Demo 通过 ES Module 直接引用 `pkg/` 下的 wasm 文件，**必须先完成 wasm-pack 编译**。
+文档站通过 Vite alias 引用 wasm-zrender 的 `js/` facade 与 wasm-echarts 的 `pkg/`。**必须先完成 wasm-pack 编译**（facade 会再加载 `pkg/wasm_zrender.js`）。
 
 ```bash
 # 1. 编译 wasm（若尚未编译）

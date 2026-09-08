@@ -8,11 +8,12 @@ const width = 480;
 const height = 360;
 const dpr = window.devicePixelRatio || 1;
 const FONT_FAMILY = 'Noto Sans SC';
+const FONT_URL = '/fonts/NotoSansSC-Regular.ttf';
 
 async function loadFont() {
-  const response = await fetch('/fonts/NotoSansSC-Regular.ttf');
+  const response = await fetch(FONT_URL);
   if (!response.ok) {
-    throw new Error(`字体加载失败: ${url}`);
+    throw new Error(`字体加载失败: ${FONT_URL} (${response.status})`);
   }
   const bytes = new Uint8Array(await response.arrayBuffer());
   registerFont(bytes, {
@@ -57,7 +58,7 @@ async function main() {
   zr.add(new Text({
     style: {
       text: 'right align',
-      x: 24,
+      x: 200,
       y: 140,
       fill: '#666',
       fontSize: 12,

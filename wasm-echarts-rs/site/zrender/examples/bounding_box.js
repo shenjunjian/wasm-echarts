@@ -12,7 +12,7 @@ async function main() {
   canvas.style.width = `${width}px`;
   canvas.style.height = `${height}px`;
 
-  const zr = init(null, { width, height, devicePixelRatio: dpr });
+  const zr = init(canvas, { width, height, devicePixelRatio: dpr });
   const w = zr.getWidth();
   const h = zr.getHeight();
 
@@ -46,14 +46,7 @@ async function main() {
       draggable: true,
     }).on('mousemove', () => {
       if (isMouseDown) {
-        const rect = group.getBoundingRect();
-        boundingRect.setShape({
-          x: rect.x,
-          y: rect.y,
-          width: rect.width,
-          height: rect.height,
-        });
-        paint(zr, canvas);
+        syncBoundingRect();
       }
     });
     group.add(circle);
@@ -75,24 +68,15 @@ async function main() {
   });
   zr.add(boundingRect);
 
-  paint(zr, canvas);
-
-  canvas.addEventListener('mousedown', () => {
-    isMouseDown = true;
-  });
-  canvas.addEventListener('mouseup', () => {
-    isMouseDown = false;
-  });
-}
-
-function paint(zr, canvas) {
-  const rgba = zr.refresh();
-  const ctx = canvas.getContext('2d');
-  ctx.putImageData(
-    new ImageData(new Uint8ClampedArray(rgba), zr.width(), zr.height()),
-    0,
-    0,
-  );
+  function syncBoundingRect() {
+    const box = group.getBoundingRect();
+    boundingRect.setShape({
+      x: box.x,
+      y: box.y,
+      width: box.width,
+      height: box.height,
+    });
+  }
 }
 
 main();

@@ -61,7 +61,7 @@ mountExampleGallery(document.getElementById('app'), {
     {
       id: 'shapes',
       title: '基础图形 shapes',
-      description: 'Group + Rect / Circle / Line / Polygon',
+      description: 'Rect.r / Sector.r0、原型链 Rect instanceof Path、Group.x',
       previewUrl: './shapes.html',
       source: shapesSource,
     },

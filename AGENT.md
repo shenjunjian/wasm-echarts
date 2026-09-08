@@ -19,7 +19,7 @@ Rust / WebAssembly workspace：用纯 Rust 重写 zrender 离屏 canvas 渲染�
 | API 批量补录 | `wasm-zrender_api_批量补录_89d0d2a5.plan.md` | 把 stub 图元逐步换成真实实现 |
 | API 规范对齐 | `zrender_api_规范对齐_be3227a1.plan.md` | 硬规范 + JS facade；逐项清单以该计划为权威 |
 
-规划 YAML 里部分 todo 仍标 `pending`，以**源码为准**。下文「规划对照」会标明实际完成度。
+API 规范对齐规划的 YAML todo 已全部 completed。其它规划 YAML 里部分 todo 仍可能标 `pending`，以**源码为准**。下文「规划对照」会标明实际完成度。
 
 只读参考源码（仓库根目录，禁止改）：`zrender-master/`、`echarts-master/`。
 
@@ -159,9 +159,9 @@ site JS 薄壳（创建 canvas、putImageData、tooltip DOM、ResizeObserver）
 | **6 交互完善** | hover/tooltip/dataZoom/axisPointer | **部分完成**。hover 高亮、toggleSelect、string tooltip、wheel inside dataZoom、竖线 axisPointer。pinch、slider、HTMLElement tooltip、十字/多轴 **未完成** |
 | **7 扩展与优化** | pie/scatter、RichText、脏矩形、视觉回归 | **部分完成**。pie/scatter、轴标签 Text、`benchmark_render`、feature flags。legend、gauge、polar、面积图、RichText、脏矩形、golden PNG **未完成** |
 
-### wasm-zrender API 规范对齐（波次 0–6 已完成）
+### wasm-zrender API 规范对齐（波次 0–6 + 文档验收已完成）
 
-规范已写入上文「目标与约束」；JS facade 骨架在 `crates/wasm-zrender/js/`，site 从 `@wasm-zrender` 导入。波次 2：变换主属性、`attr`/`setShape`/`setStyle` 双参数、Group opts 与子树 API。波次 3：`Sector.r0` / `clockwise` / `cornerRadius`、`Rect.r`、Polygon.smooth、Line·Text 默认 style、`miterLimit`、`lineDash` 字符串、`LinearGradient.addColorStop`。波次 4：`js/tool/` 按官方签名实现 `matrix` / `vector` / `color` / `util` / `path`；`morph` / `parseSVG` / `showDebugDirtyRect` / `setPlatformAPI` 为签名齐全的最小实现。波次 5：`Animator` 写最后一组 `when`；`zr.clear` / 实例 `dispose` / `setBackgroundColor` / `trigger`；`el.hide`/`show`/`off`/`trigger`。波次 6：`getClipPath` / `removeClipPath`，clip 扩到 Group/Text/Image（Group clip 对子树生效）；`useStates` / `getState` / `ensureState` / `clearStates`；`zr.setCursorStyle` / `configLayer`；`Path.extend` 把 `buildPath` 录成 pathData；`IncrementalDisplayable` 按普通 Group 语义可构造；Point 静态方法、`BoundingRect.calculateTransform`。余下后置项见该计划「本波不挡主路径」。
+规范已写入上文「目标与约束」；JS facade 骨架在 `crates/wasm-zrender/js/`，site / README 从 `@wasm-zrender`（`js/index.js`）导入，`pkg/` 只作内部 handle。波次 2：变换主属性、`attr`/`setShape`/`setStyle` 双参数、Group opts 与子树 API。波次 3：`Sector.r0` / `clockwise` / `cornerRadius`、`Rect.r`、Polygon.smooth、Line·Text 默认 style、`miterLimit`、`lineDash` 字符串、`LinearGradient.addColorStop`。波次 4：`js/tool/` 按官方签名实现 `matrix` / `vector` / `color` / `util` / `path`；`morph` / `parseSVG` / `showDebugDirtyRect` / `setPlatformAPI` 为签名齐全的最小实现。波次 5：`Animator` 写最后一组 `when`；`zr.clear` / 实例 `dispose` / `setBackgroundColor` / `trigger`；`el.hide`/`show`/`off`/`trigger`。波次 6：`getClipPath` / `removeClipPath`，clip 扩到 Group/Text/Image（Group clip 对子树生效）；`useStates` / `getState` / `ensureState` / `clearStates`；`zr.setCursorStyle` / `configLayer`；`Path.extend` 把 `buildPath` 录成 pathData；`IncrementalDisplayable` 按普通 Group 语义可构造；Point 静态方法、`BoundingRect.calculateTransform`。文档验收：AGENT.md / README / site 文档与导入路径已同步四条例外；`shapes` / `text` / `animation` / `bounding_box` 示例覆盖原型链、`Group.x`、`Rect.r`、`Sector.r0`、动画终态、`init(canvas)` 拖拽包围盒。余下后置项见该计划「本波不挡主路径」。
 
 ### wasm-zrender API 对齐（规划 todos 全部 completed）
 
@@ -191,7 +191,7 @@ dispose(zr);
 | 6 几何值对象 | Point / BoundingRect / OrientedBoundingRect | **已完成** |
 | 7 工具模块 | color / matrix / vector / path / util / morph / parseSVG | **已完成**（`js/tool/`；`morph` 返回终点 path，`parseSVG` 解析基本 path/图形） |
 
-仍抛错的类：`IncrementalDisplayable`。`Displayable` 构造会提示「抽象基类，请用具体图元」。
+`Displayable`：JS facade 可作原型祖先直接构造；rust / wasm-bindgen 的 `Displayable` 构造仍提示「抽象基类，请用具体图元」。`IncrementalDisplayable` 公开入口走 `js/incremental.js`（普通 Group 语义，可构造），不再抛错。
 
 ### 文档官网（待办规划当时最高优先级）
 
@@ -404,7 +404,7 @@ Cargo：`crate-type = ["cdylib", "rlib"]`，依赖 `rust-zrender` path。公开 
 | `font.rs` | `registerFont` / `clearFonts`，并热更新已有实例 fontdb |
 | `graphic/*` | 各 JS 类 |
 | `export.rs` | pkg 内仍导出空对象（避免 wasm-bindgen 缺符号）；公开命名空间走 `js/tool/` |
-| `graphic/stub.rs` | 目前仅 `IncrementalDisplayable` |
+| `graphic/stub.rs` | rust 侧仍导出 `IncrementalDisplayable` 占位（避免 wasm-bindgen 缺符号）；公开构造走 `js/incremental.js` |
 
 #### 顶层函数
 
@@ -506,7 +506,7 @@ crates/wasm-zrender/pkg/
 3. 画廊 `gallery.js` 用 Vite `?raw` 读这些 `.js` 作为左侧源码，iframe 加载同目录 HTML 预览
 4. 字体：`text.js` 内联 `fetch` + `registerFont`；可选辅助 `site/src/zrender/fonts.js` 默认拉取 `/fonts/NotoSansSC-Regular.ttf`
 
-实例页：`/zrender/examples/shapes.html`、`text.html`、`sector.html`、`hit.html`、`state.html`。
+实例页：`/zrender/examples/hello_world.html`、`animation.html`、`bounding_box.html`、`clip_path.html`、`glitched_text.html`、`particles.html`、`shapes.html`、`text.html`、`sector.html`、`hit.html`、`state.html`。
 
 ---
 
@@ -728,7 +728,13 @@ site/
 
 | 页 | 验证点 |
 |----|--------|
-| shapes | Group + Rect（线性渐变）/ Circle / Line 虚线 / Polygon / Arc / Ellipse / Ring / BezierCurve |
+| hello_world | Circle + Rect + RadialGradient |
+| animation | `animate().when().start()` 写入最后一组 when（圆停在右侧） |
+| bounding_box | `init(canvas)` + draggable Circle，实时 Group boundingRect |
+| clip_path | `Circle.setClipPath(Heart)` |
+| glitched_text | Text + `attr(position/shape/style)` |
+| particles | `animate` / `during` / `done` 终态 |
+| shapes | `Rect instanceof Path`、`Group({x:10}).x`、`Rect.r`、`Sector.r0`、渐变 / 虚线 / 基础 Path |
 | text | `registerFont` + 中文 Text、对齐 |
 | sector | 循环 Sector 饼扇 |
 | hit | `findHover` |

@@ -11,6 +11,8 @@ import { setPlatformAPI, platformApi } from './platform.js';
 import { Animator } from '../animator.js';
 import { PathRecorder } from '../path_recorder.js';
 import { attachPointStatics } from '../point_statics.js';
+import { Element } from '../element.js';
+import { Displayable } from '../displayable.js';
 
 let failed = 0;
 
@@ -149,6 +151,13 @@ function almost(a, b, eps) {
   assert(out.x === 4 && out.y === 6, 'Point.add');
   Point.lerp(out, { x: 0, y: 0 }, { x: 10, y: 10 }, 0.5);
   assert(out.x === 5 && out.y === 5, 'Point.lerp');
+}
+
+{
+  const d = new Displayable();
+  assert(d instanceof Element, 'Displayable instanceof Element');
+  d.x = 10;
+  assert(d.x === 10, 'Element.x setter');
 }
 
 if (failed) {

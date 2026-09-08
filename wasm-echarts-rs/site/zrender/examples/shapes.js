@@ -1,5 +1,8 @@
 import initWasm, {
   init,
+  Element,
+  Displayable,
+  Path,
   Group,
   Rect,
   Circle,
@@ -9,6 +12,7 @@ import initWasm, {
   Ellipse,
   Ring,
   BezierCurve,
+  Sector,
   LinearGradient,
 } from '@wasm-zrender';
 
@@ -18,6 +22,18 @@ const dpr = window.devicePixelRatio || 1;
 
 async function main() {
   await initWasm();
+
+  const protoRect = new Rect();
+  const protoGroup = new Group({ x: 10 });
+  if (
+    !(protoRect instanceof Path)
+    || !(protoRect instanceof Displayable)
+    || !(protoRect instanceof Element)
+    || !(protoGroup instanceof Element)
+    || protoGroup.x !== 10
+  ) {
+    throw new Error('facade 原型链 / Group.x 与官方不一致');
+  }
 
   const canvas = document.getElementById('canvas');
   canvas.width = Math.floor(width * dpr);
@@ -29,7 +45,7 @@ async function main() {
   const g = new Group();
 
   g.add(new Rect({
-    shape: { x: 20, y: 20, width: 100, height: 60 },
+    shape: { x: 20, y: 20, width: 100, height: 60, r: 12 },
     style: {
       fill: new LinearGradient(0, 0, 1, 0, [
         { offset: 0, color: '#5470c6' },
@@ -71,6 +87,19 @@ async function main() {
   g.add(new Ring({
     shape: { cx: 300, cy: 260, r: 55, r0: 30 },
     style: { fill: '#73c0de' },
+  }));
+
+  g.add(new Sector({
+    shape: {
+      cx: 400,
+      cy: 240,
+      r: 48,
+      r0: 22,
+      startAngle: -Math.PI / 4,
+      endAngle: Math.PI,
+      clockwise: true,
+    },
+    style: { fill: '#9a60b4' },
   }));
 
   g.add(new BezierCurve({
