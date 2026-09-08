@@ -6,18 +6,17 @@ import initWasm, {
 
 const width = 480;
 const height = 360;
-const dpr = window.devicePixelRatio || 1;
 
 async function main() {
   await initWasm();
 
   const canvas = document.getElementById('canvas');
-  canvas.width = Math.floor(width * dpr);
-  canvas.height = Math.floor(height * dpr);
+  canvas.width = width;
+  canvas.height = height;
   canvas.style.width = `${width}px`;
   canvas.style.height = `${height}px`;
 
-  const zr = init(null, { width, height, devicePixelRatio: dpr });
+  const zr = init(null, { width, height });
   const g = new Group();
   const colors = ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272'];
   const rects = [];

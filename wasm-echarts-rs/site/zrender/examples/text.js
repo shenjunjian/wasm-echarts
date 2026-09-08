@@ -6,7 +6,6 @@ import initWasm, {
 
 const width = 480;
 const height = 360;
-const dpr = window.devicePixelRatio || 1;
 const FONT_FAMILY = 'Noto Sans SC';
 const FONT_URL = '/fonts/NotoSansSC-Regular.ttf';
 
@@ -27,12 +26,12 @@ async function main() {
   await loadFont();
 
   const canvas = document.getElementById('canvas');
-  canvas.width = Math.floor(width * dpr);
-  canvas.height = Math.floor(height * dpr);
+  canvas.width = width;
+  canvas.height = height;
   canvas.style.width = `${width}px`;
   canvas.style.height = `${height}px`;
 
-  const zr = init(null, { width, height, devicePixelRatio: dpr });
+  const zr = init(null, { width, height });
 
   zr.add(new Text({
     style: {

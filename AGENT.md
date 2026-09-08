@@ -168,7 +168,7 @@ site JS 薄壳（创建 canvas、putImageData、tooltip DOM、ResizeObserver）
 已从源码删除 `scene.rs` / `load_scene` 预设场景。对外改为官方风格：
 
 ```javascript
-const zr = init(null, { width, height, devicePixelRatio: dpr });
+const zr = init(null, { width, height });
 zr.add(new Group());
 const rgba = zr.refresh();
 zr.findHover(x, y);
@@ -502,7 +502,7 @@ crates/wasm-zrender/pkg/
 ### 文档站如何用到本 crate
 
 1. Vite alias `@wasm-zrender` → `crates/wasm-zrender/js`（`js/index.js` 再 import `../pkg/wasm_zrender.js`）
-2. 每个实例是独立完整脚本：`site/zrender/examples/shapes.js` 等同名 HTML 成对出现，直接 `import` facade、建 canvas、构图、`refresh` → `putImageData`
+2. 每个实例是独立完整脚本：`site/zrender/examples/shapes.js` 等同名 HTML 成对出现，直接 `import` facade、建 canvas、构图、`refresh` → `putImageData`。canvas 位图与 `init` 宽高一律用 **CSS 像素**，不乘 `devicePixelRatio`（内核缓冲和命中检测都是 CSS 坐标；示例里乘 dpr 会导致画面与点选错位）
 3. 画廊 `gallery.js` 用 Vite `?raw` 读这些 `.js` 作为左侧源码，iframe 加载同目录 HTML 预览
 4. 字体：`text.js` 内联 `fetch` + `registerFont`；可选辅助 `site/src/zrender/fonts.js` 默认拉取 `/fonts/NotoSansSC-Regular.ttf`
 

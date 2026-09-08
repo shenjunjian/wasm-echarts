@@ -4,15 +4,14 @@ async function main() {
   await initWasm();
 
   const canvas = document.getElementById('canvas');
-  const dpr = window.devicePixelRatio || 1;
   const width = window.innerWidth;
   const height = window.innerHeight;
-  canvas.width = Math.floor(width * dpr);
-  canvas.height = Math.floor(height * dpr);
+  canvas.width = width;
+  canvas.height = height;
   canvas.style.width = `${width}px`;
   canvas.style.height = `${height}px`;
 
-  const zr = init(null, { width, height, devicePixelRatio: dpr });
+  const zr = init(null, { width, height });
   const w = zr.getWidth();
   const h = zr.getHeight();
 
@@ -46,24 +45,12 @@ async function main() {
 
 function paint(zr, canvas) {
   const rgba = zr.refresh();
-  const w = zr.width();
-  const h = zr.height();
-  const img = new ImageData(new Uint8ClampedArray(rgba), w, h);
   const ctx = canvas.getContext('2d');
-  // refresh() 返回 CSS 像素缓冲；canvas 位图是 CSS×dpr。
-  // 直接 putImageData(0,0) 只会画在物理画布左上角，1px 描边再被 CSS 缩小后会看不见。
-  if (canvas.width === w && canvas.height === h) {
-    ctx.putImageData(img, 0, 0);
-    return;
-  }
-  const off = document.createElement('canvas');
-  off.width = w;
-  off.height = h;
-  off.getContext('2d').putImageData(img, 0, 0);
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.setTransform(canvas.width / w, 0, 0, canvas.height / h, 0, 0);
-  ctx.drawImage(off, 0, 0);
+  ctx.putImageData(
+    new ImageData(new Uint8ClampedArray(rgba), zr.width(), zr.height()),
+    0,
+    0,
+  );
 }
 
 main();

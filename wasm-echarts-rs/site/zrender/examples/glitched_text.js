@@ -25,15 +25,14 @@ async function main() {
   await loadFont();
 
   const canvas = document.getElementById('canvas');
-  const dpr = window.devicePixelRatio || 1;
   const width = window.innerWidth;
   const height = window.innerHeight;
-  canvas.width = Math.floor(width * dpr);
-  canvas.height = Math.floor(height * dpr);
+  canvas.width = width;
+  canvas.height = height;
   canvas.style.width = `${width}px`;
   canvas.style.height = `${height}px`;
 
-  const zr = init(null, { width, height, devicePixelRatio: dpr });
+  const zr = init(null, { width, height });
   const w = zr.getWidth();
   const h = zr.getHeight();
   const fontSize = Math.max(48, Math.min(200, Math.floor(w / 4.2)));
