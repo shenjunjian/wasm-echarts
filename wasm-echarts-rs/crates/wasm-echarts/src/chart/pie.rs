@@ -54,7 +54,7 @@ pub fn render_pie_series(
                     r,
                     start_angle: start,
                     end_angle: end,
-                    percent: 1.0,
+                    ..Default::default()
                 }),
                 PathStyle {
                     fill: FillStrokeStyle::color(&color),

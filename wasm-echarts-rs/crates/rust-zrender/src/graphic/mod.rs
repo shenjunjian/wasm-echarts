@@ -18,7 +18,7 @@ pub use path::Path;
 pub use path_proxy::{PathCmd, PathProxy};
 pub use shapes::*;
 pub use style::{
-    ColorStop, FillStrokeStyle, LinearGradientStyle, PathStyle, PatternStyle, RadialGradientStyle,
-    ShadowStyle,
+    normalize_line_dash, ColorStop, FillStrokeStyle, LinearGradientStyle, PathStyle, PatternStyle,
+    RadialGradientStyle, ShadowStyle,
 };
 pub use text::{Text, TextAlign, TextBaseline, TextStyle};

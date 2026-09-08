@@ -42,6 +42,7 @@ pub fn render_line_series(
             Shape::Polyline(PolylineShape {
                 points: points.clone(),
                 percent: 1.0,
+                ..Default::default()
             }),
             PathStyle {
                 fill: FillStrokeStyle::none(),

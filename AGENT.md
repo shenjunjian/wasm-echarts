@@ -159,9 +159,9 @@ site JS 薄壳（创建 canvas、putImageData、tooltip DOM、ResizeObserver）
 | **6 交互完善** | hover/tooltip/dataZoom/axisPointer | **部分完成**。hover 高亮、toggleSelect、string tooltip、wheel inside dataZoom、竖线 axisPointer。pinch、slider、HTMLElement tooltip、十字/多轴 **未完成** |
 | **7 扩展与优化** | pie/scatter、RichText、脏矩形、视觉回归 | **部分完成**。pie/scatter、轴标签 Text、`benchmark_render`、feature flags。legend、gauge、polar、面积图、RichText、脏矩形、golden PNG **未完成** |
 
-### wasm-zrender API 规范对齐（波次 0–2 已完成）
+### wasm-zrender API 规范对齐（波次 0–3 已完成）
 
-规范已写入上文「目标与约束」；JS facade 骨架在 `crates/wasm-zrender/js/`，site 从 `@wasm-zrender` 导入。波次 2：变换主属性、`attr`/`setShape`/`setStyle` 双参数、Group opts 与子树 API。余下波次见该计划 YAML。
+规范已写入上文「目标与约束」；JS facade 骨架在 `crates/wasm-zrender/js/`，site 从 `@wasm-zrender` 导入。波次 2：变换主属性、`attr`/`setShape`/`setStyle` 双参数、Group opts 与子树 API。波次 3：`Sector.r0` / `clockwise` / `cornerRadius`、`Rect.r`、Polygon.smooth、Line·Text 默认 style、`miterLimit`、`lineDash` 字符串、`LinearGradient.addColorStop`。余下波次见该计划 YAML。
 
 ### wasm-zrender API 对齐（规划 todos 全部 completed）
 
@@ -267,7 +267,7 @@ Cargo 包名 `rust-zrender`，库名 `rust_zrender`。代码里写 `use rust_zre
 | `font_registry.rs` | 全局 fontdb；wasm32 不读系统字体 |
 | `demo.rs` | 原生测试用的简单图形场景 |
 
-**已补齐相对 vl-convert 的缺口**：shadow、自实现 isPointInPath（见 contain）、径向渐变 r0、lineDash / lineCap / lineJoin、Image。
+**已补齐相对 vl-convert 的缺口**：shadow、自实现 isPointInPath（见 contain）、径向渐变 r0、lineDash（含 `'dashed'` / `'dotted'`）/ lineCap / lineJoin / miterLimit、Image。
 
 **未做**：conic gradient、CSS filter。
 
@@ -276,7 +276,7 @@ Cargo 包名 `rust-zrender`，库名 `rust_zrender`。代码里写 `use rust_zre
 - `path.rs` + `path_proxy.rs`：buildPath → rebuildPath，bbox
 - `group.rs`：容器
 - `image.rs`、`text.rs`
-- `style.rs`：`FillStrokeStyle` = None | Color | LinearGradient | RadialGradient | Pattern；`ShadowStyle`
+- `style.rs`：`FillStrokeStyle` = None | Color | LinearGradient | RadialGradient | Pattern；`ShadowStyle`；`miterLimit` 默认 10
 - `shapes/`：见下表
 - `displayable.rs`：z / z2 / zlevel / invisible / culling
 
@@ -284,7 +284,7 @@ Path shape（均写入 `PathProxy`，命中检测自动走 kurbo）：
 
 | Shape | 文件 |
 |-------|------|
-| Rect, Circle, Line, Polygon, Polyline, Sector | `rect.rs` 等 |
+| Rect（`shape.r` 圆角）, Circle, Line（默认 stroke `#000` 无 fill）, Polygon（`smooth`）, Polyline, Sector（`r0` / `clockwise` / `cornerRadius`） | `rect.rs` 等 |
 | Arc, Ellipse, Ring, BezierCurve | Phase 2 |
 | Isogon, Star, Heart, Droplet, Rose, Trochoid | Phase 3 |
 | PathData（SVG `d` / pathData） | `path_data.rs` |
@@ -435,7 +435,7 @@ Cargo：`crate-type = ["cdylib", "rlib"]`，依赖 `rust-zrender` path。公开 
 
 **其它图元**：`Text`、`TSpan`（单 run MVP）、`Image`。
 
-**样式对象**：`LinearGradient(x, y, x2, y2, colorStops?, global?)`、`RadialGradient`（含 r0）、`Pattern(image, repeat?)`。
+**样式对象**：`LinearGradient(x, y, x2, y2, colorStops?, global?)`（`addColorStop`）、`RadialGradient(x, y, r, colorStops?, global?, r0?)`、`Pattern(image, repeat?)`。
 
 **几何值对象**（不进 Storage）：`Point`、`BoundingRect`、`OrientedBoundingRect`。
 
@@ -449,7 +449,6 @@ Cargo：`crate-type = ["cdylib", "rlib"]`，依赖 `rust-zrender` path。公开 
 - 动画 API 可调用；终态语义尚未接到最后一组 `when`（波次 5）
 - 工具模块 `color` / `matrix` / `vector` 等仍为 rust stub（波次 4 在 `js/tool/` 按签名重写）
 - `IncrementalDisplayable` 构造仍抛错（波次 6）
-- 部分 Shape 字段尚未按规范补齐（波次 3：`Sector.r0`、`Rect.r`、Polygon.smooth、Line·Text 默认 style）
 
 #### 浏览器测试
 
@@ -897,7 +896,6 @@ npm run dev
 
 对照 [`.cursor/plans/zrender_api_规范对齐_be3227a1.plan.md`](../.cursor/plans/zrender_api_规范对齐_be3227a1.plan.md) 余下波次，不混进「已对齐」：
 
-- 波次 3：`Sector.r0` / `Rect.r` / Polygon.smooth / Line·Text 默认 style
 - 波次 4：`js/tool/` 按官方签名重写 matrix / vector / color / util / path
 - 波次 5：Animator 写终点；`zr.clear` / `dispose` / `setBackgroundColor` / `trigger`；`hide`/`show`/`off`
 - 波次 6：clipPath 全图元、`useStates`、`Path.extend`、`IncrementalDisplayable`、Point 静态方法

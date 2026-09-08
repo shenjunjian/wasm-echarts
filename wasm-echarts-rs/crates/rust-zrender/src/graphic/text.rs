@@ -31,7 +31,7 @@ pub struct TextStyle {
 impl Default for TextStyle {
     fn default() -> Self {
         Self {
-            fill: "#333".into(),
+            fill: "#000".into(),
             font_size: 12.0,
             align: TextAlign::Left,
             baseline: TextBaseline::Alphabetic,
@@ -142,4 +142,14 @@ fn invert_transform_point(m: &[f32; 6], x: f64, y: f64) -> Option<(f64, f64)> {
         (m[3] as f64 * tx - m[2] as f64 * ty) * inv_det,
         (-m[1] as f64 * tx + m[0] as f64 * ty) * inv_det,
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_fill_is_black() {
+        assert_eq!(TextStyle::default().fill, "#000");
+    }
 }

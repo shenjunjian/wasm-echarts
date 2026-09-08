@@ -46,6 +46,7 @@ pub fn render_bar_series(
                     y,
                     width: bar_w,
                     height: h,
+                    ..Default::default()
                 }),
                 PathStyle {
                     fill: FillStrokeStyle::color(&color),

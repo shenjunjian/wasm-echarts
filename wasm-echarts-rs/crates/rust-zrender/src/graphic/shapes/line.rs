@@ -1,12 +1,24 @@
 use crate::graphic::path_proxy::PathProxy;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct LineShape {
     pub x1: f64,
     pub y1: f64,
     pub x2: f64,
     pub y2: f64,
     pub percent: f64,
+}
+
+impl Default for LineShape {
+    fn default() -> Self {
+        Self {
+            x1: 0.0,
+            y1: 0.0,
+            x2: 0.0,
+            y2: 0.0,
+            percent: 1.0,
+        }
+    }
 }
 
 pub fn build_line_path(ctx: &mut PathProxy, shape: &LineShape) {

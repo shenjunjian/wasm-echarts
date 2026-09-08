@@ -18,12 +18,57 @@ fn get_opt_f64(obj: &JsValue, key: &str) -> Option<f64> {
     }
 }
 
+fn parse_number_list(value: &JsValue) -> Vec<f64> {
+    if let Some(n) = value.as_f64() {
+        return vec![n];
+    }
+    let Some(arr) = value.dyn_ref::<js_sys::Array>() else {
+        return Vec::new();
+    };
+    let mut out = Vec::with_capacity(arr.length() as usize);
+    for i in 0..arr.length() {
+        if let Some(n) = arr.get(i).as_f64() {
+            out.push(n);
+        }
+    }
+    out
+}
+
+fn parse_points(value: &JsValue) -> Vec<(f64, f64)> {
+    let mut points = Vec::new();
+    let Some(arr) = value.dyn_ref::<js_sys::Array>() else {
+        return points;
+    };
+    for i in 0..arr.length() {
+        let pt = arr.get(i);
+        if let Some(pair) = pt.dyn_ref::<js_sys::Array>() {
+            if pair.length() >= 2 {
+                points.push((
+                    pair.get(0).as_f64().unwrap_or(0.0),
+                    pair.get(1).as_f64().unwrap_or(0.0),
+                ));
+            }
+        }
+    }
+    points
+}
+
+fn parse_smooth_constraint(shape: &JsValue) -> Option<[(f64, f64); 2]> {
+    let points = parse_points(&get_value(shape, "smoothConstraint"));
+    if points.len() >= 2 {
+        Some([points[0], points[1]])
+    } else {
+        None
+    }
+}
+
 pub fn parse_rect_shape(shape: &JsValue) -> Result<RectShape, JsValue> {
     Ok(RectShape {
         x: get_f64(shape, "x").unwrap_or(0.0),
         y: get_f64(shape, "y").unwrap_or(0.0),
         width: get_f64(shape, "width").unwrap_or(0.0),
         height: get_f64(shape, "height").unwrap_or(0.0),
+        r: parse_number_list(&get_value(shape, "r")),
     })
 }
 
@@ -46,21 +91,11 @@ pub fn parse_line_shape(shape: &JsValue) -> Result<LineShape, JsValue> {
 }
 
 pub fn parse_polygon_shape(shape: &JsValue) -> Result<PolygonShape, JsValue> {
-    let points_val = get_value(shape, "points");
-    let mut points = Vec::new();
-    if let Some(arr) = points_val.dyn_ref::<js_sys::Array>() {
-        for i in 0..arr.length() {
-            let pt = arr.get(i);
-            if let Some(pair) = pt.dyn_ref::<js_sys::Array>() {
-                if pair.length() >= 2 {
-                    let x = pair.get(0).as_f64().unwrap_or(0.0);
-                    let y = pair.get(1).as_f64().unwrap_or(0.0);
-                    points.push((x, y));
-                }
-            }
-        }
-    }
-    Ok(PolygonShape { points })
+    Ok(PolygonShape {
+        points: parse_points(&get_value(shape, "points")),
+        smooth: get_f64(shape, "smooth").unwrap_or(0.0),
+        smooth_constraint: parse_smooth_constraint(shape),
+    })
 }
 
 pub fn parse_polyline_shape(shape: &JsValue) -> Result<PolylineShape, JsValue> {
@@ -68,6 +103,8 @@ pub fn parse_polyline_shape(shape: &JsValue) -> Result<PolylineShape, JsValue> {
     Ok(PolylineShape {
         points: polygon.points,
         percent: get_f64(shape, "percent").unwrap_or(1.0),
+        smooth: polygon.smooth,
+        smooth_constraint: polygon.smooth_constraint,
     })
 }
 
@@ -76,8 +113,11 @@ pub fn parse_sector_shape(shape: &JsValue) -> Result<SectorShape, JsValue> {
         cx: get_f64(shape, "cx").unwrap_or(0.0),
         cy: get_f64(shape, "cy").unwrap_or(0.0),
         r: get_f64(shape, "r").unwrap_or(0.0),
+        r0: get_f64(shape, "r0").unwrap_or(0.0),
         start_angle: get_f64(shape, "startAngle").unwrap_or(0.0),
-        end_angle: get_f64(shape, "endAngle").unwrap_or(0.0),
+        end_angle: get_f64(shape, "endAngle").unwrap_or(std::f64::consts::PI * 2.0),
+        clockwise: get_bool(shape, "clockwise").unwrap_or(true),
+        corner_radius: parse_number_list(&get_value(shape, "cornerRadius")),
         percent: get_f64(shape, "percent").unwrap_or(1.0),
     })
 }
@@ -278,6 +318,11 @@ pub fn merge_shape(existing: &Shape, patch: &JsValue) -> Result<Shape, JsValue> 
             y: get_f64(patch, "y").unwrap_or(s.y),
             width: get_f64(patch, "width").unwrap_or(s.width),
             height: get_f64(patch, "height").unwrap_or(s.height),
+            r: if get_value(patch, "r").is_undefined() {
+                s.r.clone()
+            } else {
+                parse_number_list(&get_value(patch, "r"))
+            },
         })),
         Shape::Circle(s) => Ok(Shape::Circle(CircleShape {
             cx: get_f64(patch, "cx").unwrap_or(s.cx),
@@ -321,10 +366,46 @@ pub fn merge_shape(existing: &Shape, patch: &JsValue) -> Result<Shape, JsValue> 
             cx: get_f64(patch, "cx").unwrap_or(s.cx),
             cy: get_f64(patch, "cy").unwrap_or(s.cy),
             r: get_f64(patch, "r").unwrap_or(s.r),
+            r0: get_f64(patch, "r0").unwrap_or(s.r0),
             start_angle: get_f64(patch, "startAngle").unwrap_or(s.start_angle),
             end_angle: get_f64(patch, "endAngle").unwrap_or(s.end_angle),
+            clockwise: get_bool(patch, "clockwise").unwrap_or(s.clockwise),
+            corner_radius: if get_value(patch, "cornerRadius").is_undefined() {
+                s.corner_radius.clone()
+            } else {
+                parse_number_list(&get_value(patch, "cornerRadius"))
+            },
             percent: get_f64(patch, "percent").unwrap_or(s.percent),
         })),
+        Shape::Polygon(s) => {
+            let mut next = s.clone();
+            if !get_value(patch, "points").is_undefined() {
+                next.points = parse_points(&get_value(patch, "points"));
+            }
+            if let Some(smooth) = get_f64(patch, "smooth") {
+                next.smooth = smooth;
+            }
+            if !get_value(patch, "smoothConstraint").is_undefined() {
+                next.smooth_constraint = parse_smooth_constraint(patch);
+            }
+            Ok(Shape::Polygon(next))
+        }
+        Shape::Polyline(s) => {
+            let mut next = s.clone();
+            if !get_value(patch, "points").is_undefined() {
+                next.points = parse_points(&get_value(patch, "points"));
+            }
+            if let Some(percent) = get_f64(patch, "percent") {
+                next.percent = percent;
+            }
+            if let Some(smooth) = get_f64(patch, "smooth") {
+                next.smooth = smooth;
+            }
+            if !get_value(patch, "smoothConstraint").is_undefined() {
+                next.smooth_constraint = parse_smooth_constraint(patch);
+            }
+            Ok(Shape::Polyline(next))
+        }
         other => {
             // 其余类型：若 patch 含 type 则整段重解析，否则保持原值
             if let Some(type_name) = get_string(patch, "type") {

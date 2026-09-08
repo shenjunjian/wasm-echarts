@@ -74,6 +74,11 @@ impl LinearGradient {
     pub fn color_stops_js(&self) -> JsValue {
         color_stops_to_js(&self.color_stops)
     }
+
+    #[wasm_bindgen(js_name = addColorStop)]
+    pub fn add_color_stop(&mut self, offset: f64, color: String) {
+        self.color_stops.push(ColorStop { offset, color });
+    }
 }
 
 #[wasm_bindgen]
@@ -95,13 +100,14 @@ impl RadialGradient {
         r: f64,
         color_stops: Option<JsValue>,
         global_coord: Option<bool>,
+        r0: Option<f64>,
     ) -> RadialGradient {
         let stops_value = color_stops.unwrap_or(JsValue::UNDEFINED);
         RadialGradient {
             x: if x.is_nan() { 0.5 } else { x },
             y: if y.is_nan() { 0.5 } else { y },
             r: if r.is_nan() { 0.5 } else { r },
-            r0: 0.0,
+            r0: r0.filter(|v| v.is_finite()).unwrap_or(0.0),
             color_stops: parse_color_stops(&stops_value),
             global: global_coord.unwrap_or(false),
         }
@@ -132,6 +138,13 @@ impl RadialGradient {
         self.r0
     }
 
+    #[wasm_bindgen(setter)]
+    pub fn set_r0(&mut self, r0: f64) {
+        if r0.is_finite() {
+            self.r0 = r0.max(0.0);
+        }
+    }
+
     #[wasm_bindgen(getter)]
     pub fn global(&self) -> bool {
         self.global
@@ -140,6 +153,11 @@ impl RadialGradient {
     #[wasm_bindgen(getter, js_name = colorStops)]
     pub fn color_stops_js(&self) -> JsValue {
         color_stops_to_js(&self.color_stops)
+    }
+
+    #[wasm_bindgen(js_name = addColorStop)]
+    pub fn add_color_stop(&mut self, offset: f64, color: String) {
+        self.color_stops.push(ColorStop { offset, color });
     }
 }
 

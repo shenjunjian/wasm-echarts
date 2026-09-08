@@ -144,6 +144,7 @@ mod tests {
                 y: 0.0,
                 width: 200.0,
                 height: 200.0,
+                ..Default::default()
             }),
             PathStyle {
                 fill: FillStrokeStyle::color("#5470c6"),
@@ -201,6 +202,7 @@ mod tests {
                     y: 0.0,
                     width: 100.0,
                     height: 100.0,
+                    ..Default::default()
                 }),
                 PathStyle {
                     fill: FillStrokeStyle::color("#5470c6"),
@@ -293,6 +295,7 @@ mod tests {
                 y: 0.0,
                 width: 200.0,
                 height: 200.0,
+                ..Default::default()
             }),
             PathStyle {
                 fill: FillStrokeStyle::color("#14f1ff"),

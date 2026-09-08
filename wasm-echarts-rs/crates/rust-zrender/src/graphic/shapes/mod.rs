@@ -16,6 +16,7 @@ pub mod rect;
 pub mod ring;
 pub mod rose;
 pub mod sector;
+mod smooth_bezier;
 pub mod star;
 pub mod trochoid;
 

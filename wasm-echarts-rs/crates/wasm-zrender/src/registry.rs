@@ -878,6 +878,7 @@ mod tests {
                 y: 0.0,
                 width: 10.0,
                 height: 10.0,
+                ..Default::default()
             }),
             style: PathStyle::default(),
             displayable: DisplayableProps::default(),

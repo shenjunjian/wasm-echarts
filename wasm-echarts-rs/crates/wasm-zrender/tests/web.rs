@@ -6,8 +6,8 @@ use wasm_bindgen_test::*;
 
 use wasm_zrender::{
     clear_fonts, dispose_all, init, register_font, Arc, BezierCurve, BoundingRect, Circle, CompoundPath,
-    Displayable, Droplet, Ellipse, Group, Heart, Image, Isogon, LinearGradient, OrientedBoundingRect, Path,
-    Point, Rect, Ring, Rose, Star, Text, Trochoid, TSpan,
+    Displayable, Droplet, Ellipse, Group, Heart, Image, Isogon, Line, LinearGradient, OrientedBoundingRect, Path,
+    Point, Polygon, RadialGradient, Rect, Ring, Rose, Sector, Star, Text, Trochoid, TSpan,
 };
 
 const TEST_FONT: &[u8] = include_bytes!("../tests/fixtures/NotoSansSC-Regular.ttf");
@@ -835,4 +835,146 @@ fn group_add_before_keeps_child_order() {
     zr.add(JsValue::from(group)).unwrap();
     let rgba = zr.refresh().unwrap();
     assert!(!rgba.is_empty());
+}
+
+#[wasm_bindgen_test]
+fn line_default_style_strokes_without_fill() {
+    reset_registry();
+    let mut zr = init(JsValue::NULL, init_opts(200, 80)).unwrap();
+    let opts = Object::new();
+    let shape = Object::new();
+    Reflect::set(&shape, &"x1".into(), &JsValue::from(10.0)).unwrap();
+    Reflect::set(&shape, &"y1".into(), &JsValue::from(40.0)).unwrap();
+    Reflect::set(&shape, &"x2".into(), &JsValue::from(190.0)).unwrap();
+    Reflect::set(&shape, &"y2".into(), &JsValue::from(40.0)).unwrap();
+    Reflect::set(&opts, &"shape".into(), &shape).unwrap();
+    let style = Object::new();
+    Reflect::set(&style, &"lineWidth".into(), &JsValue::from(6.0)).unwrap();
+    Reflect::set(&opts, &"style".into(), &style).unwrap();
+
+    zr.add(JsValue::from(Line::new(opts.into()).unwrap())).unwrap();
+    let rgba = zr.refresh().unwrap();
+    assert!(rgba.chunks(4).any(|px| px[3] > 0), "Line default stroke should paint");
+}
+
+#[wasm_bindgen_test]
+fn rounded_rect_corner_is_transparent() {
+    reset_registry();
+    let mut zr = init(JsValue::NULL, init_opts(80, 80)).unwrap();
+    let opts = Object::new();
+    let shape = Object::new();
+    Reflect::set(&shape, &"x".into(), &JsValue::from(10.0)).unwrap();
+    Reflect::set(&shape, &"y".into(), &JsValue::from(10.0)).unwrap();
+    Reflect::set(&shape, &"width".into(), &JsValue::from(60.0)).unwrap();
+    Reflect::set(&shape, &"height".into(), &JsValue::from(60.0)).unwrap();
+    Reflect::set(&shape, &"r".into(), &JsValue::from(30.0)).unwrap();
+    Reflect::set(&opts, &"shape".into(), &shape).unwrap();
+    let style = Object::new();
+    Reflect::set(&style, &"fill".into(), &JsValue::from_str("#000")).unwrap();
+    Reflect::set(&opts, &"style".into(), &style).unwrap();
+
+    zr.add(JsValue::from(Rect::new(opts.into()).unwrap())).unwrap();
+    let rgba = zr.refresh().unwrap();
+    let corner = (10 * 80 + 10) * 4;
+    assert_eq!(rgba[corner + 3], 0);
+    let center = (40 * 80 + 40) * 4;
+    assert!(rgba[center + 3] > 0);
+}
+
+#[wasm_bindgen_test]
+fn sector_ring_has_transparent_hole() {
+    reset_registry();
+    let mut zr = init(JsValue::NULL, init_opts(100, 100)).unwrap();
+    let opts = Object::new();
+    let shape = Object::new();
+    Reflect::set(&shape, &"cx".into(), &JsValue::from(50.0)).unwrap();
+    Reflect::set(&shape, &"cy".into(), &JsValue::from(50.0)).unwrap();
+    Reflect::set(&shape, &"r".into(), &JsValue::from(40.0)).unwrap();
+    Reflect::set(&shape, &"r0".into(), &JsValue::from(18.0)).unwrap();
+    Reflect::set(&shape, &"startAngle".into(), &JsValue::from(0.0)).unwrap();
+    Reflect::set(&shape, &"endAngle".into(), &JsValue::from(std::f64::consts::PI * 2.0)).unwrap();
+    Reflect::set(&opts, &"shape".into(), &shape).unwrap();
+    let style = Object::new();
+    Reflect::set(&style, &"fill".into(), &JsValue::from_str("#000")).unwrap();
+    Reflect::set(&opts, &"style".into(), &style).unwrap();
+
+    zr.add(JsValue::from(Sector::new(opts.into()).unwrap())).unwrap();
+    let rgba = zr.refresh().unwrap();
+    let hole = (50 * 100 + 50) * 4;
+    assert_eq!(rgba[hole + 3], 0);
+    let ring = (50 * 100 + 80) * 4;
+    assert!(rgba[ring + 3] > 0);
+}
+
+#[wasm_bindgen_test]
+fn linear_gradient_add_color_stop_paints() {
+    reset_registry();
+    let mut zr = init(JsValue::NULL, init_opts(120, 60)).unwrap();
+    let mut gradient = LinearGradient::new(0.0, 0.0, 1.0, 0.0, None, None);
+    gradient.add_color_stop(0.0, "#ff0000".into());
+    gradient.add_color_stop(1.0, "#00ff00".into());
+
+    let opts = Object::new();
+    let shape = Object::new();
+    Reflect::set(&shape, &"x".into(), &JsValue::from(0.0)).unwrap();
+    Reflect::set(&shape, &"y".into(), &JsValue::from(0.0)).unwrap();
+    Reflect::set(&shape, &"width".into(), &JsValue::from(120.0)).unwrap();
+    Reflect::set(&shape, &"height".into(), &JsValue::from(60.0)).unwrap();
+    Reflect::set(&opts, &"shape".into(), &shape).unwrap();
+    let style = Object::new();
+    Reflect::set(&style, &"fill".into(), &JsValue::from(gradient)).unwrap();
+    Reflect::set(&opts, &"style".into(), &style).unwrap();
+
+    zr.add(JsValue::from(Rect::new(opts.into()).unwrap())).unwrap();
+    let rgba = zr.refresh().unwrap();
+    assert!(rgba.chunks(4).any(|px| px[0] > 200 && px[3] > 0));
+    assert!(rgba.chunks(4).any(|px| px[1] > 200 && px[3] > 0));
+}
+
+#[wasm_bindgen_test]
+fn radial_gradient_constructor_sets_r0() {
+    let gradient = RadialGradient::new(0.5, 0.5, 0.5, None, None, Some(0.2));
+    assert!((gradient.r0() - 0.2).abs() < 1e-9);
+}
+
+#[wasm_bindgen_test]
+fn text_default_fill_is_black() {
+    reset_registry();
+    register_test_font();
+    let mut zr = init(JsValue::NULL, init_opts(200, 80)).unwrap();
+    let style = Object::new();
+    Reflect::set(&style, &"text".into(), &JsValue::from_str("A")).unwrap();
+    Reflect::set(&style, &"x".into(), &JsValue::from(20.0)).unwrap();
+    Reflect::set(&style, &"y".into(), &JsValue::from(40.0)).unwrap();
+    Reflect::set(&style, &"fontSize".into(), &JsValue::from(32.0)).unwrap();
+    let opts = Object::new();
+    Reflect::set(&opts, &"style".into(), &style).unwrap();
+    zr.add(JsValue::from(Text::new(opts.into()))).unwrap();
+    let rgba = zr.refresh().unwrap();
+    let dark = rgba.chunks(4).any(|px| px[3] > 0 && px[0] < 40 && px[1] < 40 && px[2] < 40);
+    assert!(dark, "default Text fill should be near #000");
+}
+
+#[wasm_bindgen_test]
+fn polygon_smooth_paints() {
+    reset_registry();
+    let mut zr = init(JsValue::NULL, init_opts(120, 80)).unwrap();
+    let points = Array::new();
+    for (x, y) in [(10.0, 10.0), (110.0, 20.0), (80.0, 70.0), (20.0, 60.0)] {
+        let pt = Array::new();
+        pt.push(&JsValue::from(x));
+        pt.push(&JsValue::from(y));
+        points.push(&pt);
+    }
+    let shape = Object::new();
+    Reflect::set(&shape, &"points".into(), &points).unwrap();
+    Reflect::set(&shape, &"smooth".into(), &JsValue::from(0.4)).unwrap();
+    let opts = Object::new();
+    Reflect::set(&opts, &"shape".into(), &shape).unwrap();
+    let style = Object::new();
+    Reflect::set(&style, &"fill".into(), &JsValue::from_str("#5470c6")).unwrap();
+    Reflect::set(&opts, &"style".into(), &style).unwrap();
+    zr.add(JsValue::from(Polygon::new(opts.into()).unwrap())).unwrap();
+    let rgba = zr.refresh().unwrap();
+    assert!(rgba.chunks(4).any(|px| px[3] > 0));
 }

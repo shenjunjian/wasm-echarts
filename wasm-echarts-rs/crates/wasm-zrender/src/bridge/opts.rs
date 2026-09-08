@@ -3,7 +3,7 @@
 use js_sys::{Array, Reflect};
 use rust_zrender::{
     DisplayableProps, EcData, FillStrokeStyle, LineCap, LineJoin, PathStyle, PathStylePatch,
-    ShadowStyle, TextAlign, TextBaseline, TextStyle,
+    ShadowStyle, TextAlign, TextBaseline, TextStyle, normalize_line_dash,
 };
 use wasm_bindgen::prelude::*;
 
@@ -114,9 +114,20 @@ pub fn parse_displayable(opts: &JsValue) -> DisplayableProps {
     }
 }
 
-pub fn parse_path_style(style: &JsValue) -> PathStyle {
+fn is_stroke_only_path(type_name: &str) -> bool {
+    matches!(
+        type_name,
+        "line" | "polyline" | "bezier-curve" | "arc" | "rose" | "trochoid"
+    )
+}
+
+pub fn parse_path_style_for(type_name: &str, style: &JsValue) -> PathStyle {
     if style.is_null() || style.is_undefined() {
-        return PathStyle::default();
+        return if is_stroke_only_path(type_name) {
+            PathStyle::stroke_default()
+        } else {
+            PathStyle::default()
+        };
     }
 
     let mut path_style = PathStyle {
@@ -132,14 +143,26 @@ pub fn parse_path_style(style: &JsValue) -> PathStyle {
         stroke_first: get_bool(style, "strokeFirst").unwrap_or(false),
         line_cap: parse_line_cap(style),
         line_join: parse_line_join(style),
+        miter_limit: get_f64(style, "miterLimit").unwrap_or(10.0) as f32,
         ..PathStyle::default()
     };
 
-    if path_style.fill.is_none() && get_value(style, "fill").is_undefined() {
-        path_style.fill = FillStrokeStyle::Color("#000".into());
-    }
-    if path_style.stroke.is_none() && get_value(style, "stroke").is_undefined() {
-        path_style.stroke = FillStrokeStyle::None;
+    let fill_undefined = get_value(style, "fill").is_undefined();
+    let stroke_undefined = get_value(style, "stroke").is_undefined();
+    if is_stroke_only_path(type_name) {
+        if fill_undefined {
+            path_style.fill = FillStrokeStyle::None;
+        }
+        if stroke_undefined {
+            path_style.stroke = FillStrokeStyle::Color("#000".into());
+        }
+    } else {
+        if path_style.fill.is_none() && fill_undefined {
+            path_style.fill = FillStrokeStyle::Color("#000".into());
+        }
+        if path_style.stroke.is_none() && stroke_undefined {
+            path_style.stroke = FillStrokeStyle::None;
+        }
     }
 
     path_style
@@ -178,7 +201,7 @@ pub fn parse_text_style(style: &JsValue) -> TextStyle {
     TextStyle {
         fill: get_string(style, "fill")
             .or_else(|| get_string(style, "textFill"))
-            .unwrap_or_else(|| "#333".into()),
+            .unwrap_or_else(|| "#000".into()),
         font_size: get_f64(style, "fontSize").unwrap_or(12.0) as f32,
         align: parse_text_align(style),
         baseline: parse_text_baseline(style),
@@ -205,6 +228,10 @@ fn parse_line_dash(style: &JsValue) -> Option<Vec<f32>> {
     let dash = get_value(style, "lineDash");
     if dash.is_null() || dash.is_undefined() {
         return None;
+    }
+    if let Some(s) = dash.as_string() {
+        let line_width = get_f64(style, "lineWidth").unwrap_or(1.0) as f32;
+        return normalize_line_dash(&s, line_width);
     }
     let arr = Array::from(&dash);
     if arr.length() == 0 {

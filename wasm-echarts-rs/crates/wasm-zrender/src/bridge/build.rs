@@ -7,7 +7,7 @@ use wasm_bindgen::prelude::*;
 
 use super::fill_stroke::decode_pattern_image;
 use super::opts::{
-    get_f64, get_object, get_string, get_u32, get_value, parse_element_common, parse_path_style,
+    get_f64, get_object, get_string, get_u32, get_value, parse_element_common, parse_path_style_for,
     parse_text_style, parse_transform,
 };
 use super::shape::{
@@ -17,7 +17,7 @@ use crate::element::pending::{PendingData, PendingImage, PendingPath, PendingTex
 
 pub fn build_pending_path(type_name: &str, opts: &JsValue) -> Result<PendingData, JsValue> {
     let common = parse_element_common(opts);
-    let style = parse_path_style(&get_object(opts, "style"));
+    let style = parse_path_style_for(type_name, &get_object(opts, "style"));
     let shape_js = shape_from_opts(opts);
     let shape = parse_shape(type_name, &shape_js)?;
     let transform = parse_transform(opts);

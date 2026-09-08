@@ -106,7 +106,7 @@ mod tests {
     use crate::graphic::displayable::DisplayableProps;
     use crate::graphic::group::ChildRef;
     use crate::graphic::path::Path;
-    use crate::graphic::shapes::{CircleShape, LineShape, PolygonShape, RectShape, Shape};
+    use crate::graphic::shapes::{CircleShape, LineShape, PolygonShape, RectShape, SectorShape, Shape};
     use crate::graphic::style::{FillStrokeStyle, PathStyle};
 
     fn build_test_scene(storage: &mut Storage) {
@@ -119,6 +119,7 @@ mod tests {
                     y: 20.0,
                     width: 100.0,
                     height: 60.0,
+                    ..Default::default()
                 }),
                 PathStyle {
                     fill: FillStrokeStyle::color("#5470c6"),
@@ -169,6 +170,7 @@ mod tests {
         let polygon = storage.create_path(Path::new(
             Shape::Polygon(PolygonShape {
                 points: vec![(240.0, 30.0), (300.0, 60.0), (270.0, 100.0)],
+                ..Default::default()
             }),
             PathStyle {
                 fill: FillStrokeStyle::color("#fac858"),
@@ -238,6 +240,7 @@ mod tests {
                 y: 10.0,
                 width: 80.0,
                 height: 50.0,
+                ..Default::default()
             }),
             PathStyle {
                 fill: FillStrokeStyle::color("#5470c6"),
@@ -272,6 +275,7 @@ mod tests {
                     y: 0.0,
                     width: 100.0,
                     height: 100.0,
+                    ..Default::default()
                 }),
                 PathStyle {
                     fill: FillStrokeStyle::color("#5470c6"),
@@ -315,6 +319,7 @@ mod tests {
                 y: 10.0,
                 width: 80.0,
                 height: 80.0,
+                ..Default::default()
             }),
             PathStyle {
                 fill: FillStrokeStyle::color("#5470c6"),
@@ -340,5 +345,56 @@ mod tests {
         zr.storage.group_remove_child(0, circle);
         assert!(zr.find_hover(180.0, 80.0).is_none());
         assert!(zr.find_hover(70.0, 50.0).is_some());
+    }
+
+    #[test]
+    fn rounded_rect_leaves_corner_empty() {
+        let mut zr = ZRenderer::new(80, 80).unwrap();
+        let idx = zr.storage.create_path(Path::new(
+            Shape::Rect(RectShape {
+                x: 10.0,
+                y: 10.0,
+                width: 60.0,
+                height: 60.0,
+                r: vec![30.0],
+            }),
+            PathStyle {
+                fill: FillStrokeStyle::color("#000"),
+                ..Default::default()
+            },
+        ));
+        zr.storage.add_root(ChildRef::Path(idx));
+        let rgba = zr.refresh().unwrap();
+        let corner = ((10 * 80 + 10) * 4) as usize;
+        assert_eq!(rgba[corner + 3], 0, "rounded corner should be empty");
+        let center = ((40 * 80 + 40) * 4) as usize;
+        assert!(rgba[center + 3] > 0, "rect center should be filled");
+    }
+
+    #[test]
+    fn sector_ring_has_transparent_hole() {
+        use std::f64::consts::PI;
+        let mut zr = ZRenderer::new(100, 100).unwrap();
+        let idx = zr.storage.create_path(Path::new(
+            Shape::Sector(SectorShape {
+                cx: 50.0,
+                cy: 50.0,
+                r: 40.0,
+                r0: 18.0,
+                start_angle: 0.0,
+                end_angle: PI * 2.0,
+                ..Default::default()
+            }),
+            PathStyle {
+                fill: FillStrokeStyle::color("#000"),
+                ..Default::default()
+            },
+        ));
+        zr.storage.add_root(ChildRef::Path(idx));
+        let rgba = zr.refresh().unwrap();
+        let hole = ((50 * 100 + 50) * 4) as usize;
+        assert_eq!(rgba[hole + 3], 0, "annulus hole should be empty");
+        let ring = ((50 * 100 + 80) * 4) as usize;
+        assert!(rgba[ring + 3] > 0, "annulus ring should be filled");
     }
 }

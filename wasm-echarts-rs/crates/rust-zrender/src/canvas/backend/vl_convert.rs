@@ -115,6 +115,10 @@ impl CanvasContext for VlConvertBackend {
         self.ctx.set_line_join(join);
     }
 
+    fn set_miter_limit(&mut self, limit: f32) {
+        self.ctx.set_miter_limit(limit);
+    }
+
     fn begin_path(&mut self) {
         self.ctx.begin_path();
     }

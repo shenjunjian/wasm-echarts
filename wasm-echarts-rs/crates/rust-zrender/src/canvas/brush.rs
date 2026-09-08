@@ -86,6 +86,7 @@ pub fn brush(
             ctx.set_line_width(style.line_width);
             ctx.set_line_cap(style.line_cap);
             ctx.set_line_join(style.line_join);
+            ctx.set_miter_limit(style.miter_limit);
             if let Some(dash) = &style.line_dash {
                 ctx.set_line_dash(dash.clone());
                 ctx.set_line_dash_offset(style.line_dash_offset);
@@ -161,6 +162,7 @@ mod tests {
                 y: 15.0,
                 width: 80.0,
                 height: 50.0,
+                ..Default::default()
             }),
             PathStyle {
                 fill: FillStrokeStyle::color("#5470c6"),

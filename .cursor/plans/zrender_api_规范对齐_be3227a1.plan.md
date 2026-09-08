@@ -13,7 +13,7 @@ todos:
     status: completed
   - id: engine-shapes
     content: rust 补 Sector.r0/clockwise/cornerRadius、Rect.r、Polygon.smooth、Line/Text 默认 style
-    status: pending
+    status: completed
   - id: tool-modules
     content: JS 重写 matrix/vector/color/util/path；morph/parseSVG 最小签名
     status: pending

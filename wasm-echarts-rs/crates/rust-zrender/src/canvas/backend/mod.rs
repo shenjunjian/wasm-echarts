@@ -55,6 +55,7 @@ pub trait CanvasContext {
     fn set_line_dash_offset(&mut self, offset: f32);
     fn set_line_cap(&mut self, cap: vl_convert_canvas2d::LineCap);
     fn set_line_join(&mut self, join: vl_convert_canvas2d::LineJoin);
+    fn set_miter_limit(&mut self, limit: f32);
 
     fn begin_path(&mut self);
     fn move_to(&mut self, x: f32, y: f32);

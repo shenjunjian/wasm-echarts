@@ -151,6 +151,7 @@ pub struct PathStyle {
     pub line_dash_offset: f32,
     pub line_cap: LineCap,
     pub line_join: LineJoin,
+    pub miter_limit: f32,
     pub fill_opacity: f32,
     pub stroke_opacity: f32,
     pub shadow: Option<ShadowStyle>,
@@ -168,6 +169,7 @@ impl Default for PathStyle {
             line_dash_offset: 0.0,
             line_cap: LineCap::Butt,
             line_join: LineJoin::Miter,
+            miter_limit: 10.0,
             fill_opacity: 1.0,
             stroke_opacity: 1.0,
             shadow: None,
@@ -177,6 +179,15 @@ impl Default for PathStyle {
 }
 
 impl PathStyle {
+    /// 官方 Line / Polyline / Arc / BezierCurve 默认：无 fill、stroke `#000`
+    pub fn stroke_default() -> Self {
+        Self {
+            fill: FillStrokeStyle::None,
+            stroke: FillStrokeStyle::Color("#000".to_string()),
+            ..Self::default()
+        }
+    }
+
     pub fn has_fill(&self) -> bool {
         self.fill.is_visible()
     }
@@ -191,5 +202,35 @@ impl PathStyle {
 
     pub fn effective_stroke_opacity(&self) -> f32 {
         self.opacity * self.stroke_opacity
+    }
+}
+
+/// 对照官方 `canvas/dashStyle.ts`：`'dashed'` / `'dotted'` / `'solid'`。
+pub fn normalize_line_dash(line_type: &str, line_width: f32) -> Option<Vec<f32>> {
+    if line_width <= 0.0 {
+        return None;
+    }
+    match line_type {
+        "solid" => None,
+        "dashed" => Some(vec![4.0 * line_width, 2.0 * line_width]),
+        "dotted" => Some(vec![line_width]),
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn path_style_default_miter_limit_matches_official() {
+        assert_eq!(PathStyle::default().miter_limit, 10.0);
+    }
+
+    #[test]
+    fn line_dash_named_patterns() {
+        assert_eq!(normalize_line_dash("dashed", 2.0), Some(vec![8.0, 4.0]));
+        assert_eq!(normalize_line_dash("dotted", 3.0), Some(vec![3.0]));
+        assert_eq!(normalize_line_dash("solid", 2.0), None);
     }
 }
