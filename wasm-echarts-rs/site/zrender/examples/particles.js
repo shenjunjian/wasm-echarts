@@ -11,7 +11,7 @@ async function main() {
   canvas.style.width = `${width}px`;
   canvas.style.height = `${height}px`;
 
-  const zr = init(null, { width, height });
+  const zr = init(canvas, { width, height });
   const w = zr.getWidth();
   const h = zr.getHeight();
 
@@ -77,17 +77,8 @@ async function main() {
   };
 
   spray(w / 2, h / 2);
-  paint(zr, canvas);
-}
-
-function paint(zr, canvas) {
-  const rgba = zr.refresh();
-  const ctx = canvas.getContext('2d');
-  ctx.putImageData(
-    new ImageData(new Uint8ClampedArray(rgba), zr.width(), zr.height()),
-    0,
-    0,
-  );
+  // paint(zr, canvas);
+  // zr.flush();
 }
 
 main();

@@ -147,14 +147,14 @@ import initWasm, { init, registerFont, Group, Rect, Text } from '@wasm-zrender';
 
 | 导出 | 说明 |
 |------|------|
-| `init(dom?, opts?)` | 创建 ZRender 实例。传入 canvas 时绑定 Handler 并自动上屏 |
+| `init(dom?, opts?)` | 创建 ZRender 实例。见下文两种用法 |
 | `registerFont(data, opts?)` | 注册字体 bytes（**Text 渲染前必调**，见下文） |
 | `clearFonts()` | 清空已注册字体（测试用） |
 | `dispose(zr)` / `disposeAll()` / `getInstance(id)` | 实例生命周期 |
 | `version` / `registerPainter` | `version = '6.1.0'`；非 canvas painter 忽略 |
 | `Group` / `Rect` / `Circle` / `Line` / `Polygon` / `Polyline` / `Sector` / `Text` / … | 已实现图元（`Rect instanceof Path instanceof Displayable instanceof Element`） |
 | `ZRender.add` / `remove` / `clear` / `dispose` | 根节点与实例释放 |
-| `ZRender.refresh()` / `flush()` | 同步返回 RGBA 像素 |
+| `ZRender.refresh()` / `flush()` | 同步离屏绘制，返回 RGBA；**不会** `putImageData` |
 | `ZRender.findHover(x, y)` | 返回 `{ target, topTarget }` |
 | `ZRender.setBackgroundColor` / `trigger` / `setCursorStyle` | 背景、事件、光标 |
 | `el.hide` / `show` / `on` / `off` / `trigger` / `clipPath` | 元素可见性、事件、裁剪 |
@@ -164,6 +164,55 @@ import initWasm, { init, registerFont, Group, Rect, Text } from '@wasm-zrender';
 | `IncrementalDisplayable` | 按普通 Group 语义可构造（非增量图层） |
 
 **允许例外（仅此四条）**：字体必须 `registerFont`；动画只写终点；仅 canvas 离屏（无 SVG / hover layer / dirty rect）；`init(canvas)` 可自动 `putImageData`，`init(null)` 仍用 opts 宽高。详见 [zrender 文档](wasm-echarts-rs/site/zrender/docs/index.html) 与 [AGENT.md](AGENT.md)。
+
+### `init` 的两种用法
+
+`init(dom?, opts?)` 的第一个参数决定是否绑定页面上的 `<canvas>`。绘制始终在 WASM 内存里完成，**宽高只读 `opts`**（缺省 `300×150`），不会从 DOM 或 canvas 属性测量。`devicePixelRatio` / `dpr` 可选，默认 `1`。
+
+#### 1. `init(null, opts)` — 离屏，自行上屏
+
+不绑 canvas、不绑指针事件。`add` 只改内存中的图元树。调用 `zr.refresh()` 或 `zr.flush()`（二者等价）拿到 RGBA，再由 JS `putImageData`。适合批量加完图元后画一帧、SSR、自定义渲染管线。
+
+```javascript
+const zr = init(null, { width: 480, height: 360 });
+zr.add(new Rect({ shape: { x: 10, y: 10, width: 80, height: 40 } }));
+const rgba = zr.refresh(); // Uint8Array，不会写到任何 canvas
+const ctx = canvas.getContext('2d');
+ctx.putImageData(
+  new ImageData(new Uint8ClampedArray(rgba), zr.getWidth(), zr.getHeight()),
+  0,
+  0,
+);
+```
+
+#### 2. `init(canvas, opts)` — 绑定 canvas，自动上屏
+
+把传入的 `HTMLCanvasElement` 交给 Handler：可接收 pointer 事件（点选 / 拖拽）；`add` / `remove` / `setStyle` / 改 `position` 等会立刻全量 `refresh` 并 `putImageData`。观感接近官方 `zrender.init(container)`。适合少量图元和交互 Demo。
+
+```javascript
+const zr = init(canvas, { width: canvas.width, height: canvas.height });
+zr.add(new Circle({
+  shape: { cx: 80, cy: 80, r: 30 },
+  style: { fill: '#5470c6' },
+}));
+// 已上屏，不必再调用 refresh / flush
+```
+
+不要在循环里连续 `add` 几百个元素：每一次都会重绘整幅画布，主线程会卡住，浏览器也要等循环结束才能把 canvas 合成到屏幕。批量场景请用 `init(null)`，加完后再 `refresh` 一次。
+
+#### 区别对照
+
+| | `init(null, opts)` | `init(canvas, opts)` |
+|---|---|---|
+| 尺寸来源 | `opts.width` / `opts.height` | 同左，不读 canvas 的 `width`/`height` 属性 |
+| 指针事件 | 无 | 绑到该 canvas |
+| `add` / 改属性后 | 只更新场景图 | 立刻全量绘制并 `putImageData` |
+| `refresh()` / `flush()` | 返回 RGBA，须自行上屏 | 同样只返回像素，**不会再贴一次**；上屏靠改图元时的自动 blit |
+| 批量添加 | 循环后再 `refresh` 一次即可 | 每次 `add` 都全量重绘，大量图元会明显卡顿 |
+
+`refresh()` / `flush()` 与官方同名，语义不同：官方是预约或立即画到 DOM canvas（返回 `void`）；wasm-zrender 是同步离屏绘制并返回 `Uint8Array`。动画同样只写终点，`animate().when().start()` 不会播中间帧。
+
+离屏示例：[text.html](wasm-echarts-rs/site/zrender/examples/text.html)；绑定 canvas 示例：[bounding_box.html](wasm-echarts-rs/site/zrender/examples/bounding_box.html)。
 
 ### 字体加载（Text 必看）
 
