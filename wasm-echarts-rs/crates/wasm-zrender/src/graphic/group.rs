@@ -6,7 +6,10 @@ use crate::element::api;
 use crate::element::js::element_from_js;
 use crate::animation::Animator;
 use crate::graphic::BoundingRect;
-use crate::registry::{group_add_child, group_remove_child, register_group, ELEMENT_REGISTRY};
+use crate::registry::{
+    group_add_child, group_insert_child, group_remove_child, group_replace_child, register_group,
+    ELEMENT_REGISTRY,
+};
 
 #[wasm_bindgen]
 pub struct Group {
@@ -36,6 +39,24 @@ impl Group {
     pub fn add(&self, child: JsValue) -> Result<(), JsValue> {
         let child = element_from_js(&child)?;
         group_add_child(self.id, child.raw_id())
+    }
+
+    #[wasm_bindgen(js_name = addBefore)]
+    pub fn add_before(&self, child: JsValue, next_sibling: JsValue) -> Result<(), JsValue> {
+        let child = element_from_js(&child)?;
+        let next = element_from_js(&next_sibling)?;
+        let index = ELEMENT_REGISTRY.with(|reg| {
+            reg.borrow()
+                .child_index(self.id, next.raw_id())
+                .ok_or_else(|| JsValue::from_str("nextSibling is not a child of this group"))
+        })?;
+        group_insert_child(self.id, child.raw_id(), index)
+    }
+
+    pub fn replace(&self, old_child: JsValue, new_child: JsValue) -> Result<(), JsValue> {
+        let old_child = element_from_js(&old_child)?;
+        let new_child = element_from_js(&new_child)?;
+        group_replace_child(self.id, old_child.raw_id(), new_child.raw_id())
     }
 
     pub fn remove(&self, child: JsValue) -> Result<(), JsValue> {

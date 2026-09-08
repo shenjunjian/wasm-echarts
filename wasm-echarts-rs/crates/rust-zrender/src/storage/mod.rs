@@ -101,6 +101,17 @@ impl Storage {
         self.display_dirty = true;
     }
 
+    pub fn group_insert_child(&mut self, group_index: usize, child: ChildRef, index: usize) {
+        self.groups[group_index].insert_child(index, child);
+        self.display_dirty = true;
+    }
+
+    pub fn group_replace_child(&mut self, group_index: usize, old: ChildRef, new: ChildRef) {
+        if self.groups[group_index].replace_child(old, new) {
+            self.display_dirty = true;
+        }
+    }
+
     /// 从组中移除指定子节点（对齐 zrender Group#remove）
     pub fn group_remove_child(&mut self, group_index: usize, child: ChildRef) {
         if self.groups[group_index].remove_child(child) {
@@ -214,6 +225,11 @@ impl Storage {
     ) {
         match *child {
             ChildRef::Group(gi) => {
+                if self.groups[gi].base.ignore {
+                    self.groups[gi].base.update_transform(parent_transform);
+                    self.groups[gi].base.dirty = 0;
+                    return;
+                }
                 let group_dirty = self.groups[gi].base.dirty;
                 let children = self.groups[gi].children.clone();
                 {

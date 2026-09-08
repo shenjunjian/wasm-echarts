@@ -66,6 +66,7 @@ pub struct ElementCommonOpts {
     pub displayable: DisplayableProps,
     pub silent: bool,
     pub name: Option<String>,
+    pub ignore: bool,
     pub ec_data: EcData,
     pub draggable: DraggableKind,
 }
@@ -87,6 +88,7 @@ pub fn parse_element_common(opts: &JsValue) -> ElementCommonOpts {
         displayable: parse_displayable(opts),
         silent: get_bool(opts, "silent").unwrap_or(false),
         name: get_string(opts, "name"),
+        ignore: get_bool(opts, "ignore").unwrap_or(false),
         ec_data: EcData::default(),
         draggable: parse_draggable(opts),
     };
@@ -263,6 +265,21 @@ pub fn parse_draggable(opts: &JsValue) -> DraggableKind {
         DraggableKind::None
     } else {
         DraggableKind::from_js(&value)
+    }
+}
+
+/// 解析官方变换主属性：`x` `y` `scaleX` `scaleY` `rotation` `originX` `originY`。
+/// `position: [x, y]` 与顶层 `x` / `y` 等价。
+pub fn parse_transform(opts: &JsValue) -> crate::element::pending::PendingTransform {
+    let (x, y) = parse_position(opts);
+    crate::element::pending::PendingTransform {
+        x,
+        y,
+        scale_x: get_f64(opts, "scaleX").unwrap_or(1.0),
+        scale_y: get_f64(opts, "scaleY").unwrap_or(1.0),
+        rotation: get_f64(opts, "rotation").unwrap_or(0.0),
+        origin_x: get_f64(opts, "originX").unwrap_or(0.0),
+        origin_y: get_f64(opts, "originY").unwrap_or(0.0),
     }
 }
 

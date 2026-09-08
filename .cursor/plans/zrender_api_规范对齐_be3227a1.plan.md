@@ -10,7 +10,7 @@ todos:
     status: completed
   - id: transform-group
     content: 变换属性、attr 双参数、Group opts 与子树 API
-    status: pending
+    status: completed
   - id: engine-shapes
     content: rust 补 Sector.r0/clockwise/cornerRadius、Rect.r、Polygon.smooth、Line/Text 默认 style
     status: pending

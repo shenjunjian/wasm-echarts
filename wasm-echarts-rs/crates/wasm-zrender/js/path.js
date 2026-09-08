@@ -1,4 +1,5 @@
 import { Displayable } from './displayable.js';
+import { asPatch } from './element.js';
 import { native } from './native.js';
 
 /**
@@ -7,23 +8,37 @@ import { native } from './native.js';
 export class Path extends Displayable {
   constructor(opts) {
     super();
+    this.shape = this.shape || {};
     if (new.target === Path) {
       this._bindNative(new native.Path(opts ?? {}));
+      if (opts != null) {
+        this.attr(opts);
+      }
     }
   }
 
-  setShape(shape) {
+  attrKV(key, value) {
+    if (key === 'shape') {
+      this.setShape(value);
+    } else {
+      super.attrKV(key, value);
+    }
+  }
+
+  setShape(keyOrObj, value) {
+    const patch = asPatch(keyOrObj, value);
+    if (!this.shape) {
+      this.shape = {};
+    }
+    Object.assign(this.shape, patch);
     if (this._native && typeof this._native.setShape === 'function') {
-      this._native.setShape(shape);
+      this._native.setShape(patch);
     }
     return this;
   }
 
   setClipPath(clip) {
-    if (this._native && typeof this._native.setClipPath === 'function') {
-      this._native.setClipPath(clip);
-    }
-    return this;
+    return super.setClipPath(clip);
   }
 
   useState(state) {

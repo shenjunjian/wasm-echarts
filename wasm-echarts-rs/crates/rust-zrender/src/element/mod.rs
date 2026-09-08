@@ -51,4 +51,25 @@ impl ElementBase {
     pub fn update_transform(&mut self, parent: Option<&Matrix>) {
         self.transform_state.update_transform(parent);
     }
+
+    pub fn apply_transform_props(
+        &mut self,
+        x: f64,
+        y: f64,
+        scale_x: f64,
+        scale_y: f64,
+        rotation: f64,
+        origin_x: f64,
+        origin_y: f64,
+    ) {
+        let t = &mut self.transform_state;
+        t.x = x;
+        t.y = y;
+        t.scale_x = scale_x;
+        t.scale_y = scale_y;
+        t.rotation = rotation;
+        t.origin_x = origin_x;
+        t.origin_y = origin_y;
+        self.mark_redraw();
+    }
 }

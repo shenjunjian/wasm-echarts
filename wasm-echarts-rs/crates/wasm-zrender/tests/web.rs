@@ -779,3 +779,60 @@ fn handler_dispatch_drags_draggable_circle() {
     let hover = zr.find_hover(140.0, 110.0).expect("circle should follow drag");
     assert_eq!(hover.target().element_type(), "circle");
 }
+
+#[wasm_bindgen_test]
+fn attr_transform_moves_and_scales_rect() {
+    reset_registry();
+    let mut zr = init(JsValue::NULL, init_opts(320, 160)).unwrap();
+
+    let opts = Object::new();
+    let shape = Object::new();
+    Reflect::set(&shape, &"x".into(), &JsValue::from(0.0)).unwrap();
+    Reflect::set(&shape, &"y".into(), &JsValue::from(0.0)).unwrap();
+    Reflect::set(&shape, &"width".into(), &JsValue::from(20.0)).unwrap();
+    Reflect::set(&shape, &"height".into(), &JsValue::from(20.0)).unwrap();
+    Reflect::set(&opts, &"shape".into(), &shape).unwrap();
+    let style = Object::new();
+    Reflect::set(&style, &"fill".into(), &JsValue::from_str("#000")).unwrap();
+    Reflect::set(&opts, &"style".into(), &style).unwrap();
+    Reflect::set(&opts, &"x".into(), &JsValue::from(40.0)).unwrap();
+    Reflect::set(&opts, &"y".into(), &JsValue::from(30.0)).unwrap();
+    Reflect::set(&opts, &"scaleX".into(), &JsValue::from(2.0)).unwrap();
+
+    let rect = Rect::new(opts.into()).unwrap();
+    let pos = Array::from(&rect.position());
+    assert_eq!(pos.get(0).as_f64().unwrap(), 40.0);
+    assert_eq!(pos.get(1).as_f64().unwrap(), 30.0);
+
+    rect.attr(JsValue::from_str("y"), JsValue::from(10.0));
+    let pos = Array::from(&rect.position());
+    assert_eq!(pos.get(1).as_f64().unwrap(), 10.0);
+
+    let shape_patch = Object::new();
+    Reflect::set(&shape_patch, &"height".into(), &JsValue::from(30.0)).unwrap();
+    rect.set_shape(shape_patch.into());
+
+    zr.add(JsValue::from(rect)).unwrap();
+    zr.refresh().unwrap();
+    // shape 20×30 at (0,0), x=40 scaleX=2 y=10 → 覆盖 [40,80] × [10,40]
+    assert!(zr.find_hover(50.0, 20.0).is_some());
+    assert!(zr.find_hover(10.0, 20.0).is_none());
+}
+
+#[wasm_bindgen_test]
+fn group_add_before_keeps_child_order() {
+    reset_registry();
+    let mut zr = init(JsValue::NULL, init_opts(320, 160)).unwrap();
+    let group = Group::new();
+    group.attr(JsValue::from_str("x"), JsValue::from(10.0));
+
+    let first = Rect::new(rect_opts()).unwrap();
+    let second = Circle::new(circle_opts()).unwrap();
+    let first_js = JsValue::from(first);
+    let second_js = JsValue::from(second);
+    group.add(second_js.clone()).unwrap();
+    group.add_before(first_js, second_js).unwrap();
+    zr.add(JsValue::from(group)).unwrap();
+    let rgba = zr.refresh().unwrap();
+    assert!(!rgba.is_empty());
+}

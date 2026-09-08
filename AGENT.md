@@ -159,9 +159,9 @@ site JS 薄壳（创建 canvas、putImageData、tooltip DOM、ResizeObserver）
 | **6 交互完善** | hover/tooltip/dataZoom/axisPointer | **部分完成**。hover 高亮、toggleSelect、string tooltip、wheel inside dataZoom、竖线 axisPointer。pinch、slider、HTMLElement tooltip、十字/多轴 **未完成** |
 | **7 扩展与优化** | pie/scatter、RichText、脏矩形、视觉回归 | **部分完成**。pie/scatter、轴标签 Text、`benchmark_render`、feature flags。legend、gauge、polar、面积图、RichText、脏矩形、golden PNG **未完成** |
 
-### wasm-zrender API 规范对齐（波次 0–1 已完成）
+### wasm-zrender API 规范对齐（波次 0–2 已完成）
 
-规范已写入上文「目标与约束」；JS facade 骨架在 `crates/wasm-zrender/js/`，site 从 `@wasm-zrender` 导入。余下波次见该计划 YAML。
+规范已写入上文「目标与约束」；JS facade 骨架在 `crates/wasm-zrender/js/`，site 从 `@wasm-zrender` 导入。波次 2：变换主属性、`attr`/`setShape`/`setStyle` 双参数、Group opts 与子树 API。余下波次见该计划 YAML。
 
 ### wasm-zrender API 对齐（规划 todos 全部 completed）
 
@@ -380,12 +380,12 @@ Cargo：`crate-type = ["cdylib", "rlib"]`，依赖 `rust-zrender` path。公开 
 | 文件 | 职责 |
 |------|------|
 | `index.js` | 官方命名导出；`default` 仍是 `initWasm`；`version = '6.1.0'` |
-| `element.js` / `displayable.js` / `path.js` / `group.js` / `text.js` / `image.js` / `shapes/` | 原型链；实例持有 `_native` handle |
+| `element.js` / `displayable.js` / `path.js` / `group.js` / `text.js` / `image.js` / `shapes/` | 原型链；实例持有 `_native` handle。变换主属性与 Group `_children` 在 JS 维护，变更同步 rust |
 | `zrender.js` | 包装 `init` / `dispose` / `getInstance` / `registerPainter` |
 | `wasm_zrender.js` | 兼容旧路径 `@wasm-zrender/wasm_zrender.js` |
 | `tool/` | 波次 4：按官方签名重写；当前仍转发 rust stub |
 
-构造约定：子类 `super()` 不创建 native，再 `_bindNative(new native.Rect(opts))`。绘制与命中仍走 wasm-bindgen。
+构造约定：子类 `super()` 不创建 native，再 `_bindNative(new native.Rect(opts))`，然后 `attr(opts)` 写入 JS 变换主属性并同步 rust。绘制与命中仍走 wasm-bindgen。
 
 #### `src/` — wasm-bindgen 桥
 
@@ -429,7 +429,7 @@ Cargo：`crate-type = ["cdylib", "rlib"]`，依赖 `rust-zrender` path。公开 
 
 #### 已实现图元（可 `new` + `zr.add` / `group.add`）
 
-**容器 / 基类**：`Group`（`add` / `remove` / `removeAll`）、`Path`（通用，`shape.pathData`）、`Displayable`（抽象，构造抛错说明）。
+**容器 / 基类**：`Group`（`new Group(opts)`，`add` / `addBefore` / `replace` / `remove` / `removeAll` / `children` / `childAt` / `childOfName` / `childCount` / `eachChild` / `traverse`）、`Path`（通用，`shape.pathData`）、`Displayable`（抽象，构造抛错说明）。
 
 **Path 子类**（均有 `useState` / `setStateStyle`）：`Rect`、`Circle`、`Line`、`Polygon`、`Polyline`、`Sector`、`Arc`、`Ellipse`、`Ring`、`BezierCurve`、`Isogon`、`Star`、`Heart`、`Droplet`、`Rose`、`Trochoid`、`CompoundPath`。
 
@@ -439,7 +439,7 @@ Cargo：`crate-type = ["cdylib", "rlib"]`，依赖 `rust-zrender` path。公开 
 
 **几何值对象**（不进 Storage）：`Point`、`BoundingRect`、`OrientedBoundingRect`。
 
-构造 opts 对齐官方：`{ shape, style, z, zlevel, silent, name, draggable, position }`，以及 echarts 用的 `seriesIndex` / `dataIndex` 可写到 ECData。
+构造 opts 对齐官方：`{ shape, style, z, zlevel, silent, name, ignore, draggable, position, x, y, scaleX, scaleY, rotation, originX, originY }`，以及 echarts 用的 `seriesIndex` / `dataIndex` 可写到 ECData。`attr` / `setShape` / `setStyle` 支持对象与 `key, value`。
 
 #### 刻意与官方不同
 
@@ -449,7 +449,7 @@ Cargo：`crate-type = ["cdylib", "rlib"]`，依赖 `rust-zrender` path。公开 
 - 动画 API 可调用；终态语义尚未接到最后一组 `when`（波次 5）
 - 工具模块 `color` / `matrix` / `vector` 等仍为 rust stub（波次 4 在 `js/tool/` 按签名重写）
 - `IncrementalDisplayable` 构造仍抛错（波次 6）
-- 变换主属性 / Group 子树 API / 部分 Shape 字段尚未按规范补齐（波次 2–3）
+- 部分 Shape 字段尚未按规范补齐（波次 3：`Sector.r0`、`Rect.r`、Polygon.smooth、Line·Text 默认 style）
 
 #### 浏览器测试
 
@@ -897,7 +897,6 @@ npm run dev
 
 对照 [`.cursor/plans/zrender_api_规范对齐_be3227a1.plan.md`](../.cursor/plans/zrender_api_规范对齐_be3227a1.plan.md) 余下波次，不混进「已对齐」：
 
-- 波次 2：变换主属性、`attr` 双参数、Group opts 与子树 API
 - 波次 3：`Sector.r0` / `Rect.r` / Polygon.smooth / Line·Text 默认 style
 - 波次 4：`js/tool/` 按官方签名重写 matrix / vector / color / util / path
 - 波次 5：Animator 写终点；`zr.clear` / `dispose` / `setBackgroundColor` / `trigger`；`hide`/`show`/`off`

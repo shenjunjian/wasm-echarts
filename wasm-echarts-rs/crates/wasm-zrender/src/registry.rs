@@ -27,6 +27,7 @@ struct ElementRecord {
     storage_index: Option<usize>,
     zr_id: Option<u32>,
     parent_id: Option<u32>,
+    children: Vec<u32>,
     mounted: bool,
     type_name: String,
     pending: PendingData,
@@ -60,6 +61,7 @@ impl ElementRegistry {
                 storage_index: None,
                 zr_id: None,
                 parent_id: None,
+                children: Vec::new(),
                 mounted: false,
                 type_name: type_name.into(),
                 pending,
@@ -126,18 +128,18 @@ impl ElementRegistry {
 
     pub fn children_of(&self, parent_id: u32) -> Vec<u32> {
         self.elements
-            .iter()
-            .filter_map(|(&id, r)| {
-                if r.parent_id == Some(parent_id) {
-                    Some(id)
-                } else {
-                    None
-                }
-            })
-            .collect()
+            .get(&parent_id)
+            .map(|r| r.children.clone())
+            .unwrap_or_default()
     }
 
-    pub fn set_parent(&mut self, child_id: u32, parent_id: u32) -> Result<(), JsValue> {
+    pub fn child_index(&self, parent_id: u32, child_id: u32) -> Option<usize> {
+        self.elements
+            .get(&parent_id)
+            .and_then(|r| r.children.iter().position(|&id| id == child_id))
+    }
+
+    fn link_parent(&mut self, child_id: u32, parent_id: u32) -> Result<(), JsValue> {
         let parent_kind = self
             .kind(parent_id)
             .ok_or_else(|| JsValue::from_str("invalid parent element"))?;
@@ -154,9 +156,64 @@ impl ElementRegistry {
         Ok(())
     }
 
+    pub fn set_parent(&mut self, child_id: u32, parent_id: u32) -> Result<(), JsValue> {
+        self.link_parent(child_id, parent_id)?;
+        self.elements
+            .get_mut(&parent_id)
+            .ok_or_else(|| JsValue::from_str("invalid parent element"))?
+            .children
+            .push(child_id);
+        Ok(())
+    }
+
+    pub fn insert_child(
+        &mut self,
+        parent_id: u32,
+        child_id: u32,
+        index: usize,
+    ) -> Result<(), JsValue> {
+        self.link_parent(child_id, parent_id)?;
+        let parent = self
+            .elements
+            .get_mut(&parent_id)
+            .ok_or_else(|| JsValue::from_str("invalid parent element"))?;
+        let index = index.min(parent.children.len());
+        parent.children.insert(index, child_id);
+        Ok(())
+    }
+
+    pub fn replace_child(
+        &mut self,
+        parent_id: u32,
+        old_id: u32,
+        new_id: u32,
+    ) -> Result<usize, JsValue> {
+        let index = self
+            .child_index(parent_id, old_id)
+            .ok_or_else(|| JsValue::from_str("element is not a child of this group"))?;
+        self.clear_parent(old_id);
+        self.link_parent(new_id, parent_id)?;
+        let parent = self
+            .elements
+            .get_mut(&parent_id)
+            .ok_or_else(|| JsValue::from_str("invalid parent element"))?;
+        if index <= parent.children.len() {
+            parent.children.insert(index, new_id);
+        } else {
+            parent.children.push(new_id);
+        }
+        Ok(index)
+    }
+
     pub fn clear_parent(&mut self, child_id: u32) {
+        let parent_id = self.parent_id(child_id);
         if let Some(record) = self.elements.get_mut(&child_id) {
             record.parent_id = None;
+        }
+        if let Some(pid) = parent_id {
+            if let Some(parent) = self.elements.get_mut(&pid) {
+                parent.children.retain(|&id| id != child_id);
+            }
         }
     }
 
@@ -341,8 +398,9 @@ impl ElementRegistry {
         let idx = zr.storage.create_group();
         {
             let group = zr.storage.group_mut(idx);
-            group.base.transform_state.x = pending.x;
-            group.base.transform_state.y = pending.y;
+            pending.transform.apply_to_base(&mut group.base);
+            group.base.name = pending.name;
+            group.base.ignore = pending.ignore;
         }
         if let Some(record) = self.elements.get_mut(&element_id) {
             record.storage_index = Some(idx);
@@ -371,10 +429,11 @@ impl ElementRegistry {
 
         let mut path = Path::new(pending.shape, pending.style)
             .with_displayable(pending.displayable)
-            .with_ec_data(pending.ec_data)
-            .with_transform(pending.x, pending.y);
+            .with_ec_data(pending.ec_data);
+        pending.transform.apply_to_base(&mut path.base);
         path.silent = pending.silent;
         path.base.name = pending.name;
+        path.base.ignore = pending.ignore;
 
         for (state, patch) in &pending.state_patches {
             path.states.set_state_patch(state, patch.clone());
@@ -422,8 +481,8 @@ impl ElementRegistry {
         text.silent = pending.silent;
         text.ec_data = pending.ec_data;
         text.base.name = pending.name;
-        text.base.transform_state.x = pending.tx;
-        text.base.transform_state.y = pending.ty;
+        text.base.ignore = pending.ignore;
+        pending.transform.apply_to_base(&mut text.base);
 
         let idx = zr.storage.create_text(text);
         if let Some(record) = self.elements.get_mut(&element_id) {
@@ -456,8 +515,8 @@ impl ElementRegistry {
             .with_ec_data(pending.ec_data);
         image.silent = pending.silent;
         image.base.name = pending.name;
-        image.base.transform_state.x = pending.x;
-        image.base.transform_state.y = pending.y;
+        image.base.ignore = pending.ignore;
+        pending.transform.apply_to_base(&mut image.base);
 
         let idx = zr.storage.create_image(image);
         if let Some(record) = self.elements.get_mut(&element_id) {
@@ -695,6 +754,70 @@ pub(crate) fn group_add_child(group_id: u32, child_id: u32) -> Result<(), JsValu
     Ok(())
 }
 
+pub(crate) fn group_insert_child(
+    group_id: u32,
+    child_id: u32,
+    index: usize,
+) -> Result<(), JsValue> {
+    let zr_id = ELEMENT_REGISTRY.with(|reg| -> Result<Option<u32>, JsValue> {
+        let mut reg = reg.borrow_mut();
+        reg.insert_child(group_id, child_id, index)?;
+        if let Some(zr_id) = reg.zr_id(group_id) {
+            with_zr(zr_id, |zr| {
+                reg.attach_to_zr(child_id, zr_id)?;
+                reg.materialize_element(zr, zr_id, child_id)?;
+                let group_idx = reg.storage_index(group_id).unwrap();
+                let child = reg.child_ref(child_id)?;
+                zr.storage.group_insert_child(group_idx, child, index);
+                Ok(())
+            })?;
+            Ok(Some(zr_id))
+        } else {
+            Ok(None)
+        }
+    })?;
+    if let Some(zr_id) = zr_id {
+        crate::handler::paint_if_bound(zr_id);
+    }
+    Ok(())
+}
+
+pub(crate) fn group_replace_child(
+    group_id: u32,
+    old_id: u32,
+    new_id: u32,
+) -> Result<(), JsValue> {
+    let zr_id = ELEMENT_REGISTRY.with(|reg| -> Result<Option<u32>, JsValue> {
+        let mut reg = reg.borrow_mut();
+        if reg.parent_id(old_id) != Some(group_id) {
+            return Err(JsValue::from_str("element is not a child of this group"));
+        }
+        let index = reg.replace_child(group_id, old_id, new_id)?;
+        if let Some(zr_id) = reg.zr_id(group_id) {
+            if let Some(group_idx) = reg.storage_index(group_id) {
+                let old_child = reg.child_ref(old_id).ok();
+                with_zr(zr_id, |zr| {
+                    if let Some(old_child) = old_child {
+                        zr.storage.group_remove_child(group_idx, old_child);
+                    }
+                    reg.attach_to_zr(new_id, zr_id)?;
+                    reg.materialize_element(zr, zr_id, new_id)?;
+                    let new_child = reg.child_ref(new_id)?;
+                    zr.storage.group_insert_child(group_idx, new_child, index);
+                    Ok(())
+                })?;
+            }
+            Ok(Some(zr_id))
+        } else {
+            Ok(None)
+        }
+    })?;
+    if let Some(zr_id) = zr_id {
+        crate::handler::paint_if_bound(zr_id);
+    }
+    Ok(())
+}
+
 pub(crate) fn group_remove_child(group_id: u32, child_id: u32) -> Result<(), JsValue> {
     ELEMENT_REGISTRY.with(|reg| {
         let mut reg = reg.borrow_mut();
@@ -760,11 +883,11 @@ mod tests {
             displayable: DisplayableProps::default(),
             silent: false,
             name: String::new(),
+            ignore: false,
             ec_data: Default::default(),
             state_patches: HashMap::new(),
             active_states: Vec::new(),
-            x: 0.0,
-            y: 0.0,
+            transform: Default::default(),
             clip_element_id: None,
             draggable: Default::default(),
         });
@@ -802,9 +925,9 @@ mod tests {
             displayable: DisplayableProps::default(),
             silent: false,
             name: String::new(),
+            ignore: false,
             ec_data: Default::default(),
-            tx: 0.0,
-            ty: 0.0,
+            transform: Default::default(),
             draggable: Default::default(),
         });
         let text_id = reg.register(ElementKind::Text, pending, "text");
@@ -846,9 +969,9 @@ mod tests {
             displayable: DisplayableProps::default(),
             silent: false,
             name: String::new(),
+            ignore: false,
             ec_data: Default::default(),
-            tx: 0.0,
-            ty: 0.0,
+            transform: Default::default(),
             draggable: Default::default(),
         });
         let text_id = reg.register(ElementKind::Text, pending, "text");
@@ -886,9 +1009,9 @@ mod tests {
             displayable: DisplayableProps::default(),
             silent: false,
             name: String::new(),
+            ignore: false,
             ec_data: Default::default(),
-            tx: 0.0,
-            ty: 0.0,
+            transform: Default::default(),
             draggable: Default::default(),
         });
         let element_id = reg.register(ElementKind::Text, pending, "text");
@@ -901,6 +1024,23 @@ mod tests {
             .expect("text should be hittable");
         assert!(matches!(hit.target, rust_zrender::HitTarget::Text(_)));
         assert!(reg.find_by_storage(ElementKind::Text, 0).is_some());
+    }
+
+    #[test]
+    fn group_children_preserve_insertion_order() {
+        let mut reg = ElementRegistry::default();
+        let group_id = reg.register(ElementKind::Group, PendingData::group(), "group");
+        let a = reg.register(ElementKind::Group, PendingData::group(), "group");
+        let b = reg.register(ElementKind::Group, PendingData::group(), "group");
+        let c = reg.register(ElementKind::Group, PendingData::group(), "group");
+        reg.set_parent(b, group_id).unwrap();
+        reg.insert_child(group_id, a, 0).unwrap();
+        assert_eq!(reg.children_of(group_id), vec![a, b]);
+        let idx = reg.replace_child(group_id, b, c).unwrap();
+        assert_eq!(idx, 1);
+        assert_eq!(reg.children_of(group_id), vec![a, c]);
+        assert_eq!(reg.parent_id(b), None);
+        assert_eq!(reg.parent_id(c), Some(group_id));
     }
 
     #[test]

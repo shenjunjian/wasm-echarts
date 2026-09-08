@@ -67,6 +67,15 @@ fn apply_attr_key(id: u32, key: &str, value: &JsValue) -> Result<(), JsValue> {
             crate::handler::element_set_draggable(id, value);
             Ok(())
         }
+        "x" | "y" | "scaleX" | "scaleY" | "rotation" | "originX" | "originY" => {
+            apply_transform_field(id, key, value)
+        }
+        "name" => apply_name(id, value),
+        "ignore" => apply_ignore(id, value),
+        "silent" => apply_silent(id, value),
+        "z" | "z2" | "zlevel" => apply_z_field(id, key, value),
+        "invisible" => apply_invisible(id, value),
+        "clipPath" => element_set_clip_path(id, value.clone()),
         _ => Ok(()),
     }
 }
@@ -216,36 +225,196 @@ fn apply_position(id: u32, x: f64, y: f64) -> Result<(), JsValue> {
         if let Some(pending) = reg.pending_mut(id) {
             pending.set_position(x, y);
         }
+        Ok::<(), JsValue>(())
+    })?;
+    sync_transform_to_storage(id)?;
+    crate::handler::paint_element(id);
+    Ok(())
+}
+
+fn apply_transform_field(id: u32, key: &str, value: &JsValue) -> Result<(), JsValue> {
+    let Some(n) = value.as_f64() else {
+        return Ok(());
+    };
+    ELEMENT_REGISTRY.with(|reg| {
+        let mut reg = reg.borrow_mut();
+        if let Some(pending) = reg.pending_mut(id) {
+            pending.transform_mut().set_field(key, n);
+        }
+        Ok::<(), JsValue>(())
+    })?;
+    sync_transform_to_storage(id)?;
+    crate::handler::paint_element(id);
+    Ok(())
+}
+
+fn sync_transform_to_storage(id: u32) -> Result<(), JsValue> {
+    ELEMENT_REGISTRY.with(|reg| {
+        let reg = reg.borrow();
+        let transform = match reg.pending(id) {
+            Some(pending) => pending.transform().clone(),
+            None => return Ok(()),
+        };
         let kind = reg.kind(id);
         let zr_id = reg.zr_id(id);
         let idx = reg.storage_index(id);
         if let (Some(zr_id), Some(idx), Some(kind)) = (zr_id, idx, kind) {
             with_zr(zr_id, |zr| {
                 match kind {
-                    ElementKind::Path => {
-                        let path = zr.storage.path_mut(idx);
-                        path.base.transform_state.x = x;
-                        path.base.transform_state.y = y;
-                        path.base.mark_redraw();
-                    }
-                    ElementKind::Text => {
-                        let text = zr.storage.text_mut(idx);
-                        text.base.transform_state.x = x;
-                        text.base.transform_state.y = y;
-                        text.base.mark_redraw();
-                    }
+                    ElementKind::Path => transform.apply_to_base(&mut zr.storage.path_mut(idx).base),
+                    ElementKind::Text => transform.apply_to_base(&mut zr.storage.text_mut(idx).base),
                     ElementKind::Image => {
-                        let image = zr.storage.image_mut(idx);
-                        image.base.transform_state.x = x;
-                        image.base.transform_state.y = y;
-                        image.base.mark_redraw();
+                        transform.apply_to_base(&mut zr.storage.image_mut(idx).base)
                     }
                     ElementKind::Group => {
-                        let group = zr.storage.group_mut(idx);
-                        group.base.transform_state.x = x;
-                        group.base.transform_state.y = y;
-                        group.base.mark_redraw();
+                        transform.apply_to_base(&mut zr.storage.group_mut(idx).base)
                     }
+                }
+                zr.storage.mark_display_dirty();
+                Ok(())
+            })?;
+        }
+        Ok::<(), JsValue>(())
+    })
+}
+
+fn apply_name(id: u32, value: &JsValue) -> Result<(), JsValue> {
+    let name = value.as_string().unwrap_or_default();
+    apply_base_meta(id, |pending| pending.set_name(name.clone()), |base| {
+        base.name = name.clone();
+        base.mark_redraw();
+    })
+}
+
+fn apply_ignore(id: u32, value: &JsValue) -> Result<(), JsValue> {
+    let ignore = value.as_bool().unwrap_or(false);
+    apply_base_meta(id, |pending| pending.set_ignore(ignore), |base| {
+        base.ignore = ignore;
+        base.mark_redraw();
+    })
+}
+
+fn apply_silent(id: u32, value: &JsValue) -> Result<(), JsValue> {
+    let silent = value.as_bool().unwrap_or(false);
+    ELEMENT_REGISTRY.with(|reg| {
+        let mut reg = reg.borrow_mut();
+        if let Some(pending) = reg.pending_mut(id) {
+            pending.set_silent(silent);
+        }
+        let kind = reg.kind(id);
+        let zr_id = reg.zr_id(id);
+        let idx = reg.storage_index(id);
+        if let (Some(zr_id), Some(idx), Some(kind)) = (zr_id, idx, kind) {
+            with_zr(zr_id, |zr| {
+                match kind {
+                    ElementKind::Path => zr.storage.path_mut(idx).silent = silent,
+                    ElementKind::Text => zr.storage.text_mut(idx).silent = silent,
+                    ElementKind::Image => zr.storage.image_mut(idx).silent = silent,
+                    ElementKind::Group => {}
+                }
+                zr.storage.mark_display_dirty();
+                Ok(())
+            })?;
+        }
+        Ok::<(), JsValue>(())
+    })?;
+    crate::handler::paint_element(id);
+    Ok(())
+}
+
+fn apply_z_field(id: u32, key: &str, value: &JsValue) -> Result<(), JsValue> {
+    let Some(n) = value.as_f64() else {
+        return Ok(());
+    };
+    ELEMENT_REGISTRY.with(|reg| {
+        let mut reg = reg.borrow_mut();
+        if let Some(displayable) = reg.pending_mut(id).and_then(|p| p.displayable_mut()) {
+            match key {
+                "z" => displayable.z = n,
+                "z2" => displayable.z2 = n,
+                "zlevel" => displayable.zlevel = n,
+                _ => {}
+            }
+        }
+        let kind = reg.kind(id);
+        let zr_id = reg.zr_id(id);
+        let idx = reg.storage_index(id);
+        if let (Some(zr_id), Some(idx), Some(kind)) = (zr_id, idx, kind) {
+            with_zr(zr_id, |zr| {
+                let displayable = match kind {
+                    ElementKind::Path => Some(&mut zr.storage.path_mut(idx).displayable),
+                    ElementKind::Text => Some(&mut zr.storage.text_mut(idx).displayable),
+                    ElementKind::Image => Some(&mut zr.storage.image_mut(idx).displayable),
+                    ElementKind::Group => None,
+                };
+                if let Some(displayable) = displayable {
+                    match key {
+                        "z" => displayable.z = n,
+                        "z2" => displayable.z2 = n,
+                        "zlevel" => displayable.zlevel = n,
+                        _ => {}
+                    }
+                }
+                zr.storage.mark_display_dirty();
+                Ok(())
+            })?;
+        }
+        Ok::<(), JsValue>(())
+    })?;
+    crate::handler::paint_element(id);
+    Ok(())
+}
+
+fn apply_invisible(id: u32, value: &JsValue) -> Result<(), JsValue> {
+    let invisible = value.as_bool().unwrap_or(false);
+    ELEMENT_REGISTRY.with(|reg| {
+        let mut reg = reg.borrow_mut();
+        if let Some(displayable) = reg.pending_mut(id).and_then(|p| p.displayable_mut()) {
+            displayable.invisible = invisible;
+        }
+        let kind = reg.kind(id);
+        let zr_id = reg.zr_id(id);
+        let idx = reg.storage_index(id);
+        if let (Some(zr_id), Some(idx), Some(kind)) = (zr_id, idx, kind) {
+            with_zr(zr_id, |zr| {
+                match kind {
+                    ElementKind::Path => zr.storage.path_mut(idx).displayable.invisible = invisible,
+                    ElementKind::Text => zr.storage.text_mut(idx).displayable.invisible = invisible,
+                    ElementKind::Image => {
+                        zr.storage.image_mut(idx).displayable.invisible = invisible
+                    }
+                    ElementKind::Group => {}
+                }
+                zr.storage.mark_display_dirty();
+                Ok(())
+            })?;
+        }
+        Ok::<(), JsValue>(())
+    })?;
+    crate::handler::paint_element(id);
+    Ok(())
+}
+
+fn apply_base_meta(
+    id: u32,
+    update_pending: impl FnOnce(&mut PendingData),
+    update_base: impl Fn(&mut rust_zrender::element::ElementBase),
+) -> Result<(), JsValue> {
+    ELEMENT_REGISTRY.with(|reg| {
+        let mut reg = reg.borrow_mut();
+        if let Some(pending) = reg.pending_mut(id) {
+            update_pending(pending);
+        }
+        let kind = reg.kind(id);
+        let zr_id = reg.zr_id(id);
+        let idx = reg.storage_index(id);
+        if let (Some(zr_id), Some(idx), Some(kind)) = (zr_id, idx, kind) {
+            with_zr(zr_id, |zr| {
+                match kind {
+                    ElementKind::Path => update_base(&mut zr.storage.path_mut(idx).base),
+                    ElementKind::Text => update_base(&mut zr.storage.text_mut(idx).base),
+                    ElementKind::Image => update_base(&mut zr.storage.image_mut(idx).base),
+                    ElementKind::Group => update_base(&mut zr.storage.group_mut(idx).base),
                 }
                 zr.storage.mark_display_dirty();
                 Ok(())

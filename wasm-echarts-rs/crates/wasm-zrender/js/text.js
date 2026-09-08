@@ -5,5 +5,8 @@ export class Text extends Displayable {
   constructor(opts) {
     super();
     this._bindNative(new native.Text(opts ?? {}));
+    if (opts != null) {
+      this.attr(opts);
+    }
   }
 }

@@ -8,7 +8,7 @@ use wasm_bindgen::prelude::*;
 use super::fill_stroke::decode_pattern_image;
 use super::opts::{
     get_f64, get_object, get_string, get_u32, get_value, parse_element_common, parse_path_style,
-    parse_position, parse_text_style,
+    parse_text_style, parse_transform,
 };
 use super::shape::{
     parse_compound_path_shape, parse_path_data_shape, parse_shape_by_type, shape_from_opts,
@@ -20,18 +20,18 @@ pub fn build_pending_path(type_name: &str, opts: &JsValue) -> Result<PendingData
     let style = parse_path_style(&get_object(opts, "style"));
     let shape_js = shape_from_opts(opts);
     let shape = parse_shape(type_name, &shape_js)?;
-    let (x, y) = parse_position(opts);
+    let transform = parse_transform(opts);
     Ok(PendingData::Path(PendingPath {
         shape,
         style,
         displayable: common.displayable,
         silent: common.silent,
         name: common.name.unwrap_or_default(),
+        ignore: common.ignore,
         ec_data: common.ec_data,
         state_patches: HashMap::new(),
         active_states: Vec::new(),
-        x,
-        y,
+        transform,
         clip_element_id: None,
         draggable: common.draggable,
     }))
@@ -41,15 +41,15 @@ pub fn build_pending_image(opts: &JsValue) -> Result<PendingData, JsValue> {
     let common = parse_element_common(opts);
     let style_obj = get_object(opts, "style");
     let style = parse_image_style(&style_obj, opts)?;
-    let (x, y) = parse_position(opts);
+    let transform = parse_transform(opts);
     Ok(PendingData::Image(PendingImage {
         style,
         displayable: common.displayable,
         silent: common.silent,
         name: common.name.unwrap_or_default(),
+        ignore: common.ignore,
         ec_data: common.ec_data,
-        x,
-        y,
+        transform,
         draggable: common.draggable,
     }))
 }
@@ -58,7 +58,7 @@ pub fn build_pending_text(opts: &JsValue) -> PendingData {
     let common = parse_element_common(opts);
     let style_obj = get_object(opts, "style");
     let content = get_string(&style_obj, "text").unwrap_or_default();
-    let (tx, ty) = parse_position(opts);
+    let transform = parse_transform(opts);
     let x = get_f64(&style_obj, "x").unwrap_or(0.0);
     let y = get_f64(&style_obj, "y").unwrap_or(0.0);
     let style = parse_text_style(&style_obj);
@@ -70,9 +70,9 @@ pub fn build_pending_text(opts: &JsValue) -> PendingData {
         displayable: common.displayable,
         silent: common.silent,
         name: common.name.unwrap_or_default(),
+        ignore: common.ignore,
         ec_data: common.ec_data,
-        tx,
-        ty,
+        transform,
         draggable: common.draggable,
     })
 }

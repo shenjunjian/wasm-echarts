@@ -35,6 +35,22 @@ impl Group {
         self.base.mark_redraw();
     }
 
+    pub fn insert_child(&mut self, index: usize, child: ChildRef) {
+        let index = index.min(self.children.len());
+        self.children.insert(index, child);
+        self.base.mark_redraw();
+    }
+
+    pub fn replace_child(&mut self, old: ChildRef, new: ChildRef) -> bool {
+        if let Some(idx) = self.children.iter().position(|c| *c == old) {
+            self.children[idx] = new;
+            self.base.mark_redraw();
+            true
+        } else {
+            false
+        }
+    }
+
     /// 从组中移除指定子节点（对齐 zrender Group#remove）
     pub fn remove_child(&mut self, child: ChildRef) -> bool {
         if let Some(idx) = self.children.iter().position(|c| *c == child) {

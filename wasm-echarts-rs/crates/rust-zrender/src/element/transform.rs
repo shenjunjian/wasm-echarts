@@ -89,3 +89,32 @@ impl Transform {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn local_transform_applies_scale_and_translation() {
+        let t = Transform {
+            x: 10.0,
+            y: 4.0,
+            scale_x: 2.0,
+            scale_y: 3.0,
+            ..Default::default()
+        };
+        let m = t.get_local_transform();
+        assert!((m[0] - 2.0).abs() < 1e-4);
+        assert!((m[3] - 3.0).abs() < 1e-4);
+        assert!((m[4] - 10.0).abs() < 1e-4);
+        assert!((m[5] - 4.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn need_local_transform_when_scaled() {
+        let mut t = Transform::default();
+        assert!(!t.need_local_transform());
+        t.scale_x = 2.0;
+        assert!(t.need_local_transform());
+    }
+}

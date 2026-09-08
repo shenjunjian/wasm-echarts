@@ -5,5 +5,8 @@ export class Image extends Displayable {
   constructor(opts) {
     super();
     this._bindNative(new native.Image(opts ?? {}));
+    if (opts != null) {
+      this.attr(opts);
+    }
   }
 }

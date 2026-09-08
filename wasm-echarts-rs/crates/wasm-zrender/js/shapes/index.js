@@ -6,6 +6,9 @@ function defineShape(name, NativeCtor) {
     constructor(opts) {
       super();
       this._bindNative(new NativeCtor(opts ?? {}));
+      if (opts != null) {
+        this.attr(opts);
+      }
     }
   }
   Object.defineProperty(Shape, 'name', { value: name });
