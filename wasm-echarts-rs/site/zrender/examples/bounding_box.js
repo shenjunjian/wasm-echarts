@@ -1,4 +1,4 @@
-import initWasm, { init, Group, Circle, Rect } from '@wasm-zrender/wasm_zrender.js';
+import initWasm, { init, Group, Circle, Rect } from '@wasm-zrender';
 
 async function main() {
   await initWasm();

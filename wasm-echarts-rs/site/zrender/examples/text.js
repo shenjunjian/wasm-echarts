@@ -2,7 +2,7 @@ import initWasm, {
   init,
   registerFont,
   Text,
-} from '@wasm-zrender/wasm_zrender.js';
+} from '@wasm-zrender';
 
 const width = 480;
 const height = 360;

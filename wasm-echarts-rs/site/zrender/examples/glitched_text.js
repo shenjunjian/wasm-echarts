@@ -3,7 +3,7 @@ import initWasm, {
   registerFont,
   Text,
   Rect,
-} from '@wasm-zrender/wasm_zrender.js';
+} from '@wasm-zrender';
 
 const FONT_URL = '/fonts/NotoSansSC-Regular.ttf';
 const FONT_FAMILY = 'Noto Sans SC';

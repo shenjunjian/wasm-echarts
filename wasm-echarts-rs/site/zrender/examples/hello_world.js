@@ -3,7 +3,7 @@ import initWasm, {
   Circle,
   Rect,
   RadialGradient,
-} from '@wasm-zrender/wasm_zrender.js';
+} from '@wasm-zrender';
 
 async function main() {
   await initWasm();

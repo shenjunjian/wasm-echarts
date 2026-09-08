@@ -28,13 +28,13 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@wasm-zrender': resolve(repoRoot, 'crates/wasm-zrender/pkg'),
+      '@wasm-zrender': resolve(repoRoot, 'crates/wasm-zrender/js'),
       '@wasm-echarts': resolve(repoRoot, 'crates/wasm-echarts/pkg'),
     },
   },
   assetsInclude: ['**/*.wasm'],
   optimizeDeps: {
-    exclude: ['@wasm-zrender/wasm_zrender.js', '@wasm-echarts/wasm_echarts.js'],
+    exclude: ['@wasm-zrender', '@wasm-echarts/wasm_echarts.js'],
   },
   plugins: [
     {

@@ -2,7 +2,7 @@
  * 加载并注册 wasm-zrender 文本渲染所需字体。
  */
 
-import { registerFont } from '@wasm-zrender/wasm_zrender.js';
+import { registerFont } from '@wasm-zrender';
 
 const DEFAULT_FONT_URL = '/fonts/NotoSansSC-Regular.ttf';
 const DEFAULT_FONT_FAMILY = 'Noto Sans SC';

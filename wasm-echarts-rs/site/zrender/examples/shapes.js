@@ -10,7 +10,7 @@ import initWasm, {
   Ring,
   BezierCurve,
   LinearGradient,
-} from '@wasm-zrender/wasm_zrender.js';
+} from '@wasm-zrender';
 
 const width = 480;
 const height = 360;

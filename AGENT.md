@@ -17,6 +17,7 @@ Rust / WebAssembly workspace：用纯 Rust 重写 zrender 离屏 canvas 渲染�
 | 待办与 Demo | `wasm-echarts_待办与Demo规划.plan.md` | crate 拆分规范、已完成摘要、site 与后续 backlog |
 | API 对齐 | `wasm-zrender_api_对齐_98a6aa98.plan.md` | 删除 scene 预设，对齐官方 `export.ts` 命名空间 |
 | API 批量补录 | `wasm-zrender_api_批量补录_89d0d2a5.plan.md` | 把 stub 图元逐步换成真实实现 |
+| API 规范对齐 | `zrender_api_规范对齐_be3227a1.plan.md` | 硬规范 + JS facade；逐项清单以该计划为权威 |
 
 规划 YAML 里部分 todo 仍标 `pending`，以**源码为准**。下文「规划对照」会标明实际完成度。
 
@@ -33,7 +34,7 @@ wasm-echarts/                         # 整个 git 仓库
 │   ├── Cargo.lock
 │   ├── crates/
 │   │   ├── rust-zrender/             # 纯 Rust rlib：渲染引擎
-│   │   ├── wasm-zrender/             # wasm-pack cdylib：对齐 zrender export.ts
+│   │   ├── wasm-zrender/             # wasm-pack cdylib + js/ facade：对齐 zrender export.ts
 │   │   └── wasm-echarts/             # wasm-pack cdylib：EChartsInstance + option
 │   ├── site/                         # Vite 多页文档站
 │   └── scripts/serve-demo.sh         # 旧脚本（仍指向已删除的 demo/，请用 site）
@@ -46,14 +47,15 @@ wasm-echarts/                         # 整个 git 仓库
 | 名称 | 路径 | 类型 | 产物 |
 |------|------|------|------|
 | **rust-zrender** | `crates/rust-zrender/` | Cargo `rlib`，无 wasm-bindgen | `target/` 下的 `.rlib`，被另外两个 crate path 依赖 |
-| **wasm-zrender** | `crates/wasm-zrender/` | `cdylib` + `rlib` | `crates/wasm-zrender/pkg/`（JS + WASM） |
+| **wasm-zrender** | `crates/wasm-zrender/` | `cdylib` + `rlib` + 手写 `js/` facade | `pkg/`（wasm-bindgen 内部）+ `js/`（公开 API） |
 | **wasm-echarts** | `crates/wasm-echarts/` | `cdylib` + `rlib` | `crates/wasm-echarts/pkg/`（JS + WASM） |
 | **site** | `site/` | Vite 多页静态站 | 开发时直连 `pkg/`；`npm run build` 输出 `site/dist/` |
 
 依赖规则（已落地）：
 
 ```
-site  ──import──►  wasm-zrender/pkg     （Vite alias @wasm-zrender）
+site  ──import──►  wasm-zrender/js      （Vite alias @wasm-zrender）
+                     └──► pkg/          （wasm-bindgen 内部 handle）
 site  ──import──►  wasm-echarts/pkg     （Vite alias @wasm-echarts）
 
 wasm-zrender  ──path──►  rust-zrender
@@ -71,12 +73,34 @@ echarts 图表管线在 Rust 里直接 `use rust_zrender::ZRenderer`，不经过
 
 与仓库根 `README.md` 及总规划一致：
 
-- **核心目标**：把 ECharts `option`（以及 zrender 图元树）快速画到 canvas。
+- **核心目标**：把 ECharts `option`（以及 zrender 图元树）快速画到 canvas。公开 API 尽量与官方一致。
 - **渲染模式**：仅 canvas。忽略 SVG painter、Loading / DataView 等 DOM 组件。
-- **动画**：`setOption` / 属性变更直接终态，无 morph、无帧循环。`refresh()` 同步返回 RGBA。
+- **动画**：不播中间帧。`setOption` / 属性变更直接终态；zrender `animate` / `animateTo` / `when().start()` 立刻写入**最后一组**目标属性。`refresh()` / `flush()` 同步返回 RGBA。
 - **上屏方式**：WASM 离屏绘制 → `Vec<u8>` / `Uint8Array` → JS `putImageData`。WASM 不直接操作 DOM canvas 2D context。
 - **函数型 option**：不整包 serde。递归解析 `JsValue` 为 `OptionValue`，遇到 function 保留 `js_sys::Function`，在 visual / tooltip 阶段 `callN`。
 - **Painter 后端**：`vl-convert-canvas2d`（tiny-skia + cosmic-text）。官方 canvas 有而它没有的能力，在 `canvas/backend/` 补齐（阴影、命中检测、径向渐变 r0 等）。
+
+### wasm-zrender API 硬规则
+
+公开表面与官方 `zrender-master/src/export.ts` / `zrender.ts` / `Element.ts` 对齐。**逐项清单以** [`.cursor/plans/zrender_api_规范对齐_be3227a1.plan.md`](../.cursor/plans/zrender_api_规范对齐_be3227a1.plan.md) **为权威**；下文只留可核对条目。禁止改官方目录，也禁止整文件复制官方实现（工具函数按签名重写）。
+
+**允许例外（仅此四条）：**
+
+- 字体：必须 `registerFont` / `register_font`，WASM 不读系统字体。
+- 动画：不播中间帧；`animate` / `animateTo` / `when().start()` 立刻写入最后一组目标属性。
+- 离屏：仅 canvas；`refresh()` / `flush()` 同步返回 RGBA；无 SVG painter / hover layer / dirty rect。
+- 宿主：`init(canvas)` 可自动 `putImageData`；`init(null)` 仍用 opts 宽高。
+
+**必须一致：**
+
+- 公开入口与官方同构：`init` / `dispose` / `disposeAll` / `getInstance` / `version` / `registerPainter`，以及 `export.ts` 全部类型与 `matrix` / `vector` / `color` / `path` / `util` 命名空间。
+- 图元原型链：`Rect instanceof Path instanceof Displayable instanceof Element`（Group 亦 `instanceof Element`）。
+- 变换主属性：`x` `y` `scaleX` `scaleY` `rotation` `originX` `originY`；`attr` / `setShape` / `setStyle` 支持对象与 `key, value`。
+- Group：`new Group(opts)`，以及 `children` / `childAt` / `childOfName` / `childCount` / `eachChild` / `traverse` / `addBefore` / `replace`。
+- Shape 字段与官方默认 style（尤其 `Sector.r0`、`Rect.r`、Line 默认 stroke 无 fill、Text 默认 fill `#000`）。
+- 实例生命周期：`zr.clear` / `zr.dispose` / `setBackgroundColor` / `trigger`；元素 `hide`/`show`、`on`/`off`/`trigger`、`clipPath`。
+
+**本波不挡主路径（后置，不混进「已对齐」）：** `skewX/Y` `anchorX/Y`、`textContent` 自动布局、RichText、`morph` 形变、`IncrementalDisplayable` 增量语义、`Path.extend` 自定义 `buildPath` 走 PathProxy。
 
 ---
 
@@ -115,7 +139,7 @@ site JS 薄壳（创建 canvas、putImageData、tooltip DOM、ResizeObserver）
 | 命中检测 | Path winding + stroke 距离；Image/Text bbox | 转发 pointer 坐标 |
 | tooltip / 高亮 | formatter 得 string；改 element state 再 refresh | DOM 定位与 HTML |
 | resize | 重算 layout + 全量 refresh | ResizeObserver |
-| 动画 | 跳过，直接终态 | — |
+| 动画 | 跳过中间帧，写入终态 | `animate` / `when().start()` 写最后一组目标属性 |
 
 ---
 
@@ -134,6 +158,10 @@ site JS 薄壳（创建 canvas、putImageData、tooltip DOM、ResizeObserver）
 | **5 echarts MVP** | GlobalModel、cartesian、line/bar、Scheduler | **部分完成**。line/bar 可渲染；SeriesData/Source 完整管道、media query、lazyUpdate/replaceMerge 完整语义 **未完成** |
 | **6 交互完善** | hover/tooltip/dataZoom/axisPointer | **部分完成**。hover 高亮、toggleSelect、string tooltip、wheel inside dataZoom、竖线 axisPointer。pinch、slider、HTMLElement tooltip、十字/多轴 **未完成** |
 | **7 扩展与优化** | pie/scatter、RichText、脏矩形、视觉回归 | **部分完成**。pie/scatter、轴标签 Text、`benchmark_render`、feature flags。legend、gauge、polar、面积图、RichText、脏矩形、golden PNG **未完成** |
+
+### wasm-zrender API 规范对齐（波次 0–1 已完成）
+
+规范已写入上文「目标与约束」；JS facade 骨架在 `crates/wasm-zrender/js/`，site 从 `@wasm-zrender` 导入。余下波次见该计划 YAML。
 
 ### wasm-zrender API 对齐（规划 todos 全部 completed）
 
@@ -339,13 +367,27 @@ let rgba = zr.refresh()?;
 
 ### 目的
 
-`rust-zrender` 的 wasm-bindgen **薄封装**，对外命名空间对齐官方 zrender `src/export.ts` / `src/zrender.ts`：`init`、`Group`、`Rect`、`Circle`… 供文档站底层实例、以及「不用 ECharts option、直接构图」的集成。
+`rust-zrender` 的浏览器入口：手写 JS facade（原型链 + 官方命名导出）委托到 wasm-bindgen，再进 `rust-zrender`。对外命名空间对齐官方 zrender `src/export.ts` / `src/zrender.ts`：`init`、`Group`、`Rect`、`Circle`… 供文档站底层实例、以及「不用 ECharts option、直接构图」的集成。
 
-Cargo：`crate-type = ["cdylib", "rlib"]`，依赖 `rust-zrender` path。
+Cargo：`crate-type = ["cdylib", "rlib"]`，依赖 `rust-zrender` path。公开 import 走 `js/`，`pkg/` 只作内部 handle。
 
 ### 实现了哪些内容
 
-源码：`crates/wasm-zrender/src/`。
+源码：`crates/wasm-zrender/js/`（公开 facade）与 `crates/wasm-zrender/src/`（wasm 桥）。
+
+#### `js/` — 手写 facade（site 唯一公开入口）
+
+| 文件 | 职责 |
+|------|------|
+| `index.js` | 官方命名导出；`default` 仍是 `initWasm`；`version = '6.1.0'` |
+| `element.js` / `displayable.js` / `path.js` / `group.js` / `text.js` / `image.js` / `shapes/` | 原型链；实例持有 `_native` handle |
+| `zrender.js` | 包装 `init` / `dispose` / `getInstance` / `registerPainter` |
+| `wasm_zrender.js` | 兼容旧路径 `@wasm-zrender/wasm_zrender.js` |
+| `tool/` | 波次 4：按官方签名重写；当前仍转发 rust stub |
+
+构造约定：子类 `super()` 不创建 native，再 `_bindNative(new native.Rect(opts))`。绘制与命中仍走 wasm-bindgen。
+
+#### `src/` — wasm-bindgen 桥
 
 | 模块 | 职责 |
 |------|------|
@@ -401,11 +443,13 @@ Cargo：`crate-type = ["cdylib", "rlib"]`，依赖 `rust-zrender` path。
 
 #### 刻意与官方不同
 
-- 仅离屏 canvas，无 SVG；`animate().when().start()` 可调用但不播放
-- `init(canvas)` 绑定 Handler（`zr.on` / `el.on` / `draggable`），并自动 `putImageData`；`init(null)` 时 `refresh()` 仍返回像素，无 DOM 可用 `zr.handler.dispatch`
-- 文本必须先 `registerFont`
-- 工具模块 `color` / `matrix` / `vector` 等仍为空对象
-- `IncrementalDisplayable` 未实现
+只允许「目标与约束」里的四条例外。当前进度（未完成的不叫例外）：
+
+- 事件总线已做（`zr.on` / `el.on` / `draggable`），仍要补 `off` / `trigger` 等（见规范计划波次 5）
+- 动画 API 可调用；终态语义尚未接到最后一组 `when`（波次 5）
+- 工具模块 `color` / `matrix` / `vector` 等仍为 rust stub（波次 4 在 `js/tool/` 按签名重写）
+- `IncrementalDisplayable` 构造仍抛错（波次 6）
+- 变换主属性 / Group 子树 API / 部分 Shape 字段尚未按规范补齐（波次 2–3）
 
 #### 浏览器测试
 
@@ -449,8 +493,8 @@ crates/wasm-zrender/pkg/
 
 ### 文档站如何用到本 crate
 
-1. Vite alias `@wasm-zrender` → `crates/wasm-zrender/pkg`
-2. 每个实例是独立完整脚本：`site/zrender/examples/shapes.js` 等同名 HTML 成对出现，直接 `import` wasm 包、建 canvas、构图、`refresh` → `putImageData`
+1. Vite alias `@wasm-zrender` → `crates/wasm-zrender/js`（`js/index.js` 再 import `../pkg/wasm_zrender.js`）
+2. 每个实例是独立完整脚本：`site/zrender/examples/shapes.js` 等同名 HTML 成对出现，直接 `import` facade、建 canvas、构图、`refresh` → `putImageData`
 3. 画廊 `gallery.js` 用 Vite `?raw` 读这些 `.js` 作为左侧源码，iframe 加载同目录 HTML 预览
 4. 字体：`text.js` 内联 `fetch` + `registerFont`；可选辅助 `site/src/zrender/fonts.js` 默认拉取 `/fonts/NotoSansSC-Regular.ttf`
 
@@ -703,7 +747,7 @@ npm run build        # 输出 site/dist/
 npm run preview      # 预览构建结果
 ```
 
-**必须先**对两个 WASM crate 执行 `wasm-pack build --target web`，否则 `@wasm-zrender/wasm_zrender.js` / `@wasm-echarts/wasm_echarts.js` 不存在，Vite 会解析失败。
+**必须先**对两个 WASM crate 执行 `wasm-pack build --target web`，否则 facade 引用的 `pkg/wasm_zrender.js` / `@wasm-echarts/wasm_echarts.js` 不存在，Vite 会解析失败。
 
 浏览器入口：
 
@@ -740,17 +784,17 @@ const repoRoot = resolve(root, '..'); // wasm-echarts-rs/
 
 resolve: {
   alias: {
-    '@wasm-zrender': resolve(repoRoot, 'crates/wasm-zrender/pkg'),
+    '@wasm-zrender': resolve(repoRoot, 'crates/wasm-zrender/js'),
     '@wasm-echarts': resolve(repoRoot, 'crates/wasm-echarts/pkg'),
   },
 },
 server: {
-  fs: { allow: [repoRoot] },  // 允许开发服务器读 site 目录以外的 pkg/
+  fs: { allow: [repoRoot] },  // 允许开发服务器读 site 目录以外的 js/ 与 pkg/
 },
 assetsInclude: ['**/*.wasm'],
 optimizeDeps: {
   exclude: [
-    '@wasm-zrender/wasm_zrender.js',
+    '@wasm-zrender',
     '@wasm-echarts/wasm_echarts.js',
   ],
 },
@@ -759,14 +803,14 @@ optimizeDeps: {
 因此：
 
 ```javascript
-import initWasm, { init, Group, Rect } from '@wasm-zrender/wasm_zrender.js';
+import initWasm, { init, Group, Rect } from '@wasm-zrender';
 import initWasm, { EChartsInstance } from '@wasm-echarts/wasm_echarts.js';
 ```
 
 会解析为：
 
 ```
-crates/wasm-zrender/pkg/wasm_zrender.js
+crates/wasm-zrender/js/index.js  →  ../pkg/wasm_zrender.js
 crates/wasm-echarts/pkg/wasm_echarts.js
 ```
 
@@ -789,7 +833,7 @@ wasm-pack 生成的 `pkg/package.json`：
 ```json
 {
   "dependencies": {
-    "wasm-zrender": "file:../wasm-echarts-rs/crates/wasm-zrender/pkg",
+    "wasm-zrender": "file:../wasm-echarts-rs/crates/wasm-zrender/js",
     "wasm-echarts": "file:../wasm-echarts-rs/crates/wasm-echarts/pkg"
   }
 }
@@ -802,7 +846,7 @@ import initZrender, { init, Rect } from 'wasm-zrender';
 import initEcharts, { EChartsInstance } from 'wasm-echarts';
 ```
 
-（具体子路径以该包 `main` 为准。）本仓库的 site 选择 alias，避免 workspace 安装步骤，改完 Rust 只需重新 wasm-pack，Vite 会读到更新后的 `pkg/`。
+（具体子路径以该包 `main` 为准。）本仓库的 site 选择 alias 指向 `js/`，避免 workspace 安装步骤；改完 Rust 只需重新 wasm-pack，Vite 经 facade 读到更新后的 `pkg/`。只改 `js/` 不必重编 WASM。
 
 实例 JS 与 HTML 放在同一目录（如 `zrender/examples/shapes.js`），画廊用 `?raw` 读取这份脚本作为源码展示。echarts 示例通过相对路径引入薄壳 `src/echarts/echarts.js`。
 
@@ -851,9 +895,13 @@ npm run dev
 
 ### wasm-zrender
 
-- `export.ts` 工具：`color` / `matrix` / `vector` 优先，其余可长期 stub
-- `IncrementalDisplayable`
-- 动画、事件总线（明确不做）
+对照 [`.cursor/plans/zrender_api_规范对齐_be3227a1.plan.md`](../.cursor/plans/zrender_api_规范对齐_be3227a1.plan.md) 余下波次，不混进「已对齐」：
+
+- 波次 2：变换主属性、`attr` 双参数、Group opts 与子树 API
+- 波次 3：`Sector.r0` / `Rect.r` / Polygon.smooth / Line·Text 默认 style
+- 波次 4：`js/tool/` 按官方签名重写 matrix / vector / color / util / path
+- 波次 5：Animator 写终点；`zr.clear` / `dispose` / `setBackgroundColor` / `trigger`；`hide`/`show`/`off`
+- 波次 6：clipPath 全图元、`useStates`、`Path.extend`、`IncrementalDisplayable`、Point 静态方法
 
 ### wasm-echarts
 
@@ -866,8 +914,8 @@ npm run dev
 
 ### 明确不做
 
-- SVG 渲染
-- 动画中间帧 / morph
+- SVG 渲染 / hover layer / dirty rect
+- 动画中间帧（终态语义要做；`morph` 形变后置）
 - Loading、DataView 等 DOM 组件
 - 官方 ECharts 全量 API（feature flag 扩展，而不是一次移植完）
 

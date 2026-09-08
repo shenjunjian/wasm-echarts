@@ -1,0 +1,11 @@
+{
+  "name": "wasm-zrender",
+  "type": "module",
+  "description": "zrender 对齐的 JS facade：原型链 + 委托 wasm-bindgen",
+  "version": "0.1.0",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./wasm_zrender.js": "./wasm_zrender.js"
+  }
+}
