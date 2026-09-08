@@ -15,7 +15,9 @@ async function main() {
   const w = zr.getWidth();
   const h = zr.getHeight();
 
-  zr.animation.on('frame', () => {});
+  zr.animation.on('frame', () => {
+    console.log("on frame")
+  });
 
   const spray = (x, y) => {
     const cnt = 200;
@@ -58,17 +60,17 @@ async function main() {
         .when(duration, { _t: 1 })
         .during((p, _t) => {
           const dt = _t - t0;
-          const x1 = p.position[0] + vx * dt;
-          const y1 = p.position[1] + vy * dt;
+          const x1 = p.position[0] + vx * dt* .5;
+          const y1 = p.position[1] + vy * dt* .5 ;
           p.position = [x1, y1];
           p.setStyle({
-            opacity: p._opacity * (1 - _t),
+            opacity: 0.5,
           });
           t0 = _t;
           void ay;
         })
         .done(() => {
-          zr.remove(particle);
+          console.log('particle removed');
         })
         .start();
     }
