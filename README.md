@@ -149,7 +149,9 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 | `ZRender.refresh()` | 同步返回 RGBA 像素 |
 | `ZRender.findHover(x, y)` | 返回 `{ target, topTarget }` |
 | `Path.useState` / `setStateStyle` | emphasis 等状态切换 |
-| 其余 export.ts 类型 | stub 导出，构造时抛 `not implemented` |
+| `matrix` / `vector` / `color` / `path` / `util` | 官方签名工具模块（`js/tool/`） |
+| `morph` / `parseSVG` | 最小实现：morph 返回终点 path；parseSVG 解析基本图形 |
+| `IncrementalDisplayable` | stub，构造时抛 `not implemented` |
 
 **与官方差异**：仅离屏 canvas、`refresh()` 同步上屏、无 animation / 事件总线。详见 [zrender 文档](wasm-echarts-rs/site/zrender/docs/index.html)。
 

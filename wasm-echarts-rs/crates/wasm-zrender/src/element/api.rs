@@ -14,12 +14,48 @@ use crate::element::js::element_id_from_js;
 use crate::element::pending::PendingData;
 use crate::registry::{with_zr, ElementKind, ELEMENT_REGISTRY};
 
-pub fn element_animate(_id: u32, _path: JsValue, _looping: JsValue) -> Animator {
-    new_animator()
+pub fn element_animate(id: u32, path: JsValue, _looping: JsValue) -> Animator {
+    new_animator(id, path)
+}
+
+pub fn apply_animator_end_state(
+    id: u32,
+    path: Option<&str>,
+    props: &JsValue,
+) -> Result<(), JsValue> {
+    match path {
+        Some("shape") => element_set_shape(id, props),
+        Some("style") => element_set_style(id, props),
+        _ => element_attr(id, props.clone(), JsValue::UNDEFINED),
+    }
 }
 
 pub fn element_on(id: u32, event: &str, handler: JsValue) {
     crate::handler::element_on(id, event, handler);
+}
+
+pub fn element_off(id: u32, event: JsValue, handler: JsValue) {
+    crate::handler::element_off(
+        id,
+        event.as_string().as_deref(),
+        if handler.is_function() {
+            Some(&handler)
+        } else {
+            None
+        },
+    );
+}
+
+pub fn element_trigger(id: u32, event: &str, packet: JsValue) {
+    crate::handler::element_trigger(id, event, packet);
+}
+
+pub fn element_hide(id: u32) -> Result<(), JsValue> {
+    apply_ignore(id, &JsValue::TRUE)
+}
+
+pub fn element_show(id: u32) -> Result<(), JsValue> {
+    apply_ignore(id, &JsValue::FALSE)
 }
 
 pub fn element_position_js(id: u32) -> JsValue {

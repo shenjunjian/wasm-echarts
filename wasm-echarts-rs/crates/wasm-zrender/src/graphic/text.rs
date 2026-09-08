@@ -41,6 +41,24 @@ impl Text {
         Text { id: self.id }
     }
 
+    pub fn off(&self, event: JsValue, handler: JsValue) -> Text {
+        api::element_off(self.id, event, handler);
+        Text { id: self.id }
+    }
+
+    pub fn trigger(&self, event: &str, packet: JsValue) -> Text {
+        api::element_trigger(self.id, event, packet);
+        Text { id: self.id }
+    }
+
+    pub fn hide(&self) {
+        let _ = api::element_hide(self.id);
+    }
+
+    pub fn show(&self) {
+        let _ = api::element_show(self.id);
+    }
+
     pub fn attr(&self, key: JsValue, value: JsValue) -> Text {
         let _ = api::element_attr(self.id, key, value);
         Text { id: self.id }

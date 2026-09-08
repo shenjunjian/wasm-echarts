@@ -13,6 +13,7 @@ pub struct ZRenderer {
     width: u32,
     height: u32,
     dpr: f64,
+    background_color: Option<String>,
 }
 
 impl ZRenderer {
@@ -28,6 +29,7 @@ impl ZRenderer {
             width,
             height,
             dpr,
+            background_color: None,
         })
     }
 
@@ -44,7 +46,22 @@ impl ZRenderer {
     }
 
     pub fn refresh(&mut self) -> Result<RgbaBuffer, BackendError> {
-        self.painter.refresh(&mut self.storage)
+        self.painter
+            .refresh(&mut self.storage, self.background_color.as_deref())
+    }
+
+    pub fn set_background_color(&mut self, color: Option<String>) {
+        self.background_color = color.filter(|c| !c.is_empty());
+        self.storage.mark_display_dirty();
+    }
+
+    pub fn background_color(&self) -> Option<&str> {
+        self.background_color.as_deref()
+    }
+
+    /// 清空根节点（对齐 zrender `zr.clear` 的 Storage 部分）
+    pub fn clear(&mut self) {
+        self.storage.del_all_roots();
     }
 
     pub fn resize(&mut self, width: u32, height: u32) -> Result<(), BackendError> {
@@ -333,6 +350,38 @@ mod tests {
         zr.storage.del_root(ChildRef::Path(path));
         let empty = zr.refresh().unwrap();
         assert!(!empty.chunks(4).any(|px| px[3] > 0));
+    }
+
+    #[test]
+    fn background_color_fills_empty_canvas() {
+        let mut zr = ZRenderer::new(16, 16).unwrap();
+        zr.set_background_color(Some("#ff0000".into()));
+        let rgba = zr.refresh().unwrap();
+        assert!(rgba[0] > 200 && rgba[1] < 40 && rgba[2] < 40 && rgba[3] > 200);
+    }
+
+    #[test]
+    fn clear_removes_roots_and_keeps_background() {
+        let mut zr = ZRenderer::new(40, 40).unwrap();
+        zr.set_background_color(Some("#00ff00".into()));
+        let idx = zr.storage.create_path(Path::new(
+            Shape::Rect(RectShape {
+                x: 5.0,
+                y: 5.0,
+                width: 10.0,
+                height: 10.0,
+                ..Default::default()
+            }),
+            PathStyle {
+                fill: FillStrokeStyle::color("#0000ff"),
+                ..Default::default()
+            },
+        ));
+        zr.storage.add_root(ChildRef::Path(idx));
+        zr.clear();
+        assert!(zr.storage.roots().is_empty());
+        let rgba = zr.refresh().unwrap();
+        assert!(rgba[0] < 40 && rgba[1] > 200 && rgba[2] < 40);
     }
 
     #[test]

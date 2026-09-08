@@ -70,6 +70,49 @@ export class ZRender {
     return this;
   }
 
+  clear() {
+    if (this._native && typeof this._native.clear === 'function') {
+      this._native.clear();
+    }
+    return this;
+  }
+
+  dispose() {
+    const handle = this._native;
+    if (!handle) {
+      return;
+    }
+    const id = handle.id;
+    instances.delete(id);
+    if (typeof handle.dispose === 'function') {
+      handle.dispose();
+    }
+    this._native = null;
+  }
+
+  setBackgroundColor(color) {
+    this._backgroundColor = color;
+    if (this._native && typeof this._native.setBackgroundColor === 'function') {
+      this._native.setBackgroundColor(color);
+    }
+    return this;
+  }
+
+  getBackgroundColor() {
+    if (this._backgroundColor !== undefined) {
+      return this._backgroundColor;
+    }
+    if (this._native && typeof this._native.getBackgroundColor === 'function') {
+      return this._native.getBackgroundColor();
+    }
+    return undefined;
+  }
+
+  trigger(event, packet) {
+    this._native.trigger(event, packet);
+    return this;
+  }
+
   refresh() {
     return this._native.refresh();
   }
@@ -116,11 +159,17 @@ export function init(dom, opts) {
 }
 
 export function dispose(zr) {
+  if (zr && typeof zr.dispose === 'function' && zr._native) {
+    zr.dispose();
+    return;
+  }
   const handle = toNative(zr);
   if (handle && handle.id != null) {
     instances.delete(handle.id);
   }
-  native.dispose(handle);
+  if (handle) {
+    native.dispose(handle);
+  }
 }
 
 export function disposeAll() {

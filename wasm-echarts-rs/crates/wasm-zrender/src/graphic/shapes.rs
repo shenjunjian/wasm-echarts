@@ -12,6 +12,7 @@ use crate::registry::{path_set_state_style, path_use_state, register_path};
 macro_rules! impl_shape {
     ($name:ident, $type_name:expr) => {
         #[wasm_bindgen]
+        #[derive(Clone)]
         pub struct $name {
             path: Path,
         }
@@ -56,6 +57,28 @@ macro_rules! impl_shape {
                 $name {
                     path: Path::from_id(self.path.raw_id()),
                 }
+            }
+
+            pub fn off(&self, event: JsValue, handler: JsValue) -> $name {
+                api::element_off(self.path.raw_id(), event, handler);
+                $name {
+                    path: Path::from_id(self.path.raw_id()),
+                }
+            }
+
+            pub fn trigger(&self, event: &str, packet: JsValue) -> $name {
+                api::element_trigger(self.path.raw_id(), event, packet);
+                $name {
+                    path: Path::from_id(self.path.raw_id()),
+                }
+            }
+
+            pub fn hide(&self) {
+                let _ = api::element_hide(self.path.raw_id());
+            }
+
+            pub fn show(&self) {
+                let _ = api::element_show(self.path.raw_id());
             }
 
             #[wasm_bindgen(getter)]

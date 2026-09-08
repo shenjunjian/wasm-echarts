@@ -6,7 +6,7 @@ use crate::bridge::hit::hit_to_hover_result;
 use crate::element::js::element_from_js;
 use crate::bridge::opts::{parse_init_opts, InitOpts};
 use crate::registry::{
-    mount_element_to_zr, unmount_element_from_zr, with_zr, ZR_REGISTRY, ELEMENT_REGISTRY,
+    clear_zr, mount_element_to_zr, unmount_element_from_zr, with_zr, ZR_REGISTRY, ELEMENT_REGISTRY,
 };
 use rust_zrender::ZRenderer;
 
@@ -96,9 +96,56 @@ impl ZRender {
         ZRender::from_id(self.id)
     }
 
-    pub fn off(&self, event: JsValue, _handler: JsValue) -> ZRender {
-        crate::handler::remove_zr_listeners(self.id, event.as_string().as_deref());
+    pub fn off(&self, event: JsValue, handler: JsValue) -> ZRender {
+        crate::handler::remove_zr_listeners(
+            self.id,
+            event.as_string().as_deref(),
+            if handler.is_function() {
+                Some(&handler)
+            } else {
+                None
+            },
+        );
         ZRender::from_id(self.id)
+    }
+
+    pub fn trigger(&self, event: &str, packet: JsValue) -> ZRender {
+        crate::handler::trigger_zr(self.id, event, packet);
+        ZRender::from_id(self.id)
+    }
+
+    pub fn clear(&self) -> Result<(), JsValue> {
+        clear_zr(self.id)
+    }
+
+    #[wasm_bindgen(js_name = setBackgroundColor)]
+    pub fn set_background_color(&self, color: JsValue) -> Result<(), JsValue> {
+        let parsed = if color.is_null() || color.is_undefined() {
+            None
+        } else {
+            color.as_string()
+        };
+        with_zr(self.id, |zr| {
+            zr.set_background_color(parsed);
+            Ok(())
+        })?;
+        crate::handler::paint_if_bound(self.id);
+        Ok(())
+    }
+
+    #[wasm_bindgen(js_name = getBackgroundColor)]
+    pub fn get_background_color(&self) -> JsValue {
+        with_zr(self.id, |zr| {
+            Ok(zr
+                .background_color()
+                .map(JsValue::from_str)
+                .unwrap_or(JsValue::UNDEFINED))
+        })
+        .unwrap_or(JsValue::UNDEFINED)
+    }
+
+    pub fn dispose(&self) {
+        dispose_zr_id(self.id);
     }
 
     #[wasm_bindgen(getter)]
@@ -110,6 +157,16 @@ impl ZRender {
     pub fn animation(&self) -> crate::animation::Animation {
         crate::animation::Animation::default()
     }
+}
+
+fn dispose_zr_id(id: u32) {
+    crate::handler::detach(id);
+    ZR_REGISTRY.with(|reg| {
+        reg.borrow_mut().remove(id);
+    });
+    ELEMENT_REGISTRY.with(|reg| {
+        reg.borrow_mut().remove_by_zr(id);
+    });
 }
 
 /// 创建 ZRender 实例（dom 参数忽略，尺寸来自 opts）
@@ -125,15 +182,8 @@ pub fn init(dom: JsValue, opts: JsValue) -> Result<ZRender, JsValue> {
 }
 
 #[wasm_bindgen]
-pub fn dispose(zr: ZRender) {
-    let id = zr.id;
-    crate::handler::detach(id);
-    ZR_REGISTRY.with(|reg| {
-        reg.borrow_mut().remove(id);
-    });
-    ELEMENT_REGISTRY.with(|reg| {
-        reg.borrow_mut().remove_by_zr(id);
-    });
+pub fn dispose(zr: &ZRender) {
+    dispose_zr_id(zr.id());
 }
 
 #[wasm_bindgen(js_name = disposeAll)]

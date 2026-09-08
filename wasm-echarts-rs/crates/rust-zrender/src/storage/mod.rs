@@ -96,6 +96,18 @@ impl Storage {
         }
     }
 
+    /// 清空全部根节点（对齐 zrender Storage#delAllRoots）
+    pub fn del_all_roots(&mut self) {
+        if !self.roots.is_empty() {
+            self.roots.clear();
+            self.display_dirty = true;
+        }
+    }
+
+    pub fn roots(&self) -> &[ChildRef] {
+        &self.roots
+    }
+
     pub fn group_add_child(&mut self, group_index: usize, child: ChildRef) {
         self.groups[group_index].add_child(child);
         self.display_dirty = true;

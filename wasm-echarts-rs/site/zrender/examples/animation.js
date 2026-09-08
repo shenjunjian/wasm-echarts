@@ -30,10 +30,10 @@ async function main() {
     silent: true,
   });
 
-  // 动画尚未实现：when/start 为空操作，不抛错；圆停留在起始位置。
+  // 终态语义：不播中间帧，start() 立刻写入最后一组 when。
   circle.animate('shape', true)
-    .when(5000, { cx: w - r })
-    .when(10000, { cx: r })
+    .when(5000, { cx: r })
+    .when(10000, { cx: w - r })
     .start();
 
   zr.add(circle);

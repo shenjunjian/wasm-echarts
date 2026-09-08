@@ -233,12 +233,40 @@ impl ElementRegistry {
         }
     }
 
+    pub fn remove_listener(&mut self, id: u32, event: Option<&str>, handler: Option<&JsValue>) {
+        let Some(record) = self.elements.get_mut(&id) else {
+            return;
+        };
+        match (event, handler) {
+            (None, _) => record.listeners.clear(),
+            (Some(name), None) => {
+                record.listeners.remove(name);
+            }
+            (Some(name), Some(h)) => {
+                if let Some(list) = record.listeners.get_mut(name) {
+                    list.retain(|existing| existing != h);
+                    if list.is_empty() {
+                        record.listeners.remove(name);
+                    }
+                }
+            }
+        }
+    }
+
     pub fn listeners(&self, id: u32, event: &str) -> Vec<JsValue> {
         self.elements
             .get(&id)
             .and_then(|r| r.listeners.get(event))
             .cloned()
             .unwrap_or_default()
+    }
+
+    pub fn mounted_root_ids(&self, zr_id: u32) -> Vec<u32> {
+        self.elements
+            .iter()
+            .filter(|(_, r)| r.zr_id == Some(zr_id) && r.mounted && r.parent_id.is_none())
+            .map(|(id, _)| *id)
+            .collect()
     }
 
     pub fn draggable(&self, id: u32) -> DraggableKind {
@@ -684,6 +712,19 @@ pub(crate) fn unmount_element_from_zr(zr_id: u32, element: &Element) -> Result<(
             Ok(())
         })
     })
+}
+
+pub(crate) fn clear_zr(zr_id: u32) -> Result<(), JsValue> {
+    let root_ids = ELEMENT_REGISTRY.with(|reg| reg.borrow().mounted_root_ids(zr_id));
+    for id in root_ids {
+        unmount_element_from_zr(zr_id, &Element::from_id(id))?;
+    }
+    with_zr(zr_id, |zr| {
+        zr.storage.del_all_roots();
+        Ok(())
+    })?;
+    crate::handler::paint_if_bound(zr_id);
+    Ok(())
 }
 
 pub(crate) fn register_group() -> Element {

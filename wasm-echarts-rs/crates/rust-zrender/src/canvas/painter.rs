@@ -36,6 +36,7 @@ impl<B: CanvasBackend> Painter<B> {
     pub fn refresh(
         &mut self,
         storage: &mut Storage,
+        background_color: Option<&str>,
     ) -> Result<RgbaBuffer, crate::canvas::backend::BackendError> {
         let items: Vec<_> = storage
             .get_display_list(true)
@@ -52,10 +53,10 @@ impl<B: CanvasBackend> Painter<B> {
         }
 
         if by_zlevel.len() <= 1 {
-            return self.refresh_single_layer(storage, &scope, &by_zlevel);
+            return self.refresh_single_layer(storage, &scope, &by_zlevel, background_color);
         }
 
-        self.refresh_multi_layer(storage, &scope, &by_zlevel)
+        self.refresh_multi_layer(storage, &scope, &by_zlevel, background_color)
     }
 
     fn refresh_single_layer(
@@ -63,8 +64,10 @@ impl<B: CanvasBackend> Painter<B> {
         storage: &mut Storage,
         scope: &BrushScope,
         by_zlevel: &BTreeMap<i64, Vec<DisplayElementRef>>,
+        background_color: Option<&str>,
     ) -> Result<RgbaBuffer, crate::canvas::backend::BackendError> {
         self.base_layer.clear();
+        fill_background(&mut self.base_layer, self.width, self.height, background_color)?;
         let ctx = self.base_layer.backend_mut() as &mut dyn crate::canvas::backend::CanvasContext;
         for elements in by_zlevel.values() {
             brush_elements(ctx, storage, elements, scope)?;
@@ -77,8 +80,10 @@ impl<B: CanvasBackend> Painter<B> {
         storage: &mut Storage,
         scope: &BrushScope,
         by_zlevel: &BTreeMap<i64, Vec<DisplayElementRef>>,
+        background_color: Option<&str>,
     ) -> Result<RgbaBuffer, crate::canvas::backend::BackendError> {
         self.base_layer.clear();
+        fill_background(&mut self.base_layer, self.width, self.height, background_color)?;
         let mut overlay_layers: Vec<Layer<B>> = Vec::new();
 
         for (i, (_key, elements)) in by_zlevel.iter().enumerate() {
@@ -102,6 +107,25 @@ impl<B: CanvasBackend> Painter<B> {
 
         Ok(self.base_layer.backend().get_rgba())
     }
+}
+
+fn fill_background<B: CanvasBackend>(
+    layer: &mut Layer<B>,
+    width: u32,
+    height: u32,
+    color: Option<&str>,
+) -> Result<(), crate::canvas::backend::BackendError> {
+    let Some(color) = color else {
+        return Ok(());
+    };
+    if color.is_empty() {
+        return Ok(());
+    }
+    layer.backend_mut().set_fill_style(color)?;
+    layer
+        .backend_mut()
+        .fill_rect(0.0, 0.0, width as f64, height as f64);
+    Ok(())
 }
 
 fn zlevel_to_key(zlevel: f64) -> i64 {

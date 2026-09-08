@@ -1,3 +1,5 @@
+import { Animator } from './animator.js';
+
 function hasNativeProp(handle, name) {
   return handle != null && name in handle;
 }
@@ -199,15 +201,48 @@ export class Element {
   }
 
   animate(path, looping) {
-    if (this._native && typeof this._native.animate === 'function') {
-      return this._native.animate(path, looping);
+    return new Animator(this, path, looping);
+  }
+
+  animateTo(target, cfg) {
+    if (target != null && typeof target === 'object') {
+      this.attr(target);
     }
-    return undefined;
+    const opts = cfg && typeof cfg === 'object' ? cfg : {};
+    if (typeof opts.during === 'function') {
+      opts.during(this, 1);
+    }
+    if (typeof opts.done === 'function') {
+      opts.done();
+    }
+    return this;
+  }
+
+  hide() {
+    this.ignore = true;
+  }
+
+  show() {
+    this.ignore = false;
   }
 
   on(event, handler) {
     if (this._native && typeof this._native.on === 'function') {
       this._native.on(event, handler);
+    }
+    return this;
+  }
+
+  off(event, handler) {
+    if (this._native && typeof this._native.off === 'function') {
+      this._native.off(event, handler);
+    }
+    return this;
+  }
+
+  trigger(event, packet) {
+    if (this._native && typeof this._native.trigger === 'function') {
+      this._native.trigger(event, packet);
     }
     return this;
   }

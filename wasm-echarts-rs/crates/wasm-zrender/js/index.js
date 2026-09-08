@@ -43,6 +43,7 @@ export {
   Trochoid,
 } from './shapes/index.js';
 
+export { Animator } from './animator.js';
 export {
   registerFont,
   clearFonts,
@@ -53,16 +54,16 @@ export {
   BoundingRect,
   OrientedBoundingRect,
   Animation,
-  Animator,
   Handler,
   HoverResult,
-  matrix,
-  vector,
-  color,
-  path,
-  util,
-  morph,
-  parseSVG,
-  showDebugDirtyRect,
-  setPlatformAPI,
 } from './native.js';
+
+export * as matrix from './tool/matrix.js';
+export * as vector from './tool/vector.js';
+export * as color from './tool/color.js';
+export * as path from './tool/path.js';
+export * as util from './tool/util.js';
+export * as morph from './tool/morph.js';
+export { parseSVG } from './tool/parseSVG.js';
+export { default as showDebugDirtyRect } from './tool/debug.js';
+export { setPlatformAPI } from './tool/platform.js';

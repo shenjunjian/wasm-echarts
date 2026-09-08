@@ -978,3 +978,88 @@ fn polygon_smooth_paints() {
     let rgba = zr.refresh().unwrap();
     assert!(rgba.chunks(4).any(|px| px[3] > 0));
 }
+
+#[wasm_bindgen_test]
+fn animator_start_writes_last_when_shape() {
+    reset_registry();
+    let circle = Circle::new(circle_opts()).unwrap();
+    let mid = Object::new();
+    Reflect::set(&mid, &"cx".into(), &JsValue::from(300.0)).unwrap();
+    let last = Object::new();
+    Reflect::set(&last, &"cx".into(), &JsValue::from(50.0)).unwrap();
+    circle
+        .animate(JsValue::from_str("shape"), JsValue::FALSE)
+        .when(1000.0, mid.into())
+        .when(2000.0, last.into())
+        .start(JsValue::UNDEFINED);
+    let bbox = circle.get_bounding_rect();
+    assert!(
+        (bbox.x() - 10.0).abs() < 1.0,
+        "last when cx=50, r=40 => bbox.x ~= 10, got {}",
+        bbox.x()
+    );
+    assert!((bbox.width() - 80.0).abs() < 1.0);
+}
+
+#[wasm_bindgen_test]
+fn hide_show_and_clear_and_background() {
+    reset_registry();
+    let mut zr = init(JsValue::NULL, init_opts(400, 200)).unwrap();
+    zr.set_background_color(JsValue::from_str("#ff0000")).unwrap();
+    assert_eq!(
+        zr.get_background_color().as_string().as_deref(),
+        Some("#ff0000")
+    );
+
+    let circle = Circle::new(circle_opts()).unwrap();
+    zr.add(JsValue::from(circle.clone())).unwrap();
+    assert!(zr.find_hover(180.0, 80.0).is_some());
+    circle.hide();
+    assert!(zr.find_hover(180.0, 80.0).is_none());
+    circle.show();
+    assert!(zr.find_hover(180.0, 80.0).is_some());
+
+    zr.clear().unwrap();
+    assert!(zr.find_hover(180.0, 80.0).is_none());
+    let rgba = zr.refresh().unwrap();
+    assert!(rgba[0] > 200 && rgba[1] < 40 && rgba[2] < 40);
+}
+
+#[wasm_bindgen_test]
+fn zr_off_removes_handler_and_trigger_fires() {
+    reset_registry();
+    let zr = init(JsValue::NULL, init_opts(80, 80)).unwrap();
+    let hits = Object::new();
+    Reflect::set(&hits, &"n".into(), &JsValue::from(0.0)).unwrap();
+    js_sys::Reflect::set(&js_sys::global(), &"__zr_off_hits".into(), &hits).unwrap();
+    let handler = js_sys::Function::new_no_args(
+        "var h = globalThis.__zr_off_hits; h.n = (h.n || 0) + 1;",
+    );
+    let _ = zr.on("custom", handler.clone().into());
+    let _ = zr.trigger("custom", JsValue::UNDEFINED);
+    assert_eq!(
+        Reflect::get(&hits, &"n".into())
+            .unwrap()
+            .as_f64()
+            .unwrap(),
+        1.0
+    );
+    let _ = zr.off(JsValue::from_str("custom"), handler.into());
+    let _ = zr.trigger("custom", JsValue::UNDEFINED);
+    assert_eq!(
+        Reflect::get(&hits, &"n".into())
+            .unwrap()
+            .as_f64()
+            .unwrap(),
+        1.0
+    );
+}
+
+#[wasm_bindgen_test]
+fn instance_dispose_removes_from_registry() {
+    reset_registry();
+    let zr = init(JsValue::NULL, init_opts(40, 40)).unwrap();
+    let id = zr.id();
+    zr.dispose();
+    assert!(wasm_zrender::get_instance(id).is_none());
+}

@@ -113,12 +113,14 @@ let mut zr = ZRenderer::new(480, 360)?;</pre>
     <div class="doc-section">
       <h3>ZRender 实例方法</h3>
       <ul>
-        <li><code>add(el)</code> / <code>remove(el)</code> — 根节点增删</li>
+        <li><code>add(el)</code> / <code>remove(el)</code> / <code>clear()</code> — 根节点增删与清空</li>
         <li><code>refresh()</code> / <code>flush()</code> — 同步返回 RGBA 字节数组</li>
         <li><code>resize(opts)</code> — 调整尺寸（不重载预设场景）</li>
         <li><code>findHover(x, y)</code> — 返回 <code>{ target, topTarget }</code></li>
         <li><code>getWidth()</code> / <code>getHeight()</code> — 逻辑宽高（同 <code>width()</code> / <code>height()</code>）</li>
-        <li><code>on(event, handler)</code> / <code>animation.on('frame')</code> — 空操作，不抛错（无事件总线 / 帧循环）</li>
+        <li><code>on(event, handler)</code> / <code>off(event, handler?)</code> / <code>trigger(event)</code> — 实例事件；<code>animation.on('frame')</code> 为空操作（无帧循环）</li>
+        <li><code>setBackgroundColor(color)</code> / <code>getBackgroundColor()</code> — 背景色</li>
+        <li><code>dispose()</code> — 释放本实例</li>
       </ul>
     </div>
 
@@ -137,21 +139,30 @@ let mut zr = ZRenderer::new(480, 360)?;</pre>
       <p>
         几何值对象（不参与 Storage）：<code>Point</code>、<code>BoundingRect</code>、<code>OrientedBoundingRect</code>。
       </p>
-      <p>Path 子类支持 <code>useState(state)</code>、<code>setStateStyle(state, style)</code>、<code>attr</code>、<code>setShape</code>、<code>setStyle</code>、<code>setClipPath</code>、<code>getBoundingRect</code>、<code>position</code>。<code>animate()</code> 返回可链式调用的 Animator stub（不播放）。</p>
+      <p>Path 子类支持 <code>useState(state)</code>、<code>setStateStyle(state, style)</code>、<code>attr</code>、<code>setShape</code>、<code>setStyle</code>、<code>setClipPath</code>、<code>getBoundingRect</code>、<code>position</code>。<code>hide</code> / <code>show</code> / <code>on</code> / <code>off</code> / <code>trigger</code>。<code>animate().when().start()</code> 立刻写入最后一组目标属性。</p>
+    </div>
+
+    <div class="doc-section">
+      <h3>工具模块</h3>
+      <p>
+        <code>matrix</code>、<code>vector</code>、<code>color</code>、<code>path</code>（<code>createFromString</code> →
+        <code>Path</code> + <code>pathData</code>）、<code>util</code> 按官方签名实现。
+        <code>morph.morphPath</code> 直接返回终点 path；<code>parseSVG</code> 解析 <code>g</code> / <code>path</code> / 基础图形；
+        <code>showDebugDirtyRect</code> 为空操作（无 dirty rect）。
+      </p>
     </div>
 
     <div class="doc-section">
       <h3>Stub 导出（构造时抛错或未实现）</h3>
       <p>
-        <code>IncrementalDisplayable</code>；工具模块 <code>matrix</code>、<code>vector</code>、<code>color</code>、
-        <code>path</code>、<code>util</code>、<code>morph</code>、<code>parseSVG</code> 等仍为空对象 stub。
+        <code>IncrementalDisplayable</code>。
       </p>
     </div>
 
     <div class="doc-section">
       <h3>与官方 zrender 的差异</h3>
       <ul>
-        <li>仅 canvas 离屏模式，无 SVG painter；<code>animate().when().start()</code> 可调用但不播放</li>
+        <li>仅 canvas 离屏模式，无 SVG painter；<code>animate().when().start()</code> 立刻写入最后一组 <code>when</code>，不播中间帧</li>
         <li><code>init(null)</code> 时 <code>refresh()</code> 同步返回像素，需 JS 侧 <code>putImageData</code>；<code>init(canvas)</code> 会自动上屏</li>
         <li><strong>文本须宿主注册字体</strong>，见上文「字体加载」；无浏览器系统字体回退</li>
       </ul>

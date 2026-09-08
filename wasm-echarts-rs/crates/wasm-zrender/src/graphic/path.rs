@@ -9,6 +9,7 @@ use crate::graphic::BoundingRect;
 use crate::registry::{path_set_state_style, path_use_state, register_path};
 
 #[wasm_bindgen]
+#[derive(Clone)]
 pub struct Path {
     id: u32,
 }
@@ -67,6 +68,24 @@ impl Path {
     pub fn on(&self, event: &str, handler: JsValue) -> Path {
         api::element_on(self.id, event, handler);
         Path::from_id(self.id)
+    }
+
+    pub fn off(&self, event: JsValue, handler: JsValue) -> Path {
+        api::element_off(self.id, event, handler);
+        Path::from_id(self.id)
+    }
+
+    pub fn trigger(&self, event: &str, packet: JsValue) -> Path {
+        api::element_trigger(self.id, event, packet);
+        Path::from_id(self.id)
+    }
+
+    pub fn hide(&self) {
+        let _ = api::element_hide(self.id);
+    }
+
+    pub fn show(&self) {
+        let _ = api::element_show(self.id);
     }
 
     #[wasm_bindgen(getter)]

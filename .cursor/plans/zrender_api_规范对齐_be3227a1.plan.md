@@ -16,10 +16,10 @@ todos:
     status: completed
   - id: tool-modules
     content: JS 重写 matrix/vector/color/util/path；morph/parseSVG 最小签名
-    status: pending
+    status: completed
   - id: animation-zr
     content: Animator 写终点；zr.clear/dispose/setBackgroundColor/trigger；hide/show/off
-    status: pending
+    status: completed
   - id: remaining-api
     content: clipPath 全图元、useStates、Path.extend、IncrementalDisplayable、Point 静态方法
     status: pending

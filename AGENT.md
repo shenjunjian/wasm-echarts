@@ -159,9 +159,9 @@ site JS 薄壳（创建 canvas、putImageData、tooltip DOM、ResizeObserver）
 | **6 交互完善** | hover/tooltip/dataZoom/axisPointer | **部分完成**。hover 高亮、toggleSelect、string tooltip、wheel inside dataZoom、竖线 axisPointer。pinch、slider、HTMLElement tooltip、十字/多轴 **未完成** |
 | **7 扩展与优化** | pie/scatter、RichText、脏矩形、视觉回归 | **部分完成**。pie/scatter、轴标签 Text、`benchmark_render`、feature flags。legend、gauge、polar、面积图、RichText、脏矩形、golden PNG **未完成** |
 
-### wasm-zrender API 规范对齐（波次 0–3 已完成）
+### wasm-zrender API 规范对齐（波次 0–4 已完成）
 
-规范已写入上文「目标与约束」；JS facade 骨架在 `crates/wasm-zrender/js/`，site 从 `@wasm-zrender` 导入。波次 2：变换主属性、`attr`/`setShape`/`setStyle` 双参数、Group opts 与子树 API。波次 3：`Sector.r0` / `clockwise` / `cornerRadius`、`Rect.r`、Polygon.smooth、Line·Text 默认 style、`miterLimit`、`lineDash` 字符串、`LinearGradient.addColorStop`。余下波次见该计划 YAML。
+规范已写入上文「目标与约束」；JS facade 骨架在 `crates/wasm-zrender/js/`，site 从 `@wasm-zrender` 导入。波次 2：变换主属性、`attr`/`setShape`/`setStyle` 双参数、Group opts 与子树 API。波次 3：`Sector.r0` / `clockwise` / `cornerRadius`、`Rect.r`、Polygon.smooth、Line·Text 默认 style、`miterLimit`、`lineDash` 字符串、`LinearGradient.addColorStop`。波次 4：`js/tool/` 按官方签名实现 `matrix` / `vector` / `color` / `util` / `path`；`morph` / `parseSVG` / `showDebugDirtyRect` / `setPlatformAPI` 为签名齐全的最小实现。波次 5：`Animator` 写最后一组 `when`；`zr.clear` / 实例 `dispose` / `setBackgroundColor` / `trigger`；`el.hide`/`show`/`off`/`trigger`。余下波次见该计划 YAML。
 
 ### wasm-zrender API 对齐（规划 todos 全部 completed）
 
@@ -189,7 +189,7 @@ dispose(zr);
 | 4 Image / 通用 Path / CompoundPath | Storage 纳入 Image；`pathData`；CompoundPath | **已完成** |
 | 5 Text / Displayable / TSpan | `ChildRef::Text`、displayList、hit-test；TSpan MVP；Displayable 抽象类 | **已完成**（TSpan 为单 run MVP） |
 | 6 几何值对象 | Point / BoundingRect / OrientedBoundingRect | **已完成** |
-| 7 工具模块 | color / matrix / vector / path / util / morph / parseSVG | **仍为 stub**（返回空对象） |
+| 7 工具模块 | color / matrix / vector / path / util / morph / parseSVG | **已完成**（`js/tool/`；`morph` 返回终点 path，`parseSVG` 解析基本 path/图形） |
 
 仍抛错的类：`IncrementalDisplayable`。`Displayable` 构造会提示「抽象基类，请用具体图元」。
 
@@ -380,10 +380,11 @@ Cargo：`crate-type = ["cdylib", "rlib"]`，依赖 `rust-zrender` path。公开 
 | 文件 | 职责 |
 |------|------|
 | `index.js` | 官方命名导出；`default` 仍是 `initWasm`；`version = '6.1.0'` |
-| `element.js` / `displayable.js` / `path.js` / `group.js` / `text.js` / `image.js` / `shapes/` | 原型链；实例持有 `_native` handle。变换主属性与 Group `_children` 在 JS 维护，变更同步 rust |
-| `zrender.js` | 包装 `init` / `dispose` / `getInstance` / `registerPainter` |
+| `element.js` / `displayable.js` / `path.js` / `group.js` / `text.js` / `image.js` / `shapes/` | 原型链；实例持有 `_native` handle。变换主属性与 Group `_children` 在 JS 维护，变更同步 rust。`hide`/`show`/`on`/`off`/`trigger` |
+| `animator.js` | `animate` / `when` / `start` 终态：写入最后一组目标，调用 `during(1)` / `done` |
+| `zrender.js` | 包装 `init` / `dispose` / `getInstance` / `registerPainter`；`clear` / `setBackgroundColor` / `trigger` |
 | `wasm_zrender.js` | 兼容旧路径 `@wasm-zrender/wasm_zrender.js` |
-| `tool/` | 波次 4：按官方签名重写；当前仍转发 rust stub |
+| `tool/` | `matrix` / `vector` / `color` / `util` / `path` 按官方签名实现；`morph`（终态）/ `parseSVG`（基本 path）/ `showDebugDirtyRect`（no-op）/ `setPlatformAPI` |
 
 构造约定：子类 `super()` 不创建 native，再 `_bindNative(new native.Rect(opts))`，然后 `attr(opts)` 写入 JS 变换主属性并同步 rust。绘制与命中仍走 wasm-bindgen。
 
@@ -392,7 +393,8 @@ Cargo：`crate-type = ["cdylib", "rlib"]`，依赖 `rust-zrender` path。公开 
 | 模块 | 职责 |
 |------|------|
 | `lib.rs` | 导出全部 wasm 类型与 `init` / `dispose` / `registerFont` |
-| `zrender.rs` | `ZRender` 类 + 实例表；`init` / `dispose` / `disposeAll` / `getInstance` |
+| `zrender.rs` | `ZRender` 类 + 实例表；`init` / `dispose` / `disposeAll` / `getInstance` / `clear` / `setBackgroundColor` / `trigger` |
+| `animation.rs` | `Animator`：记录最后 `when`，`start()` 写回 shape/style/attr |
 | `registry.rs` | `ElementRegistry`：JS 对象 ↔ Storage 索引；父子挂载；延迟 materialize |
 | `bridge/opts.rs` | 解析 `{ shape, style, z, zlevel, silent, name, ... }` |
 | `bridge/shape.rs` | 各 shape 的 `opts.shape` 字段 |
@@ -401,7 +403,7 @@ Cargo：`crate-type = ["cdylib", "rlib"]`，依赖 `rust-zrender` path。公开 
 | `bridge/hit.rs` | `findHover` → `{ target, topTarget }` 的 `HoverResult` |
 | `font.rs` | `registerFont` / `clearFonts`，并热更新已有实例 fontdb |
 | `graphic/*` | 各 JS 类 |
-| `export.rs` | `matrix` / `vector` / `color` / `path` / `util` / `morph` / `parseSVG` 空对象 stub |
+| `export.rs` | pkg 内仍导出空对象（避免 wasm-bindgen 缺符号）；公开命名空间走 `js/tool/` |
 | `graphic/stub.rs` | 目前仅 `IncrementalDisplayable` |
 
 #### 顶层函数
@@ -418,12 +420,14 @@ Cargo：`crate-type = ["cdylib", "rlib"]`，依赖 `rust-zrender` path。公开 
 
 | 方法 | 说明 |
 |------|------|
-| `add(el)` / `remove(el)` | 根节点增删；`init(canvas)` 时自动上屏 |
+| `add(el)` / `remove(el)` / `clear()` | 根节点增删与清空；`init(canvas)` 时自动上屏 |
 | `refresh()` | 同步返回 RGBA `Uint8Array` |
 | `flush()` | 同 `refresh()`（无动画队列） |
 | `resize(opts)` | 改尺寸，不重载任何预设 scene |
 | `findHover(x, y)` | `{ target, topTarget }`，均为 wasm `Element` |
-| `on(event, handler)` / `off(event)` | 实例事件（`mousedown` / `mousemove` / `mouseup` …） |
+| `on(event, handler)` / `off(event, handler?)` / `trigger(event, packet?)` | 实例事件；`off` 可按函数取消 |
+| `setBackgroundColor(color)` / `getBackgroundColor()` | 背景色（字符串）；下次 `refresh` 填底 |
+| `dispose()` | 实例释放（与顶层 `dispose(zr)` 相同） |
 | `handler.dispatch(name, { zrX, zrY })` | 无 DOM 时注入指针事件（测试 / Node） |
 | `width()` / `height()` / `dpr()` / `id` | 尺寸与实例 id |
 
@@ -445,14 +449,15 @@ Cargo：`crate-type = ["cdylib", "rlib"]`，依赖 `rust-zrender` path。公开 
 
 只允许「目标与约束」里的四条例外。当前进度（未完成的不叫例外）：
 
-- 事件总线已做（`zr.on` / `el.on` / `draggable`），仍要补 `off` / `trigger` 等（见规范计划波次 5）
-- 动画 API 可调用；终态语义尚未接到最后一组 `when`（波次 5）
-- 工具模块 `color` / `matrix` / `vector` 等仍为 rust stub（波次 4 在 `js/tool/` 按签名重写）
+- 动画为终态语义：`animate` / `animateTo` / `when().start()` 立刻写入最后一组目标；`during(percent=1)` 与 `done` 会调用；不播中间帧
+- `morph` 只返回终点 path（形变后置）；`parseSVG` 只覆盖 g/path/基础图形
 - `IncrementalDisplayable` 构造仍抛错（波次 6）
 
 #### 浏览器测试
 
 `crates/wasm-zrender/tests/web.rs`：`wasm-bindgen-test`，覆盖 init+Group+Rect 出 RGBA、findHover、渐变、各 shape、Image、Text/字体、几何类、stub 抛错等。字体夹具：`crates/wasm-zrender/tests/fixtures/NotoSansSC-Regular.ttf`。
+
+纯 JS 工具模块：`node crates/wasm-zrender/js/tool/selftest.js`（matrix / vector / color / util / morph / Animator 终态，不启 WASM）。
 
 ```bash
 cd wasm-echarts-rs/crates/wasm-zrender
@@ -896,8 +901,6 @@ npm run dev
 
 对照 [`.cursor/plans/zrender_api_规范对齐_be3227a1.plan.md`](../.cursor/plans/zrender_api_规范对齐_be3227a1.plan.md) 余下波次，不混进「已对齐」：
 
-- 波次 4：`js/tool/` 按官方签名重写 matrix / vector / color / util / path
-- 波次 5：Animator 写终点；`zr.clear` / `dispose` / `setBackgroundColor` / `trigger`；`hide`/`show`/`off`
 - 波次 6：clipPath 全图元、`useStates`、`Path.extend`、`IncrementalDisplayable`、Point 静态方法
 
 ### wasm-echarts

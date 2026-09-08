@@ -125,22 +125,62 @@ pub fn add_zr_listener(zr_id: u32, event: &str, handler: JsValue) {
     });
 }
 
-pub fn remove_zr_listeners(zr_id: u32, event: Option<&str>) {
+pub fn remove_zr_listeners(zr_id: u32, event: Option<&str>, handler: Option<&JsValue>) {
     HANDLER_REGISTRY.with(|reg| {
         if let Some(state) = reg.borrow_mut().get_mut(&zr_id) {
-            if let Some(name) = event {
-                state.zr_listeners.remove(name);
-            } else {
-                state.zr_listeners.clear();
+            match (event, handler) {
+                (None, _) => state.zr_listeners.clear(),
+                (Some(name), None) => {
+                    state.zr_listeners.remove(name);
+                }
+                (Some(name), Some(h)) => {
+                    if let Some(list) = state.zr_listeners.get_mut(name) {
+                        list.retain(|existing| existing != h);
+                        if list.is_empty() {
+                            state.zr_listeners.remove(name);
+                        }
+                    }
+                }
             }
         }
     });
+}
+
+pub fn trigger_zr(zr_id: u32, event: &str, packet: JsValue) {
+    let zr_handlers = HANDLER_REGISTRY.with(|reg| {
+        reg.borrow()
+            .get(&zr_id)
+            .map(|s| s.zr_listeners.get(event).cloned().unwrap_or_default())
+            .unwrap_or_default()
+    });
+    let packet = if packet.is_undefined() || packet.is_null() {
+        make_packet(event, 0.0, 0.0, None, &JsValue::UNDEFINED)
+    } else {
+        packet
+    };
+    call_handlers(&zr_handlers, &packet);
 }
 
 pub fn element_on(id: u32, event: &str, handler: JsValue) {
     ELEMENT_REGISTRY.with(|reg| {
         reg.borrow_mut().add_listener(id, event, handler);
     });
+}
+
+pub fn element_off(id: u32, event: Option<&str>, handler: Option<&JsValue>) {
+    ELEMENT_REGISTRY.with(|reg| {
+        reg.borrow_mut().remove_listener(id, event, handler);
+    });
+}
+
+pub fn element_trigger(id: u32, event: &str, packet: JsValue) {
+    let handlers = ELEMENT_REGISTRY.with(|reg| reg.borrow().listeners(id, event));
+    let packet = if packet.is_undefined() || packet.is_null() {
+        make_packet(event, 0.0, 0.0, Some(id), &JsValue::UNDEFINED)
+    } else {
+        packet
+    };
+    call_handlers(&handlers, &packet);
 }
 
 pub fn element_draggable_js(id: u32) -> JsValue {

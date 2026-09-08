@@ -40,6 +40,24 @@ impl TSpan {
         TSpan { id: self.id }
     }
 
+    pub fn off(&self, event: JsValue, handler: JsValue) -> TSpan {
+        api::element_off(self.id, event, handler);
+        TSpan { id: self.id }
+    }
+
+    pub fn trigger(&self, event: &str, packet: JsValue) -> TSpan {
+        api::element_trigger(self.id, event, packet);
+        TSpan { id: self.id }
+    }
+
+    pub fn hide(&self) {
+        let _ = api::element_hide(self.id);
+    }
+
+    pub fn show(&self) {
+        let _ = api::element_show(self.id);
+    }
+
     pub fn attr(&self, key: JsValue, value: JsValue) -> TSpan {
         let _ = api::element_attr(self.id, key, value);
         TSpan { id: self.id }

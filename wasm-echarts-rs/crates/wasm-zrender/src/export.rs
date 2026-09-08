@@ -1,4 +1,5 @@
-//! export.ts 工具模块 stub
+//! pkg 侧仍导出空对象，避免 wasm-bindgen 缺符号。
+//! 公开 API 走 `js/tool/`（matrix / vector / color / util / path / morph / parseSVG）。
 
 use js_sys::Object;
 use wasm_bindgen::prelude::*;

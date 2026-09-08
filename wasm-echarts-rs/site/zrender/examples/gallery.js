@@ -13,7 +13,7 @@ import stateSource from './state.js?raw';
 
 mountExampleGallery(document.getElementById('app'), {
   title: 'wasm-zrender 实例',
-  description: '对齐官方 zrender 示例；动画 API 可调用但不播放。右侧查看完整接入代码与 iframe 预览。',
+  description: '对齐官方 zrender 示例；动画为终态语义（不播中间帧）。右侧查看完整接入代码与 iframe 预览。',
   defaultId: 'hello_world',
   examples: [
     {
@@ -26,7 +26,7 @@ mountExampleGallery(document.getElementById('app'), {
     {
       id: 'animation',
       title: 'Animation',
-      description: 'animate().when().start()（当前为 no-op）',
+      description: 'animate().when().start() 写入最后一组 when（圆停在右侧）',
       previewUrl: './animation.html',
       source: animationSource,
     },
@@ -54,7 +54,7 @@ mountExampleGallery(document.getElementById('app'), {
     {
       id: 'particles',
       title: 'Particles',
-      description: 'animate/during/done 可调用；粒子停在发射点',
+      description: 'animate/during/done 终态：during(t=1) 后 done 立刻 remove',
       previewUrl: './particles.html',
       source: particlesSource,
     },

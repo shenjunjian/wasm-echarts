@@ -82,6 +82,24 @@ impl Group {
         Group { id: self.id }
     }
 
+    pub fn off(&self, event: JsValue, handler: JsValue) -> Group {
+        api::element_off(self.id, event, handler);
+        Group { id: self.id }
+    }
+
+    pub fn trigger(&self, event: &str, packet: JsValue) -> Group {
+        api::element_trigger(self.id, event, packet);
+        Group { id: self.id }
+    }
+
+    pub fn hide(&self) {
+        let _ = api::element_hide(self.id);
+    }
+
+    pub fn show(&self) {
+        let _ = api::element_show(self.id);
+    }
+
     #[wasm_bindgen(getter)]
     pub fn draggable(&self) -> JsValue {
         crate::handler::element_draggable_js(self.id)
