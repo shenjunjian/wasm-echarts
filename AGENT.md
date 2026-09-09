@@ -823,7 +823,7 @@ import initWasm, { init, registerFont } from '@wasm-echarts';
 
 再 `await initWasm()` → `registerFont` → `init(canvas)` + `setOption`。native `EChartsInstance` 仍从 facade 再导出，仅兼容旧路径，不要当公开 API。
 3. 每个实例是独立完整脚本：`site/echarts/examples/line.js` 等同名 HTML 成对出现（`<canvas id="canvas">`）；内联 `fetch` + `registerFont`（与 zrender `text.js` 相同）
-4. 画廊 `gallery.js` 用 Vite `?raw` 读这些 `.js` 作为左侧源码，iframe 加载同目录 HTML 预览
+4. 画廊 `gallery.js` 用 Vite `?raw` 读这些 `.js` 作为左侧源码，iframe 加载同目录 HTML 预览。echarts 画廊是二级菜单：`groups` 第一层为图形类别（折线 / 柱状 / 饼图 / 散点 / 交互合集），第二层为该类别下的示例；每个类别可继续加多个示例。交互合集下挂 interactive / merge / bench。zrender 画廊仍用扁平 `examples`。
 5. 页面：line / bar / pie / scatter / interactive / merge / bench
 
 ---
@@ -863,7 +863,7 @@ site/
 ```
 
 - 首页不做 API 长文、不嵌 canvas
-- 实例画廊：左侧菜单 + 源码（即该示例 `.js` 全文），右侧 iframe 预览
+- 实例画廊：左侧菜单 + 源码（即该示例 `.js` 全文），右侧 iframe 预览。echarts 为二级菜单（类别 → 示例）；zrender 为扁平列表
 - 每个示例 JS 自包含：导入、构图、绘制、交互都写在同一个文件里
 
 #### 实例清单
@@ -884,14 +884,17 @@ site/
 | hit | `findHover` |
 | state | `setStateStyle` + `useState('emphasis')` |
 
-**wasm-echarts**
+**wasm-echarts**（画廊按类别二级菜单；每类可继续加示例）
 
-| 页 | 验证点 |
-|----|--------|
-| line / bar / pie / scatter | 对应 ChartView |
-| interactive | `on('click')` + 内建 tooltip / hover / wheel zoom |
-| merge | 二次 `setOption` 深合并 + `getOption` |
-| bench | `benchmarkRender(30)` |
+| 类别 | 页 | 验证点 |
+|------|----|--------|
+| 折线图 | line | ChartView line |
+| 柱状图 | bar | ChartView bar |
+| 饼图 | pie | ChartView pie |
+| 散点图 | scatter | ChartView scatter |
+| 交互合集 | interactive | `on('click')` + 内建 tooltip / hover / wheel zoom |
+| 交互合集 | merge | 二次 `setOption` 深合并 + `getOption` |
+| 交互合集 | bench | `benchmarkRender(30)` |
 
 规划里的独立 `function-option.html` 未单列，函数 option 合在 interactive。
 
