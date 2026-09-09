@@ -1,0 +1,11 @@
+{
+  "name": "wasm-echarts",
+  "type": "module",
+  "description": "echarts 对齐的 JS facade：init / setOption，委托 wasm-bindgen",
+  "version": "0.1.0",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./wasm_echarts.js": "./wasm_echarts.js"
+  }
+}

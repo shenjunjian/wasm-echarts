@@ -19,7 +19,7 @@
     <h1>wasm-echarts 文档</h1>
     <p class="lead">
       公开 JS API 对齐官方 ECharts canvas 用法（<code>init</code> / <code>setOption</code>）。
-      JS facade 尚未落地；当前实例仍 import native <code>EChartsInstance</code>。
+      从 <code>@wasm-echarts</code>（<code>js/</code> facade）导入；<code>pkg/</code> 只作内部 handle。
       逐项清单见仓库 <code>.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md</code>。
     </p>
 
@@ -34,14 +34,29 @@ cd site && npm install && npm run dev
 
     <div class="doc-section">
       <h3>1. 与官方一致的公开 API</h3>
-      <p>下列为目标签名（须与官方同名同签名）。<strong>当前不可按此调用</strong>；波次 1 起由 <code>js/</code> facade 落地。</p>
+      <p>可按官方文档调用（<code>setOption</code> 第二参数与指针事件见后文）。</p>
       <ul>
         <li><code>init(canvas, theme?, opts?)</code> — 创建实例；<code>init(null, null, { width, height, devicePixelRatio })</code> 允许离屏</li>
         <li><code>dispose(chart | canvas | id)</code> / <code>getInstanceByDom</code> / <code>getInstanceById</code></li>
         <li><code>version</code> — <code>'6.1.0'</code></li>
         <li><code>use(...)</code> — 导出且签名对齐，只打印提示，不按需加载</li>
-        <li>实例：<code>setOption</code> / <code>getOption</code> / <code>resize</code> / <code>dispatchAction</code> / <code>on</code> / <code>off</code> / <code>getWidth</code> / <code>getHeight</code> / <code>getDevicePixelRatio</code> / <code>isDisposed</code> / <code>clear</code> / <code>dispose</code></li>
+        <li>实例：<code>setOption(option)</code> / <code>resize</code> / <code>dispatchAction</code> / <code>getWidth</code> / <code>getHeight</code> / <code>getDevicePixelRatio</code> / <code>isDisposed</code> / <code>dispose</code> / <code>getDom</code> / <code>getId</code></li>
       </ul>
+      <pre>import initWasm, { init } from '@wasm-echarts';
+
+await initWasm();
+
+const canvas = document.getElementById('canvas');
+canvas.width = 480;
+canvas.height = 360;
+
+const chart = init(canvas);
+chart.setOption({
+  xAxis: { type: 'category', data: ['Mon', 'Tue', 'Wed'] },
+  yAxis: { type: 'value' },
+  series: [{ type: 'line', name: '销量', data: [120, 200, 150] }],
+});
+</pre>
     </div>
 
     <div class="doc-section">
@@ -51,49 +66,23 @@ cd site && npm install && npm run dev
         <li><code>init(null)</code> 允许离屏（官方客户端无 dom 会抛错）</li>
         <li>仅 canvas；无 SVG / <code>renderToSVGString</code> / <code>getSvgDataURL</code></li>
         <li>动画不播中间帧；<code>lazyUpdate</code> 同步执行</li>
-        <li>字体须 <code>registerFont</code>；WASM 不读系统字体</li>
+        <li>字体须 <code>registerFont</code>；WASM 不读系统字体（尚未接到 wasm-echarts 模块）</li>
         <li><code>getZr()</code> 本波不导出（crate 隔离）</li>
-        <li><code>notMerge</code> 当前被当 option 根字段剥掉（错误，将改为第二参数）</li>
+        <li><code>setOption</code> 第二参数 <code>notMerge</code> 尚未对齐；当前仍可能被当 option 根字段剥掉</li>
+        <li>default export 是 wasm-bindgen <code>initWasm</code>，不是 echarts 命名空间对象</li>
       </ul>
     </div>
 
     <div class="doc-section">
       <h3>3. 多出来的非官方 API</h3>
-      <p>因 WASM 离屏需要。<strong>不要当官方 API 用</strong>。<code>init(canvas)</code> 落地后，普通用户不必再调指针 hatch / 手动 <code>putImageData</code>。</p>
-      <pre>import initWasm, { EChartsInstance } from '@wasm-echarts';
-
-await initWasm();
-
-const canvas = document.getElementById('canvas');
-const width = 480;
-const height = 360;
-canvas.width = width;
-canvas.height = height;
-
-const chart = new EChartsInstance(width, height, 1);
-chart.set_option({
-  xAxis: { type: 'category', data: ['Mon', 'Tue', 'Wed'] },
-  yAxis: { type: 'value' },
-  series: [{ type: 'line', name: '销量', data: [120, 200, 150] }],
-});
-
-const rgba = chart.refresh();
-const ctx = canvas.getContext('2d');
-ctx.putImageData(
-  new ImageData(new Uint8ClampedArray(rgba), chart.width(), chart.height()),
-  0,
-  0,
-);</pre>
+      <p>因 WASM 离屏需要。<strong>不要当官方 API 用</strong>。<code>init(canvas)</code> 后普通用户不必再手动 <code>putImageData</code>。指针事件仍靠 hatch（后续波次由 <code>on</code>/<code>off</code> 消化）。</p>
       <ul>
-        <li><code>new EChartsInstance(w, h, dpr)</code> — native 构造（目标：<code>init</code>）</li>
-        <li><code>set_option(option)</code> — 设置 option（目标：<code>setOption</code>）</li>
         <li><code>refresh()</code> — 离屏绘制，返回 RGBA</li>
-        <li><code>handle_pointer_move(x, y)</code> / <code>handle_pointer_leave()</code> — hover 高亮、axisPointer、tooltip 文本</li>
-        <li><code>find_hover(x, y)</code> — 命中检测</li>
-        <li><code>dispatch_action(action)</code> — <code>toggleSelect</code> / <code>highlight</code> 等</li>
-        <li><code>apply_data_zoom_wheel(x, deltaY)</code> — inside dataZoom</li>
-        <li><code>get_tooltip_content(si, di)</code> — 自绘 tooltip</li>
-        <li><code>benchmark_render(n)</code> — 渲染均值耗时（毫秒）</li>
+        <li><code>handlePointerMove(x, y)</code> / <code>handlePointerLeave()</code> — hover 高亮、axisPointer、tooltip 文本</li>
+        <li><code>findHover(x, y)</code> — 命中检测</li>
+        <li><code>applyDataZoomWheel(x, deltaY)</code> — inside dataZoom</li>
+        <li><code>getTooltipContent(si, di)</code> — 自绘 tooltip</li>
+        <li><code>benchmarkRender(n)</code> — 渲染均值耗时（毫秒）</li>
       </ul>
     </div>
 
@@ -114,6 +103,7 @@ ctx.putImageData(
         <li>Actions：<code>showTip</code> / <code>hideTip</code>、legend*、restore 等</li>
         <li><code>connect</code> / 主题 / <code>registerMap</code> / <code>getZr</code> / <code>getDataURL</code> / Loading / media query</li>
         <li>option 未按官方生效：pie <code>radius</code>/<code>center</code>、<code>symbol</code>/<code>symbolSize</code>、series label、多 grid / 双 y 轴</li>
+        <li><code>getOption</code> / <code>clear</code> / <code>setOption</code> 第二参数；<code>on</code>/<code>off</code> 尚未由指针触发</li>
       </ul>
     </div>
 

@@ -7,7 +7,7 @@ todos:
     status: completed
   - id: facade-skeleton
     content: 新建 js/ facade：init/dispose/use（console 提示）/实例表/version；Vite alias 改指 js/；示例改为官方 init + setOption
-    status: pending
+    status: completed
   - id: setoption-resize
     content: setOption 第二参数 notMerge/opts；getOption；resize(opts)；clear/isDisposed；修掉 option 根上剔 notMerge
     status: pending

@@ -1,4 +1,4 @@
-import initWasm, { EChartsInstance } from '@wasm-echarts';
+import initWasm, { init } from '@wasm-echarts';
 
 const width = 480;
 const height = 360;
@@ -12,8 +12,8 @@ async function main() {
   canvas.style.width = `${width}px`;
   canvas.style.height = `${height}px`;
 
-  const chart = new EChartsInstance(width, height, 1);
-  chart.set_option({
+  const chart = init(canvas);
+  chart.setOption({
     tooltip: {
       trigger: 'item',
       axisPointer: { type: 'line' },
@@ -27,8 +27,6 @@ async function main() {
     series: [{ type: 'line', name: '销量', data: [120, 200, 150, 80, 70] }],
   });
 
-  paint(chart, canvas);
-
   const logEl = document.getElementById('log');
   const tip = document.createElement('div');
   tip.style.cssText =
@@ -37,11 +35,10 @@ async function main() {
 
   canvas.addEventListener('mousemove', (e) => {
     const rect = canvas.getBoundingClientRect();
-    const result = chart.handle_pointer_move(
+    const result = chart.handlePointerMove(
       e.clientX - rect.left,
       e.clientY - rect.top,
     );
-    paint(chart, canvas);
 
     if (result?.tooltip) {
       tip.innerHTML = result.tooltip;
@@ -54,22 +51,20 @@ async function main() {
   });
 
   canvas.addEventListener('mouseleave', () => {
-    chart.handle_pointer_leave();
-    paint(chart, canvas);
+    chart.handlePointerLeave();
     tip.style.display = 'none';
   });
 
   canvas.addEventListener('click', (e) => {
     const rect = canvas.getBoundingClientRect();
-    const hit = chart.find_hover(e.clientX - rect.left, e.clientY - rect.top);
+    const hit = chart.findHover(e.clientX - rect.left, e.clientY - rect.top);
     if (hit?.seriesIndex == null || hit?.dataIndex == null) return;
 
-    chart.dispatch_action({
+    chart.dispatchAction({
       type: 'toggleSelect',
       seriesIndex: hit.seriesIndex,
       dataIndex: hit.dataIndex,
     });
-    paint(chart, canvas);
     if (logEl) {
       logEl.textContent = `click select → seriesIndex=${hit.seriesIndex}, dataIndex=${hit.dataIndex}`;
     }
@@ -80,20 +75,9 @@ async function main() {
     (e) => {
       e.preventDefault();
       const rect = canvas.getBoundingClientRect();
-      chart.apply_data_zoom_wheel(e.clientX - rect.left, e.deltaY);
-      paint(chart, canvas);
+      chart.applyDataZoomWheel(e.clientX - rect.left, e.deltaY);
     },
     { passive: false },
-  );
-}
-
-function paint(chart, canvas) {
-  const rgba = chart.refresh();
-  const ctx = canvas.getContext('2d');
-  ctx.putImageData(
-    new ImageData(new Uint8ClampedArray(rgba), chart.width(), chart.height()),
-    0,
-    0,
   );
 }
 

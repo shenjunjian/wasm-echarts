@@ -36,7 +36,7 @@ wasm-echarts/                         # 整个 git 仓库
 │   ├── crates/
 │   │   ├── rust-zrender/             # 纯 Rust rlib：渲染引擎
 │   │   ├── wasm-zrender/             # wasm-pack cdylib + js/ facade：对齐 zrender export.ts
-│   │   └── wasm-echarts/             # wasm-pack cdylib + 待建 js/ facade：对齐官方 init/setOption
+│   │   └── wasm-echarts/             # wasm-pack cdylib + js/ facade：对齐官方 init/setOption
 │   ├── site/                         # Vite 多页文档站
 │   └── scripts/serve-demo.sh         # 旧脚本（仍指向已删除的 demo/，请用 site）
 ├── echarts-master/                   # 官方 echarts 源码（只读）
@@ -49,15 +49,16 @@ wasm-echarts/                         # 整个 git 仓库
 |------|------|------|------|
 | **rust-zrender** | `crates/rust-zrender/` | Cargo `rlib`，无 wasm-bindgen | `target/` 下的 `.rlib`，被另外两个 crate path 依赖 |
 | **wasm-zrender** | `crates/wasm-zrender/` | `cdylib` + `rlib` + 手写 `js/` facade | `pkg/`（wasm-bindgen 内部）+ `js/`（公开 API） |
-| **wasm-echarts** | `crates/wasm-echarts/` | `cdylib` + `rlib`（JS facade 波次 1） | `pkg/`（wasm-bindgen 内部）；公开 API 目标是 `js/` |
-| **site** | `site/` | Vite 多页静态站 | 开发时直连 `pkg/`；`npm run build` 输出 `site/dist/` |
+| **wasm-echarts** | `crates/wasm-echarts/` | `cdylib` + `rlib` + 手写 `js/` facade | `pkg/`（wasm-bindgen 内部）+ `js/`（公开 API） |
+| **site** | `site/` | Vite 多页静态站 | 开发时直连 `js/` facade；`npm run build` 输出 `site/dist/` |
 
 依赖规则（已落地）：
 
 ```
 site  ──import──►  wasm-zrender/js      （Vite alias @wasm-zrender）
                      └──► pkg/          （wasm-bindgen 内部 handle）
-site  ──import──►  wasm-echarts/pkg     （Vite alias @wasm-echarts；波次 1 改指 js/）
+site  ──import──►  wasm-echarts/js      （Vite alias @wasm-echarts）
+                     └──► pkg/          （wasm-bindgen 内部 handle）
 
 wasm-zrender  ──path──►  rust-zrender
 wasm-echarts  ──path──►  rust-zrender
@@ -146,10 +147,10 @@ echarts 图表管线在 Rust 里直接 `use rust_zrender::ZRenderer`，不经过
 浏览器 DOM / 指针事件
         │
         ▼
-site 示例 JS（创建 canvas；目标：`echarts.init` / `setOption`；当前仍走 native `EChartsInstance`）
+site 示例 JS（创建 canvas；`echarts.init` / `setOption`）
         │
         ├── wasm-zrender：init / Group / Rect / … / refresh / findHover
-        └── wasm-echarts：目标 facade init/setOption/on；当前 native set_option / handle_pointer_move
+        └── wasm-echarts：js/ facade init / setOption / dispose；native 为内部 handle
                 │
                 ▼
         rust-zrender::ZRenderer
@@ -189,7 +190,7 @@ site 示例 JS（创建 canvas；目标：`echarts.init` / `setOption`；当前�
 | **1 zrender P0** | Storage / Path / Painter / 基础 shape / brush | **已完成**。Rect/Circle/Line/Polygon/Polyline/Sector + fill/stroke/clip/transform/globalAlpha |
 | **2 后端补齐** | shadow、isPointInPath、r0、渐变/虚线/Image | **主体完成**。conic gradient、CSS filter **未做**（刻意忽略或待办） |
 | **3 交互基础** | Handler.findHover、ECData、emphasis/select | **已完成**。Path/Image/Text 均可命中 |
-| **4 JS 薄壳 + API 骨架** | init/setOption/resize/事件、`OptionValue` | **部分完成**。native `EChartsInstance` 已有；公开 JS facade（官方 `init`/`setOption`）见 echarts API 对齐规划 |
+| **4 JS 薄壳 + API 骨架** | init/setOption/resize/事件、`OptionValue` | **部分完成**。`js/` facade 已有 `init`/`setOption`/`dispose`/`use`；事件总线与 `setOption` 第二参数见对齐规划波次 2–3 |
 | **4b 回调桥** | CallbackDataParams、call0/1/2 | **部分完成**。`formatter` / `itemStyle.color` 可用；`renderItem`/`api`、`axisLabel.formatter` 接入、per-series 缓存 **未完成** |
 | **5 echarts MVP** | GlobalModel、cartesian、line/bar、Scheduler | **部分完成**。line/bar 可渲染；SeriesData/Source 完整管道、media query、lazyUpdate/replaceMerge 完整语义 **未完成** |
 | **6 交互完善** | hover/tooltip/dataZoom/axisPointer | **部分完成**。hover 高亮、toggleSelect、string tooltip、wheel inside dataZoom、竖线 axisPointer。pinch、slider、HTMLElement tooltip、十字/多轴 **未完成** |
@@ -233,9 +234,9 @@ dispose(zr);
 
 `docs-site` / `demo-zrender` / `demo-echarts` 在规划 YAML 仍为 pending，**site 工程已落地**：首页缘由/限制 + 双产品文档/实例，实例页左源码右预览。
 
-### wasm-echarts API 规范对齐（波次 0 已完成）
+### wasm-echarts API 规范对齐（波次 0–1 已完成）
 
-规范已写入上文「目标与约束」；逐项清单以 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](../.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md) 为权威。JS facade 尚未落地（波次 1）；site 仍 import `pkg/` 的 native `EChartsInstance`。文档四块已搭标题，并按当前源码填表现状。公开用法目标是官方 `init` / `setOption`，不再把 `EChartsInstance` 当唯一公开 API。
+规范已写入上文「目标与约束」；逐项清单以 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](../.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md) 为权威。JS facade 骨架在 `crates/wasm-echarts/js/`：`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version` / `use`（只 `console.info`）。site / README 从 `@wasm-echarts`（`js/index.js`）导入，`pkg/` 只作内部 handle。示例走官方 `init(canvas)` + `setOption`；`init(canvas)` 后自动 `putImageData`。波次 2：`setOption` 第二参数、`getOption`、`resize` 无参读 canvas、`clear`。波次 3：指针事件与 `on`/`off`。公开用法是官方 `init` / `setOption`，不要把 native `EChartsInstance` / `set_option` 当公开 API。
 
 ---
 
@@ -556,7 +557,7 @@ crates/wasm-zrender/pkg/
 
 浏览器侧的 ECharts **canvas MVP**：接收官方形态的 `option`（含 JS 函数字段），在 Rust 里做 merge → GlobalModel → ChartView → `rust_zrender::ZRenderer`，再把 RGBA 交还给 JS。公开 JS 表面对齐官方 `init` / `setOption` / `on` / `dispatchAction`（见上文硬规则与对齐计划）。
 
-**不依赖** wasm-zrender。图表图元是 Rust 里直接 `storage.create_path`，不是 JS `new Rect()`。native wasm-bindgen 类 `EChartsInstance` 是内部 handle，不是目标公开 API；波次 1 起由 `js/` facade 包装。当前 site 仍直接 import `pkg/`，facade 落地后改走官方写法。
+**不依赖** wasm-zrender。图表图元是 Rust 里直接 `storage.create_path`，不是 JS `new Rect()`。native wasm-bindgen 类 `EChartsInstance` 是内部 handle，不是公开 API；由 `js/` facade 包装。site 从 `@wasm-echarts`（`js/index.js`）导入，写法为官方 `init` / `setOption`。
 
 Cargo features（默认全开）：
 
@@ -570,20 +571,22 @@ chart-line, chart-bar, chart-pie, chart-scatter
 
 #### 1. 与官方一致的公开 API
 
-JS facade 尚未落地。下列为目标签名（须与官方同名同签名，波次 1 起实现）；**当前不可按此调用**。
+可按官方文档调用（签名对齐；未完成的第二参数 / 事件见不一致与未实现表）。
 
-| 目标导出 / 方法 | 签名 |
-|-----------------|------|
+| 导出 / 方法 | 签名 |
+|-------------|------|
 | `init` | `init(canvas, theme?, opts?)`；`init(null, null, { width, height, devicePixelRatio })` 允许离屏 |
 | `dispose` | `dispose(chart \| canvas \| id)` |
 | `getInstanceByDom` / `getInstanceById` | 按 canvas / id 取回实例 |
 | `version` | `'6.1.0'` |
 | `use` | 导出且签名对齐；只 `console.info`，不加载模块 |
-| `setOption` | `setOption(option)` / `setOption(option, notMerge)` / `setOption(option, { notMerge, replaceMerge, silent })` |
-| `getOption` / `resize` / `clear` / `isDisposed` / `dispose` | 实例方法 |
-| `getWidth` / `getHeight` / `getDevicePixelRatio` | 实例方法 |
+| `setOption` | `setOption(option)`（第二参数 notMerge / opts 波次 2） |
+| `resize` | `resize()` / `resize({ width, height, devicePixelRatio })`；亦接受 native `resize(w, h, dpr)` |
+| `getWidth` / `getHeight` / `getDevicePixelRatio` / `isDisposed` / `dispose` | 实例方法 |
 | `dispatchAction` | 已接线 type 用官方字符串（见硬规则） |
-| `on` / `off` | `click` / `mouseover` / `mouseout` / `globalout` |
+| `getDom` / `getId` | `init` 后可取 |
+| `on` / `off` | 已导出；指针尚未绑定，事件不会因 hover/click 触发（波次 3） |
+| `getOption` / `clear` | 已导出同名，内部 `console.warn`（波次 2） |
 
 #### 2. 与官方不一致 / 例外
 
@@ -600,21 +603,19 @@ JS facade 尚未落地。下列为目标签名（须与官方同名同签名，�
 
 #### 3. 多出来的非官方 API
 
-官方没有、因 WASM 离屏需要而多出来。**不要当官方 API 用**。`init(canvas)` 落地后，普通用户不必再调指针 hatch / 手动 `putImageData`。
+官方没有、因 WASM 离屏需要而多出来。**不要当官方 API 用**。`init(canvas)` 后普通用户不必再手动 `putImageData`。指针事件仍靠 hatch（波次 3 由 `on`/`off` 消化）。
 
-| native（当前） | facade camelCase（目标） | 用途 |
-|----------------|--------------------------|------|
-| `EChartsInstance` 构造 | 内部 handle；公开走 `init` | 创建离屏实例 |
-| `set_option` | `setOption` | 设 option |
+| facade camelCase | native | 用途 |
+|------------------|--------|------|
+| `init` | `EChartsInstance` 构造 | 公开入口；native 构造不要直接用 |
 | `refresh` | `refresh` | 返回 RGBA；离屏无 canvas 时用 |
-| `find_hover` | `findHover` | 命中检测 |
-| `handle_pointer_move` / `handle_pointer_leave` | `handlePointerMove` / `handlePointerLeave` | 指针；`init(canvas)` 后一般不需要 |
-| `apply_data_zoom_wheel` | `applyDataZoomWheel` | 滚轮 dataZoom |
-| `get_tooltip_content` | `getTooltipContent` | 自绘 tooltip |
-| `benchmark_render` | `benchmarkRender` | 渲染耗时 |
-| `has_option` / `option_has_functions` | 同名 camelCase | 状态查询 |
-| `width` / `height` / `dpr` | `getWidth` / `getHeight` / `getDevicePixelRatio` | 尺寸 |
-| （待挂）`registerFont` | `registerFont` | WASM 字体例外 |
+| `findHover` | `find_hover` | 命中检测 |
+| `handlePointerMove` / `handlePointerLeave` | `handle_pointer_move` / `handle_pointer_leave` | 指针；`init(canvas)` 时一般不需要（波次 3） |
+| `applyDataZoomWheel` | `apply_data_zoom_wheel` | 滚轮 dataZoom |
+| `getTooltipContent` | `get_tooltip_content` | 自绘 tooltip |
+| `benchmarkRender` | `benchmark_render` | 渲染耗时 |
+| `hasOption` / `optionHasFunctions` | `has_option` / `option_has_functions` | 状态查询 |
+| （待挂）`registerFont` | — | WASM 字体例外；尚未接到 wasm-echarts 模块 |
 
 #### 4. 已实现 / 未实现
 
@@ -647,7 +648,17 @@ Actions：`showTip`/`hideTip`（波次 3）、legend\*、restore、brush、timel
 
 ### 实现了哪些内容
 
-源码：`crates/wasm-echarts/src/`（native）。公开 facade 计划在 `crates/wasm-echarts/js/`，波次 1 新建。
+源码：`crates/wasm-echarts/js/`（公开 facade）与 `crates/wasm-echarts/src/`（native）。
+
+#### `js/` — 手写 facade（site 唯一公开入口）
+
+| 文件 | 职责 |
+|------|------|
+| `index.js` | 官方命名导出；`default` 仍是 `initWasm`；`version = '6.1.0'` |
+| `echarts.js` | `init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `use`（只提示）；实例表 |
+| `instance.js` | 包装 native `EChartsInstance`；camelCase；`init(canvas)` 后自动 `putImageData` |
+| `native.js` | 加载 `pkg/wasm_echarts.js` |
+| `wasm_echarts.js` | 兼容旧路径 `@wasm-echarts/wasm_echarts.js` |
 
 #### `instance.rs` — `EChartsInstance`（wasm-bindgen 内部 handle）
 
@@ -718,9 +729,9 @@ Actions：`showTip`/`hideTip`（波次 3）、legend\*、restore、brush、timel
 - 色板默认色 + 每点 `resolve_item_color`
 - hover / 多选 set、inside dataZoom 百分比窗口、滚轮缩放、axisPointer 是否开启（读 option）
 
-#### site 示例（当前仍走 native）
+#### site 示例
 
-每个 `site/echarts/examples/*.js` 都是完整独立脚本。**当前**导入 native `EChartsInstance`，自行 `set_option`、`refresh` + `putImageData`。交互合集 `interactive.js` 内联：mousemove → `handle_pointer_move`、click → `toggleSelect`、wheel → `apply_data_zoom_wheel`、tooltip DOM。波次 1 起改为官方 `init` + `setOption`；不要把 `EChartsInstance` / `set_option` 当目标公开 API。
+每个 `site/echarts/examples/*.js` 都是完整独立脚本。导入 `@wasm-echarts` 的 `init`，`init(canvas)` + `setOption`；有 canvas 时自动上屏。交互合集 `interactive.js` 仍用非官方 hatch：`handlePointerMove` / `findHover` / `dispatchAction('toggleSelect')` / `applyDataZoomWheel`（波次 3 改走 `on('click')`）。不要把 `EChartsInstance` / `set_option` 当公开 API。
 
 浏览器测试 `crates/wasm-echarts/tests/web.rs` 目前几乎是占位（`1+1=2`）。Rust 单测在 `option` / `model` / `interaction` / `pie` 等模块内。
 
@@ -745,7 +756,7 @@ wasm-pack build --target web --dev -- --no-default-features --features "console_
 
 ### 如何启动
 
-同样通过 `site`。公开写法目标（波次 1 落地后）：
+同样通过 `site`。公开写法：
 
 ```javascript
 import initWasm, { init } from '@wasm-echarts';
@@ -759,23 +770,9 @@ chart.setOption({
 });
 ```
 
-**当前（facade 落地前）**仍须走 native handle：
+`init(canvas)` 后 `setOption` 会自动 `putImageData`，不必再调 `refresh`。离屏用 `init(null, null, { width, height })`，再 `chart.refresh()` 拿 RGBA。
 
-```javascript
-import initWasm, { EChartsInstance } from '@wasm-echarts';
-
-await initWasm();
-const chart = new EChartsInstance(480, 360, 1);
-chart.set_option({
-  xAxis: { type: 'category', data: ['A', 'B', 'C'] },
-  yAxis: { type: 'value' },
-  series: [{ type: 'bar', data: [10, 20, 30] }],
-});
-const rgba = chart.refresh();
-ctx.putImageData(new ImageData(new Uint8ClampedArray(rgba), chart.width(), chart.height()), 0, 0);
-```
-
-指针事件与 tooltip DOM 目前不封装进公共层；需要交互时照 `interactive.js` 在同一文件里绑定（波次 3 由 facade 消化）。
+指针事件与 tooltip DOM 目前不封装进公共层；需要交互时照 `interactive.js` 用 `handlePointerMove` 等 hatch（波次 3 由 facade `on`/`off` 消化）。
 
 ### 编译产物在哪里
 
@@ -788,18 +785,18 @@ crates/wasm-echarts/pkg/
 └── wasm_echarts_bg.wasm.d.ts
 ```
 
-crate `.gitignore` 含 `pkg/`。改 Rust 后必须重新 wasm-pack，浏览器硬刷新。
+crate `.gitignore` 含 `pkg/`。改 Rust 后必须重新 wasm-pack，浏览器硬刷新。公开 import 走 `js/`，`pkg/` 只作内部 handle。
 
 ### 文档站如何用到本 crate
 
-1. Vite alias `@wasm-echarts` **当前** → `crates/wasm-echarts/pkg/wasm_echarts.js`（波次 1 改指 `js/`，与 zrender 相同）
-2. 每个实例 JS **当前**直接：
+1. Vite alias `@wasm-echarts` → `crates/wasm-echarts/js`（`js/index.js` 再 import `../pkg/wasm_echarts.js`）
+2. 每个实例 JS：
 
 ```javascript
-import initWasm, { EChartsInstance } from '@wasm-echarts';
+import initWasm, { init } from '@wasm-echarts';
 ```
 
-目标写法：`import initWasm, { init } from '@wasm-echarts'`，再 `init(canvas)` + `setOption`。
+再 `init(canvas)` + `setOption`。native `EChartsInstance` 仍从 facade 再导出，仅兼容旧路径，不要当公开 API。
 3. 每个实例是独立完整脚本：`site/echarts/examples/line.js` 等同名 HTML 成对出现（`<canvas id="canvas">`）
 4. 画廊 `gallery.js` 用 Vite `?raw` 读这些 `.js` 作为左侧源码，iframe 加载同目录 HTML 预览
 5. 页面：line / bar / pie / scatter / interactive / merge / bench
@@ -868,8 +865,8 @@ site/
 |----|--------|
 | line / bar / pie / scatter | 对应 ChartView |
 | interactive | formatter tooltip + hover / select / wheel zoom |
-| merge | 二次 `set_option` 深合并 |
-| bench | `benchmark_render(30)` |
+| merge | 二次 `setOption` 深合并 |
+| bench | `benchmarkRender(30)` |
 
 规划里的独立 `function-option.html` 未单列，函数 option 合在 interactive。
 
@@ -883,7 +880,7 @@ npm run build        # 输出 site/dist/
 npm run preview      # 预览构建结果
 ```
 
-**必须先**对两个 WASM crate 执行 `wasm-pack build --target web`，否则 facade 引用的 `pkg/wasm_zrender.js` / `@wasm-echarts`（`pkg/wasm_echarts.js`）不存在，Vite 会解析失败。
+**必须先**对两个 WASM crate 执行 `wasm-pack build --target web`，否则 facade 引用的 `pkg/wasm_zrender.js` / `pkg/wasm_echarts.js` 不存在，Vite 会解析失败。
 
 浏览器入口：
 
@@ -921,7 +918,7 @@ const repoRoot = resolve(root, '..'); // wasm-echarts-rs/
 resolve: {
   alias: {
     '@wasm-zrender': resolve(repoRoot, 'crates/wasm-zrender/js'),
-    '@wasm-echarts': resolve(repoRoot, 'crates/wasm-echarts/pkg/wasm_echarts.js'),
+    '@wasm-echarts': resolve(repoRoot, 'crates/wasm-echarts/js'),
   },
 },
 server: {
@@ -940,14 +937,14 @@ optimizeDeps: {
 
 ```javascript
 import initWasm, { init, Group, Rect } from '@wasm-zrender';
-import initWasm, { EChartsInstance } from '@wasm-echarts'; // 当前 native；波次 1 改为 init / setOption
+import initWasm, { init as initChart } from '@wasm-echarts';
 ```
 
 会解析为：
 
 ```
 crates/wasm-zrender/js/index.js  →  ../pkg/wasm_zrender.js
-crates/wasm-echarts/pkg/wasm_echarts.js
+crates/wasm-echarts/js/index.js  →  ../pkg/wasm_echarts.js
 ```
 
 胶水 JS 再相对加载同目录的 `wasm_zrender_bg.wasm` / `wasm_echarts_bg.wasm`。`initWasm()`（wasm-bindgen 的 default export）负责实例化 WASM。
@@ -970,7 +967,7 @@ wasm-pack 生成的 `pkg/package.json`：
 {
   "dependencies": {
     "wasm-zrender": "file:../wasm-echarts-rs/crates/wasm-zrender/js",
-    "wasm-echarts": "file:../wasm-echarts-rs/crates/wasm-echarts/pkg"
+    "wasm-echarts": "file:../wasm-echarts-rs/crates/wasm-echarts/js"
   }
 }
 ```
@@ -979,12 +976,12 @@ wasm-pack 生成的 `pkg/package.json`：
 
 ```javascript
 import initZrender, { init, Rect } from 'wasm-zrender';
-import initEcharts, { init as initChart } from 'wasm-echarts'; // 目标；当前仍是 EChartsInstance
+import initEcharts, { init as initChart } from 'wasm-echarts';
 ```
 
-（具体子路径以该包 `main` 为准。）本仓库的 site 用 alias：`@wasm-zrender` → `js/`，`@wasm-echarts` **当前** → `pkg/wasm_echarts.js`（波次 1 改指 `js/`，与 zrender 相同）。改完 Rust 只需重新 wasm-pack。只改 `js/` 不必重编 WASM。
+（具体子路径以该包 `main` 为准。）本仓库的 site 用 alias：`@wasm-zrender` → `js/`，`@wasm-echarts` → `js/`。改完 Rust 只需重新 wasm-pack。只改 `js/` 不必重编 WASM。
 
-实例 JS 与 HTML 放在同一目录（如 `zrender/examples/shapes.js`、`echarts/examples/line.js`），画廊用 `?raw` 读取这份脚本作为源码展示。echarts 示例当前仍 `import { EChartsInstance }`；目标公开写法是 `init` + `setOption`。
+实例 JS 与 HTML 放在同一目录（如 `zrender/examples/shapes.js`、`echarts/examples/line.js`），画廊用 `?raw` 读取这份脚本作为源码展示。echarts 示例公开写法是 `init` + `setOption`。
 
 ---
 
@@ -1038,8 +1035,10 @@ npm run dev
 
 ### wasm-echarts
 
-对照 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](../.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md)。公开 JS facade、`setOption` 第二参数、事件总线见该计划波次 1–3；option 语义见波次 4。后置项不混进「已对齐」，但须出现在「未实现」表：
+对照 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](../.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md)。波次 1 facade 已落地；`setOption` 第二参数、事件总线见该计划波次 2–3；option 语义见波次 4。后置项不混进「已对齐」，但须出现在「未实现」表：
 
+- `getOption` / `clear` / `setOption` 第二参数（波次 2）
+- `on`/`off` 发出 click/mouseover（波次 3）；指针仍用 hatch
 - legend 绘制；dataZoom slider UI；pinch
 - axisPointer 十字 / 多轴；tooltip HTMLElement / confine / `trigger: 'axis'`
 - `axisLabel.formatter` 真正画轴；series label / labelLine

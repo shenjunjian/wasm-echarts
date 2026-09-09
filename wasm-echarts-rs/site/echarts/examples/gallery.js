@@ -49,15 +49,15 @@ mountExampleGallery(document.getElementById('app'), {
     },
     {
       id: 'merge',
-      title: 'set_option 合并 merge',
-      description: '二次 set_option 合并',
+      title: 'setOption 合并 merge',
+      description: '二次 setOption 合并',
       previewUrl: './merge.html',
       source: mergeSource,
     },
     {
       id: 'bench',
       title: '性能基准 bench',
-      description: 'benchmark_render 30 次均值',
+      description: 'benchmarkRender 30 次均值',
       previewUrl: './bench.html',
       source: benchSource,
     },

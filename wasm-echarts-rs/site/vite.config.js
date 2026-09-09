@@ -29,7 +29,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@wasm-zrender': resolve(repoRoot, 'crates/wasm-zrender/js'),
-      '@wasm-echarts': resolve(repoRoot, 'crates/wasm-echarts/pkg/wasm_echarts.js'),
+      '@wasm-echarts': resolve(repoRoot, 'crates/wasm-echarts/js'),
     },
   },
   assetsInclude: ['**/*.wasm'],
