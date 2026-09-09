@@ -130,7 +130,7 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 
 #### 1. 与官方一致的公开 API
 
-`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version`（`'6.1.0'`）/ `use`（只提示）；实例 `setOption(option)` / `setOption(option, notMerge | opts)` / `getOption` / `resize` / `clear` / `dispatchAction` / `getWidth` / `getHeight` / `getDevicePixelRatio` / `isDisposed` / `dispose` / `getDom` / `getId`。`init(canvas)` 后 `setOption` 自动上屏。
+`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version`（`'6.1.0'`）/ `use`（只提示）；实例 `setOption(option)` / `setOption(option, notMerge | opts)` / `getOption` / `resize` / `clear` / `dispatchAction` / `on` / `off` / `getWidth` / `getHeight` / `getDevicePixelRatio` / `isDisposed` / `dispose` / `getDom` / `getId`。`init(canvas)` 后 `setOption` 自动上屏，并绑定指针（`click` / `mouseover` / `mouseout` / `globalout`）。`dispatchAction` 已接线：`highlight` / `downplay` / `select` / `unselect` / `toggleSelect` / `dataZoom` / `showTip` / `hideTip`。
 
 #### 2. 与官方不一致 / 例外
 
@@ -142,21 +142,22 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 - `replaceMerge` 只按顶层 key 整段替换，不按 component `id`。
 - `lazyUpdate` / `silent` 同步 flush。
 - default export 是 wasm-bindgen `initWasm`，不是 echarts 命名空间对象。
+- tooltip 为 facade 内建简单 string HTML，不是官方 TooltipView。
 
 #### 3. 多出来的非官方 API
 
-因 WASM 离屏需要，**不要当官方 API 用**。`init(canvas)` 后普通用户不必再调 `refresh` / 手动 `putImageData`。
+因 WASM 离屏需要，**不要当官方 API 用**。`init(canvas)` 后普通用户不必再调 `refresh` / 手动 `putImageData`，也不必再绑指针或自绘 tooltip。
 
 | 方法 | 用途 |
 |------|------|
 | `refresh` | 返回 RGBA；离屏无 canvas 时用 |
-| `findHover` / `handlePointerMove` / `handlePointerLeave` | 指针 hatch（波次 3 由 `on`/`off` 消化） |
-| `applyDataZoomWheel` / `getTooltipContent` / `benchmarkRender` | dataZoom / 自绘 tooltip / bench |
+| `findHover` / `handlePointerMove` / `handlePointerLeave` | 非官方 hatch；`init(canvas)` 时一般不需要 |
+| `applyDataZoomWheel` / `getTooltipContent` / `benchmarkRender` | 非官方；滚轮已绑定、tooltip 已内建 DOM、bench |
 
 #### 4. 已实现 / 未实现
 
-- **已实现（部分生效）**：line / bar / pie / scatter；单 cartesian；inside dataZoom 滚轮；hover / toggleSelect；string tooltip；竖线 axisPointer。
-- **未实现**：legend / title / polar / gauge / 其余 chart、`connect`、主题、`getZr`、`getDataURL`、Loading、`showTip`/`hideTip`、完整 `convertToPixel`。详见 [AGENT.md](AGENT.md) 与 [echarts 文档](wasm-echarts-rs/site/echarts/docs/index.html)。
+- **已实现（部分生效）**：line / bar / pie / scatter；单 cartesian；inside dataZoom 滚轮；`on`/`off` 指针事件；内建 string tooltip；`showTip`/`hideTip`；hover / toggleSelect；竖线 axisPointer。
+- **未实现**：legend / title / polar / gauge / 其余 chart、`connect`、主题、`getZr`、`getDataURL`、Loading、完整 `convertToPixel`。详见 [AGENT.md](AGENT.md) 与 [echarts 文档](wasm-echarts-rs/site/echarts/docs/index.html)。
 
 native `EChartsInstance`（`wasm_echarts.d.ts`）是内部 handle，不要从 site 直接 `new`。
 
@@ -320,20 +321,21 @@ npm run dev
 </script>
 ```
 
-指针交互（hover / 点击 / 滚轮）目前由示例用 hatch 绑定：`handlePointerMove`、`findHover`、`dispatchAction`、`applyDataZoomWheel`。完整写法见 `site/echarts/examples/interactive.js`。波次 3 由 facade `on`/`off` 消化。
+`init(canvas)` 后 facade 绑定指针：hover 高亮、string tooltip、wheel dataZoom。用户写 `chart.on('click', handler)` 即可，不必再调 `handlePointerMove`。
 
 | 方法 | 说明 |
 |------|------|
-| `init(canvas, theme?, opts?)` | 创建实例；有 canvas 时 `setOption` 自动上屏 |
+| `init(canvas, theme?, opts?)` | 创建实例；有 canvas 时 `setOption` 自动上屏并绑指针 |
 | `setOption(option, notMerge? \| opts?)` | 设置 option 并重算图元；`notMerge` 不是 option 字段 |
 | `getOption()` | 已合并 option（函数字段保留） |
 | `resize(opts?)` | 无参读 canvas；或 `{ width, height, devicePixelRatio }` |
 | `clear()` | `setOption({ series: [] }, true)` |
+| `on` / `off` | `click` / `mouseover` / `mouseout` / `globalout` |
+| `dispatchAction(action)` | `toggleSelect` / `highlight` / `showTip` / `hideTip` 等 |
 | `refresh()` | 离屏绘制，返回 RGBA（非官方） |
-| `handlePointerMove(x, y)` | hover 高亮、axisPointer、tooltip 文本（非官方） |
+| `handlePointerMove(x, y)` | 非官方；`init(canvas)` 时一般不需要 |
 | `findHover(x, y)` | 命中检测（非官方） |
-| `dispatchAction(action)` | `toggleSelect` / `highlight` 等 |
-| `applyDataZoomWheel(x, deltaY)` | inside dataZoom（非官方） |
+| `applyDataZoomWheel(x, deltaY)` | 非官方；`init(canvas)` 时滚轮已绑定 |
 | `benchmarkRender(n)` | 渲染均值耗时（毫秒，非官方） |
 | `dispose()` | 释放实例 |
 
@@ -343,8 +345,8 @@ npm run dev
 
 - 图表类型：line / bar / pie / scatter
 - option 中的 JS 函数：`tooltip.formatter`、`label.formatter`、`itemStyle.color` 等
-- 交互：hover 命中检测、string tooltip、click `toggleSelect`、`highlight` / `downplay` action、inside dataZoom 滚轮
+- 交互：`init(canvas)` 绑指针、hover 命中检测、内建 string tooltip、`on('click')`、`showTip`/`hideTip`、`highlight` / `downplay`、inside dataZoom 滚轮
 - 仅 canvas 渲染，无动画中间帧
-- 公开 JS API：`init` / `setOption` / `getOption` / `resize` / `clear` / `dispose` / `use`（只提示）；事件总线仍在对齐中
+- 公开 JS API：`init` / `setOption` / `getOption` / `resize` / `clear` / `on` / `off` / `dispatchAction` / `dispose` / `use`（只提示）
 
 尚未完整实现 echarts 全量 API。已实现 / 未实现与例外见上文四块。

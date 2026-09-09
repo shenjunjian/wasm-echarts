@@ -28,57 +28,16 @@ async function main() {
   });
 
   const logEl = document.getElementById('log');
-  const tip = document.createElement('div');
-  tip.style.cssText =
-    'position:fixed;display:none;padding:6px 10px;background:rgba(50,50,50,0.9);color:#fff;font:12px/1.4 system-ui,sans-serif;border-radius:4px;pointer-events:none;white-space:nowrap;z-index:10;';
-  document.body.appendChild(tip);
-
-  canvas.addEventListener('mousemove', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const result = chart.handlePointerMove(
-      e.clientX - rect.left,
-      e.clientY - rect.top,
-    );
-
-    if (result?.tooltip) {
-      tip.innerHTML = result.tooltip;
-      tip.style.display = 'block';
-      tip.style.left = `${e.clientX + 12}px`;
-      tip.style.top = `${e.clientY + 12}px`;
-    } else {
-      tip.style.display = 'none';
-    }
-  });
-
-  canvas.addEventListener('mouseleave', () => {
-    chart.handlePointerLeave();
-    tip.style.display = 'none';
-  });
-
-  canvas.addEventListener('click', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const hit = chart.findHover(e.clientX - rect.left, e.clientY - rect.top);
-    if (hit?.seriesIndex == null || hit?.dataIndex == null) return;
-
+  chart.on('click', (params) => {
     chart.dispatchAction({
       type: 'toggleSelect',
-      seriesIndex: hit.seriesIndex,
-      dataIndex: hit.dataIndex,
+      seriesIndex: params.seriesIndex,
+      dataIndex: params.dataIndex,
     });
     if (logEl) {
-      logEl.textContent = `click select → seriesIndex=${hit.seriesIndex}, dataIndex=${hit.dataIndex}`;
+      logEl.textContent = `click select → seriesIndex=${params.seriesIndex}, dataIndex=${params.dataIndex}`;
     }
   });
-
-  canvas.addEventListener(
-    'wheel',
-    (e) => {
-      e.preventDefault();
-      const rect = canvas.getBoundingClientRect();
-      chart.applyDataZoomWheel(e.clientX - rect.left, e.deltaY);
-    },
-    { passive: false },
-  );
 }
 
 main();

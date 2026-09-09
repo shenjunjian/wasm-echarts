@@ -34,13 +34,15 @@ cd site && npm install && npm run dev
 
     <div class="doc-section">
       <h3>1. 与官方一致的公开 API</h3>
-      <p>可按官方文档调用（指针事件见后文）。</p>
+      <p>可按官方文档调用。</p>
       <ul>
-        <li><code>init(canvas, theme?, opts?)</code> — 创建实例；<code>init(null, null, { width, height, devicePixelRatio })</code> 允许离屏</li>
+        <li><code>init(canvas, theme?, opts?)</code> — 创建实例；<code>init(null, null, { width, height, devicePixelRatio })</code> 允许离屏。<code>init(canvas)</code> 后自动上屏，并绑定 mousemove / click / leave / wheel</li>
         <li><code>dispose(chart | canvas | id)</code> / <code>getInstanceByDom</code> / <code>getInstanceById</code></li>
         <li><code>version</code> — <code>'6.1.0'</code></li>
         <li><code>use(...)</code> — 导出且签名对齐，只打印提示，不按需加载</li>
-        <li>实例：<code>setOption(option)</code> / <code>setOption(option, notMerge | opts)</code> / <code>getOption</code> / <code>resize</code> / <code>clear</code> / <code>dispatchAction</code> / <code>getWidth</code> / <code>getHeight</code> / <code>getDevicePixelRatio</code> / <code>isDisposed</code> / <code>dispose</code> / <code>getDom</code> / <code>getId</code></li>
+        <li>实例：<code>setOption(option)</code> / <code>setOption(option, notMerge | opts)</code> / <code>getOption</code> / <code>resize</code> / <code>clear</code> / <code>dispatchAction</code> / <code>on</code> / <code>off</code> / <code>getWidth</code> / <code>getHeight</code> / <code>getDevicePixelRatio</code> / <code>isDisposed</code> / <code>dispose</code> / <code>getDom</code> / <code>getId</code></li>
+        <li>指针事件名：<code>click</code> / <code>mouseover</code> / <code>mouseout</code> / <code>globalout</code>（payload 含 <code>event</code>、<code>seriesIndex</code>、<code>dataIndex</code>）</li>
+        <li><code>dispatchAction</code>：<code>highlight</code> / <code>downplay</code> / <code>select</code> / <code>unselect</code> / <code>toggleSelect</code> / <code>dataZoom</code> / <code>showTip</code> / <code>hideTip</code></li>
       </ul>
       <pre>import initWasm, { init } from '@wasm-echarts';
 
@@ -52,9 +54,13 @@ canvas.height = 360;
 
 const chart = init(canvas);
 chart.setOption({
+  tooltip: { trigger: 'item' },
   xAxis: { type: 'category', data: ['Mon', 'Tue', 'Wed'] },
   yAxis: { type: 'value' },
   series: [{ type: 'line', name: '销量', data: [120, 200, 150] }],
+});
+chart.on('click', (params) => {
+  console.log(params.seriesIndex, params.dataIndex);
 });
 </pre>
     </div>
@@ -71,18 +77,19 @@ chart.setOption({
         <li><code>notMerge</code> 只作 <code>setOption</code> 第二参数；写在 option 根上不会当合并开关</li>
         <li><code>replaceMerge</code> 只按顶层 key 整段替换，不按 component <code>id</code></li>
         <li>default export 是 wasm-bindgen <code>initWasm</code>，不是 echarts 命名空间对象</li>
+        <li>tooltip 为 facade 内建简单 DOM（string HTML），不是官方 TooltipView；HTMLElement formatter 未实现</li>
       </ul>
     </div>
 
     <div class="doc-section">
       <h3>3. 多出来的非官方 API</h3>
-      <p>因 WASM 离屏需要。<strong>不要当官方 API 用</strong>。<code>init(canvas)</code> 后普通用户不必再手动 <code>putImageData</code>。指针事件仍靠 hatch（后续波次由 <code>on</code>/<code>off</code> 消化）。</p>
+      <p>因 WASM 离屏需要。<strong>不要当官方 API 用</strong>。<code>init(canvas)</code> 后普通用户不必再手动 <code>putImageData</code>，也不必再绑指针或自绘 tooltip。</p>
       <ul>
         <li><code>refresh()</code> — 离屏绘制，返回 RGBA</li>
-        <li><code>handlePointerMove(x, y)</code> / <code>handlePointerLeave()</code> — hover 高亮、axisPointer、tooltip 文本</li>
+        <li><code>handlePointerMove(x, y)</code> / <code>handlePointerLeave()</code> — 非官方；<code>init(canvas)</code> 时一般不需要</li>
         <li><code>findHover(x, y)</code> — 命中检测</li>
-        <li><code>applyDataZoomWheel(x, deltaY)</code> — inside dataZoom</li>
-        <li><code>getTooltipContent(si, di)</code> — 自绘 tooltip</li>
+        <li><code>applyDataZoomWheel(x, deltaY)</code> — 非官方；<code>init(canvas)</code> 时滚轮已绑定</li>
+        <li><code>getTooltipContent(si, di)</code> — 自绘 tooltip（string HTML）；<code>init(canvas)</code> 时 facade 已内建 DOM</li>
         <li><code>benchmarkRender(n)</code> — 渲染均值耗时（毫秒）</li>
       </ul>
     </div>
@@ -93,18 +100,18 @@ chart.setOption({
       <ul>
         <li>图表：line、bar、pie、scatter（feature flag 写死在 rust，不是 <code>echarts.use</code>）</li>
         <li>cartesian：单 x/y 轴；category / value；grid 边距</li>
-        <li>交互：hover 高亮、toggleSelect、wheel inside dataZoom、竖线 axisPointer、string tooltip</li>
+        <li>交互：<code>init(canvas)</code> 绑指针；hover 高亮、内建 string tooltip、<code>on('click')</code>、wheel inside dataZoom、竖线 axisPointer</li>
         <li>轴标签 Text（<code>axisLabel.formatter</code> 解析存在，轴侧调用待完善）</li>
-        <li><code>dispatchAction</code>：<code>highlight</code> / <code>downplay</code> / <code>select</code> / <code>unselect</code> / <code>toggleSelect</code> / <code>dataZoom</code></li>
+        <li><code>dispatchAction</code>：<code>highlight</code> / <code>downplay</code> / <code>select</code> / <code>unselect</code> / <code>toggleSelect</code> / <code>dataZoom</code> / <code>showTip</code> / <code>hideTip</code></li>
       </ul>
       <p><strong>未实现（后置，不混进「已对齐」）</strong></p>
       <ul>
         <li>Charts：Radar、Map、Gauge、Funnel、Heatmap、Custom <code>renderItem</code> 等其余类型</li>
         <li>Components：legend、title、toolbox、visualMap、geo、polar、graphic、brush、timeline、dataset</li>
-        <li>Actions：<code>showTip</code> / <code>hideTip</code>、legend*、restore 等</li>
+        <li>Actions：legend*、restore 等</li>
         <li><code>connect</code> / 主题 / <code>registerMap</code> / <code>getZr</code> / <code>getDataURL</code> / Loading / media query</li>
         <li>option 未按官方生效：pie <code>radius</code>/<code>center</code>、<code>symbol</code>/<code>symbolSize</code>、series label、多 grid / 双 y 轴</li>
-        <li><code>on</code>/<code>off</code> 尚未由指针触发</li>
+        <li>tooltip HTMLElement formatter / <code>confine</code> / <code>trigger: 'axis'</code></li>
       </ul>
     </div>
 

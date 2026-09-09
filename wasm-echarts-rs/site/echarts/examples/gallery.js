@@ -43,7 +43,7 @@ mountExampleGallery(document.getElementById('app'), {
     {
       id: 'interactive',
       title: '交互合集 interactive',
-      description: 'formatter tooltip + hover / select / zoom',
+      description: 'on(click) + 内建 tooltip / hover / wheel zoom',
       previewUrl: './interactive.html',
       source: interactiveSource,
     },

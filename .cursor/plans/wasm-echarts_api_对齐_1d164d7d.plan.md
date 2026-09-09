@@ -13,7 +13,7 @@ todos:
     status: completed
   - id: events-pointer
     content: on/off + init(canvas) 绑定指针与自动上屏；showTip/hideTip；非官方 hatch 仍导出并文档化
-    status: pending
+    status: completed
   - id: option-semantics
     content: 已有 4 类图：axisLabel.formatter、pie center/radius、symbol/symbolSize、label 图元、CallbackDataParams 补字段、convertToPixel 最小集
     status: pending

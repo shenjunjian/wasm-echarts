@@ -249,6 +249,20 @@ impl EChartsInstance {
                     self.render_and_apply_states();
                 }
             }
+            "showTip" => {
+                if let Some(target) = parse_data_target(&parsed) {
+                    self.interaction.set_hover(Some(target));
+                    self.render_and_apply_states();
+                } else if let (Some(x), Some(y)) = (
+                    parsed.get("x").and_then(|v| v.as_f64()),
+                    parsed.get("y").and_then(|v| v.as_f64()),
+                ) {
+                    let _ = self.handle_pointer_move(x, y);
+                }
+            }
+            "hideTip" => {
+                // tooltip DOM 由 JS facade 关闭；不改 hover（与官方 hideTip 一致）
+            }
             other => {
                 web_sys::console::warn_1(&JsValue::from_str(&format!(
                     "dispatchAction type '{other}' not implemented yet"
