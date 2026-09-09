@@ -50,7 +50,7 @@ mountExampleGallery(document.getElementById('app'), {
     {
       id: 'merge',
       title: 'setOption 合并 merge',
-      description: '二次 setOption 合并',
+      description: '二次 setOption 深合并 + getOption',
       previewUrl: './merge.html',
       source: mergeSource,
     },

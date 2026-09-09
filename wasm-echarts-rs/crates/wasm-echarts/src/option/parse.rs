@@ -53,3 +53,32 @@ fn parse_object(v: &JsValue) -> Result<OptionValue, JsValue> {
     }
     Ok(OptionValue::Object(map))
 }
+
+/// 把 OptionValue 转回普通 JS 值。函数字段保留为原 `Function`。
+pub fn option_value_to_js(value: &OptionValue) -> Result<JsValue, JsValue> {
+    match value {
+        OptionValue::Null => Ok(JsValue::NULL),
+        OptionValue::Bool(b) => Ok(JsValue::from(*b)),
+        OptionValue::Number(n) => Ok(JsValue::from(*n)),
+        OptionValue::String(s) => Ok(JsValue::from_str(s)),
+        OptionValue::Function(f) => Ok(JsValue::from(f.clone())),
+        OptionValue::Array(arr) => {
+            let out = Array::new_with_length(arr.len() as u32);
+            for (i, item) in arr.iter().enumerate() {
+                out.set(i as u32, option_value_to_js(item)?);
+            }
+            Ok(out.into())
+        }
+        OptionValue::Object(map) => {
+            let obj = Object::new();
+            for (key, val) in map {
+                Reflect::set(
+                    &obj,
+                    &JsValue::from_str(key),
+                    &option_value_to_js(val)?,
+                )?;
+            }
+            Ok(obj.into())
+        }
+    }
+}

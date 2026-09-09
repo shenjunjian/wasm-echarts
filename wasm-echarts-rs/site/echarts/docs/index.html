@@ -34,13 +34,13 @@ cd site && npm install && npm run dev
 
     <div class="doc-section">
       <h3>1. 与官方一致的公开 API</h3>
-      <p>可按官方文档调用（<code>setOption</code> 第二参数与指针事件见后文）。</p>
+      <p>可按官方文档调用（指针事件见后文）。</p>
       <ul>
         <li><code>init(canvas, theme?, opts?)</code> — 创建实例；<code>init(null, null, { width, height, devicePixelRatio })</code> 允许离屏</li>
         <li><code>dispose(chart | canvas | id)</code> / <code>getInstanceByDom</code> / <code>getInstanceById</code></li>
         <li><code>version</code> — <code>'6.1.0'</code></li>
         <li><code>use(...)</code> — 导出且签名对齐，只打印提示，不按需加载</li>
-        <li>实例：<code>setOption(option)</code> / <code>resize</code> / <code>dispatchAction</code> / <code>getWidth</code> / <code>getHeight</code> / <code>getDevicePixelRatio</code> / <code>isDisposed</code> / <code>dispose</code> / <code>getDom</code> / <code>getId</code></li>
+        <li>实例：<code>setOption(option)</code> / <code>setOption(option, notMerge | opts)</code> / <code>getOption</code> / <code>resize</code> / <code>clear</code> / <code>dispatchAction</code> / <code>getWidth</code> / <code>getHeight</code> / <code>getDevicePixelRatio</code> / <code>isDisposed</code> / <code>dispose</code> / <code>getDom</code> / <code>getId</code></li>
       </ul>
       <pre>import initWasm, { init } from '@wasm-echarts';
 
@@ -65,10 +65,11 @@ chart.setOption({
         <li><code>use(...)</code> 不加载模块，只 <code>console.info</code>：已开发的图表/组件都编进 WASM，不必 <code>use</code></li>
         <li><code>init(null)</code> 允许离屏（官方客户端无 dom 会抛错）</li>
         <li>仅 canvas；无 SVG / <code>renderToSVGString</code> / <code>getSvgDataURL</code></li>
-        <li>动画不播中间帧；<code>lazyUpdate</code> 同步执行</li>
+        <li>动画不播中间帧；<code>lazyUpdate</code> / <code>silent</code> 同步 flush</li>
         <li>字体须 <code>registerFont</code>；WASM 不读系统字体（尚未接到 wasm-echarts 模块）</li>
         <li><code>getZr()</code> 本波不导出（crate 隔离）</li>
-        <li><code>setOption</code> 第二参数 <code>notMerge</code> 尚未对齐；当前仍可能被当 option 根字段剥掉</li>
+        <li><code>notMerge</code> 只作 <code>setOption</code> 第二参数；写在 option 根上不会当合并开关</li>
+        <li><code>replaceMerge</code> 只按顶层 key 整段替换，不按 component <code>id</code></li>
         <li>default export 是 wasm-bindgen <code>initWasm</code>，不是 echarts 命名空间对象</li>
       </ul>
     </div>
@@ -103,7 +104,7 @@ chart.setOption({
         <li>Actions：<code>showTip</code> / <code>hideTip</code>、legend*、restore 等</li>
         <li><code>connect</code> / 主题 / <code>registerMap</code> / <code>getZr</code> / <code>getDataURL</code> / Loading / media query</li>
         <li>option 未按官方生效：pie <code>radius</code>/<code>center</code>、<code>symbol</code>/<code>symbolSize</code>、series label、多 grid / 双 y 轴</li>
-        <li><code>getOption</code> / <code>clear</code> / <code>setOption</code> 第二参数；<code>on</code>/<code>off</code> 尚未由指针触发</li>
+        <li><code>on</code>/<code>off</code> 尚未由指针触发</li>
       </ul>
     </div>
 

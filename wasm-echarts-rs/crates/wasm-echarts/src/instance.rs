@@ -6,7 +6,7 @@ use rust_zrender::{STATE_EMPHASIS, STATE_NORMAL, STATE_SELECT, ZRenderer};
 
 use crate::interaction::{DataTarget, InteractionState};
 use crate::model::GlobalModel;
-use crate::option::{parse_option_value, OptionModel, OptionValue};
+use crate::option::{parse_option_value, OptionModel, OptionValue, SetOptionFlags};
 use crate::scheduler::run_update;
 use crate::visual::VisualContext;
 
@@ -49,11 +49,17 @@ impl EChartsInstance {
         self.dpr
     }
 
-    pub fn set_option(&mut self, option: JsValue) -> Result<(), JsValue> {
-        self.option.set_option(&option)?;
+    /// `opts` 为官方第二参数：`boolean` 或 `{ notMerge, replaceMerge }`。可省略。
+    pub fn set_option(&mut self, option: JsValue, opts: Option<JsValue>) -> Result<(), JsValue> {
+        let flags = parse_set_option_flags(opts.as_ref())?;
+        self.option.set_option(&option, flags)?;
         self.interaction = InteractionState::from_option(&self.option);
         self.render_and_apply_states();
         Ok(())
+    }
+
+    pub fn get_option(&self) -> Result<JsValue, JsValue> {
+        self.option.to_js()
     }
 
     pub fn has_option(&self) -> bool {
@@ -310,6 +316,37 @@ impl EChartsInstance {
                 self.zr.set_path_state(i, state);
             }
         }
+    }
+}
+
+fn parse_set_option_flags(opts: Option<&JsValue>) -> Result<SetOptionFlags, JsValue> {
+    let Some(opts) = opts.filter(|v| !v.is_null() && !v.is_undefined()) else {
+        return Ok(SetOptionFlags::default());
+    };
+    if let Some(not_merge) = opts.as_bool() {
+        return Ok(SetOptionFlags {
+            not_merge,
+            ..Default::default()
+        });
+    }
+    let parsed = parse_option_value(opts)?;
+    Ok(SetOptionFlags {
+        not_merge: parsed
+            .get("notMerge")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false),
+        replace_merge: parse_replace_merge(parsed.get("replaceMerge")),
+    })
+}
+
+fn parse_replace_merge(value: Option<&OptionValue>) -> Vec<String> {
+    match value {
+        Some(OptionValue::String(s)) => vec![s.clone()],
+        Some(OptionValue::Array(arr)) => arr
+            .iter()
+            .filter_map(|v| v.as_str().map(str::to_string))
+            .collect(),
+        _ => Vec::new(),
     }
 }
 

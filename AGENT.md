@@ -190,9 +190,9 @@ site 示例 JS（创建 canvas；`echarts.init` / `setOption`）
 | **1 zrender P0** | Storage / Path / Painter / 基础 shape / brush | **已完成**。Rect/Circle/Line/Polygon/Polyline/Sector + fill/stroke/clip/transform/globalAlpha |
 | **2 后端补齐** | shadow、isPointInPath、r0、渐变/虚线/Image | **主体完成**。conic gradient、CSS filter **未做**（刻意忽略或待办） |
 | **3 交互基础** | Handler.findHover、ECData、emphasis/select | **已完成**。Path/Image/Text 均可命中 |
-| **4 JS 薄壳 + API 骨架** | init/setOption/resize/事件、`OptionValue` | **部分完成**。`js/` facade 已有 `init`/`setOption`/`dispose`/`use`；事件总线与 `setOption` 第二参数见对齐规划波次 2–3 |
+| **4 JS 薄壳 + API 骨架** | init/setOption/resize/事件、`OptionValue` | **部分完成**。`js/` facade 已有 `init`/`setOption(option, notMerge\|opts)`/`getOption`/`resize`/`clear`/`dispose`/`use`；事件总线见对齐规划波次 3 |
 | **4b 回调桥** | CallbackDataParams、call0/1/2 | **部分完成**。`formatter` / `itemStyle.color` 可用；`renderItem`/`api`、`axisLabel.formatter` 接入、per-series 缓存 **未完成** |
-| **5 echarts MVP** | GlobalModel、cartesian、line/bar、Scheduler | **部分完成**。line/bar 可渲染；SeriesData/Source 完整管道、media query、lazyUpdate/replaceMerge 完整语义 **未完成** |
+| **5 echarts MVP** | GlobalModel、cartesian、line/bar、Scheduler | **部分完成**。line/bar 可渲染；`replaceMerge` 仅为顶层 key 整段替换；SeriesData/Source 完整管道、media query **未完成** |
 | **6 交互完善** | hover/tooltip/dataZoom/axisPointer | **部分完成**。hover 高亮、toggleSelect、string tooltip、wheel inside dataZoom、竖线 axisPointer。pinch、slider、HTMLElement tooltip、十字/多轴 **未完成** |
 | **7 扩展与优化** | pie/scatter、RichText、脏矩形、视觉回归 | **部分完成**。pie/scatter、轴标签 Text、`benchmark_render`、feature flags。legend、gauge、polar、面积图、RichText、脏矩形、golden PNG **未完成** |
 
@@ -234,9 +234,9 @@ dispose(zr);
 
 `docs-site` / `demo-zrender` / `demo-echarts` 在规划 YAML 仍为 pending，**site 工程已落地**：首页缘由/限制 + 双产品文档/实例，实例页左源码右预览。
 
-### wasm-echarts API 规范对齐（波次 0–1 已完成）
+### wasm-echarts API 规范对齐（波次 0–2 已完成）
 
-规范已写入上文「目标与约束」；逐项清单以 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](../.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md) 为权威。JS facade 骨架在 `crates/wasm-echarts/js/`：`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version` / `use`（只 `console.info`）。site / README 从 `@wasm-echarts`（`js/index.js`）导入，`pkg/` 只作内部 handle。示例走官方 `init(canvas)` + `setOption`；`init(canvas)` 后自动 `putImageData`。波次 2：`setOption` 第二参数、`getOption`、`resize` 无参读 canvas、`clear`。波次 3：指针事件与 `on`/`off`。公开用法是官方 `init` / `setOption`，不要把 native `EChartsInstance` / `set_option` 当公开 API。
+规范已写入上文「目标与约束」；逐项清单以 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](../.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md) 为权威。JS facade 骨架在 `crates/wasm-echarts/js/`：`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version` / `use`（只 `console.info`）。site / README 从 `@wasm-echarts`（`js/index.js`）导入，`pkg/` 只作内部 handle。示例走官方 `init(canvas)` + `setOption`；`init(canvas)` 后自动 `putImageData`。波次 2：`setOption(option, notMerge | opts)`、`getOption`、`resize()` / `resize({ width, height, devicePixelRatio })`、`clear` = `setOption({ series: [] }, true)`；`notMerge` 只作第二参数，不再从 option 根读取。波次 3：指针事件与 `on`/`off`。公开用法是官方 `init` / `setOption`，不要把 native `EChartsInstance` / `set_option` 当公开 API。
 
 ---
 
@@ -571,7 +571,7 @@ chart-line, chart-bar, chart-pie, chart-scatter
 
 #### 1. 与官方一致的公开 API
 
-可按官方文档调用（签名对齐；未完成的第二参数 / 事件见不一致与未实现表）。
+可按官方文档调用（签名对齐；指针事件见不一致与未实现表）。
 
 | 导出 / 方法 | 签名 |
 |-------------|------|
@@ -580,13 +580,14 @@ chart-line, chart-bar, chart-pie, chart-scatter
 | `getInstanceByDom` / `getInstanceById` | 按 canvas / id 取回实例 |
 | `version` | `'6.1.0'` |
 | `use` | 导出且签名对齐；只 `console.info`，不加载模块 |
-| `setOption` | `setOption(option)`（第二参数 notMerge / opts 波次 2） |
-| `resize` | `resize()` / `resize({ width, height, devicePixelRatio })`；亦接受 native `resize(w, h, dpr)` |
+| `setOption` | `setOption(option)` / `setOption(option, notMerge, lazyUpdate?)` / `setOption(option, { notMerge, replaceMerge, silent, lazyUpdate })` |
+| `getOption` | 把已合并 option 转回普通 JSON；函数字段保留为原 Function |
+| `resize` | `resize()` 无参读 canvas；`resize({ width, height, devicePixelRatio })`；`'auto'` 回退到 canvas；亦接受 native `resize(w, h, dpr)` |
+| `clear` | `setOption({ series: [] }, true)` |
 | `getWidth` / `getHeight` / `getDevicePixelRatio` / `isDisposed` / `dispose` | 实例方法 |
 | `dispatchAction` | 已接线 type 用官方字符串（见硬规则） |
 | `getDom` / `getId` | `init` 后可取 |
 | `on` / `off` | 已导出；指针尚未绑定，事件不会因 hover/click 触发（波次 3） |
-| `getOption` / `clear` | 已导出同名，内部 `console.warn`（波次 2） |
 
 #### 2. 与官方不一致 / 例外
 
@@ -597,8 +598,9 @@ chart-line, chart-bar, chart-pie, chart-scatter
 | 动画 | 不播中间帧；`lazyUpdate` 同步执行 |
 | 渲染 | 仅 canvas；无 SVG / `renderToSVGString` / `getSvgDataURL` |
 | 字体 | 须 `registerFont`；WASM 不读系统字体 |
-| `notMerge` | 当前被当 option 根字段剥掉（错误，波次 2 改为第二参数） |
-| `replaceMerge` | 尚未按 component id 替换（波次 2 最小：顶层 key 整段替换） |
+| `notMerge` | 只作 `setOption` 第二参数；写在 option 根上不会当合并开关 |
+| `replaceMerge` | 只按**顶层 key**整段替换，不按 component `id`（比官方弱） |
+| `lazyUpdate` / `silent` | 同步 flush，忽略排队与静默 |
 | `getZr()` | 因 crate 隔离本波不导出 |
 
 #### 3. 多出来的非官方 API
@@ -656,7 +658,7 @@ Actions：`showTip`/`hideTip`（波次 3）、legend\*、restore、brush、timel
 |------|------|
 | `index.js` | 官方命名导出；`default` 仍是 `initWasm`；`version = '6.1.0'` |
 | `echarts.js` | `init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `use`（只提示）；实例表 |
-| `instance.js` | 包装 native `EChartsInstance`；camelCase；`init(canvas)` 后自动 `putImageData` |
+| `instance.js` | 包装 native `EChartsInstance`；camelCase；`setOption` 第二参数 / `getOption` / `clear` / `resize`；`init(canvas)` 后自动 `putImageData` |
 | `native.js` | 加载 `pkg/wasm_echarts.js` |
 | `wasm_echarts.js` | 兼容旧路径 `@wasm-echarts/wasm_echarts.js` |
 
@@ -665,7 +667,8 @@ Actions：`showTip`/`hideTip`（波次 3）、legend\*、restore、brush、timel
 | 方法 | 说明 |
 |------|------|
 | `new(width, height, dpr)` | 内部创建 `ZRenderer` |
-| `set_option(option)` | 解析 + merge，全量 render |
+| `set_option(option, opts?)` | 解析 + merge（`notMerge` / `replaceMerge` 来自第二参数），全量 render |
+| `get_option()` | 已合并 option 转回 JsValue（函数保留） |
 | `refresh()` | RGBA |
 | `resize(w, h, dpr)` | 改画布并重绘 |
 | `find_hover(x, y)` | `{ seriesIndex, dataIndex, pathIndex, ... }` |
@@ -685,7 +688,7 @@ Actions：`showTip`/`hideTip`（波次 3）、legend\*、restore、brush、timel
 - `OptionValue`：Null / Bool / Number / String / Array / Object / **Function**
 - `parse_option_value`：递归走 `JsValue`，不能用 serde 整包反序列化
 - `merge_option`：深合并；函数字段用新值覆盖；数组按 index 合并对象
-- `notMerge` 会替换整棵树；`lazyUpdate` / `replaceMerge` / `transition` 作为 meta 键剥掉（完整语义尚未做）
+- `setOption` 第二参数：`notMerge` 替换整棵树；`replaceMerge` 顶层 key 整段替换；不再从 option 根读取这些字段
 
 #### `bridge/` — 回调
 
@@ -865,7 +868,7 @@ site/
 |----|--------|
 | line / bar / pie / scatter | 对应 ChartView |
 | interactive | formatter tooltip + hover / select / wheel zoom |
-| merge | 二次 `setOption` 深合并 |
+| merge | 二次 `setOption` 深合并 + `getOption` |
 | bench | `benchmarkRender(30)` |
 
 规划里的独立 `function-option.html` 未单列，函数 option 合在 interactive。
@@ -1035,9 +1038,8 @@ npm run dev
 
 ### wasm-echarts
 
-对照 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](../.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md)。波次 1 facade 已落地；`setOption` 第二参数、事件总线见该计划波次 2–3；option 语义见波次 4。后置项不混进「已对齐」，但须出现在「未实现」表：
+对照 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](../.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md)。波次 2：`setOption` 第二参数 / `getOption` / `resize` / `clear` 已落地。事件总线见该计划波次 3；option 语义见波次 4。后置项不混进「已对齐」，但须出现在「未实现」表：
 
-- `getOption` / `clear` / `setOption` 第二参数（波次 2）
 - `on`/`off` 发出 click/mouseover（波次 3）；指针仍用 hatch
 - legend 绘制；dataZoom slider UI；pinch
 - axisPointer 十字 / 多轴；tooltip HTMLElement / confine / `trigger: 'axis'`

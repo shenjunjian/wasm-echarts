@@ -130,14 +130,17 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 
 #### 1. 与官方一致的公开 API
 
-`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version`（`'6.1.0'`）/ `use`（只提示）；实例 `setOption(option)` / `resize` / `dispatchAction` / `getWidth` / `getHeight` / `getDevicePixelRatio` / `isDisposed` / `dispose` / `getDom` / `getId`。`init(canvas)` 后 `setOption` 自动上屏。
+`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version`（`'6.1.0'`）/ `use`（只提示）；实例 `setOption(option)` / `setOption(option, notMerge | opts)` / `getOption` / `resize` / `clear` / `dispatchAction` / `getWidth` / `getHeight` / `getDevicePixelRatio` / `isDisposed` / `dispose` / `getDom` / `getId`。`init(canvas)` 后 `setOption` 自动上屏。
 
 #### 2. 与官方不一致 / 例外
 
 - `use(...)` 导出但不按需加载，只 `console.info` 提示已编进 WASM。
 - `init(null)` 允许离屏；仅 canvas，无 SVG。
 - 动画终态；`lazyUpdate` 同步；字体须 `registerFont`（尚未接到 wasm-echarts 模块）。
-- `getZr()` 本波不导出。`setOption` 第二参数 `notMerge` 波次 2；当前仍可能被当 option 根字段剥掉。
+- `getZr()` 本波不导出。
+- `notMerge` 只作 `setOption` 第二参数，写在 option 根上不会当合并开关。
+- `replaceMerge` 只按顶层 key 整段替换，不按 component `id`。
+- `lazyUpdate` / `silent` 同步 flush。
 - default export 是 wasm-bindgen `initWasm`，不是 echarts 命名空间对象。
 
 #### 3. 多出来的非官方 API
@@ -322,7 +325,10 @@ npm run dev
 | 方法 | 说明 |
 |------|------|
 | `init(canvas, theme?, opts?)` | 创建实例；有 canvas 时 `setOption` 自动上屏 |
-| `setOption(option)` | 设置 option 并重算图元 |
+| `setOption(option, notMerge? \| opts?)` | 设置 option 并重算图元；`notMerge` 不是 option 字段 |
+| `getOption()` | 已合并 option（函数字段保留） |
+| `resize(opts?)` | 无参读 canvas；或 `{ width, height, devicePixelRatio }` |
+| `clear()` | `setOption({ series: [] }, true)` |
 | `refresh()` | 离屏绘制，返回 RGBA（非官方） |
 | `handlePointerMove(x, y)` | hover 高亮、axisPointer、tooltip 文本（非官方） |
 | `findHover(x, y)` | 命中检测（非官方） |
@@ -339,6 +345,6 @@ npm run dev
 - option 中的 JS 函数：`tooltip.formatter`、`label.formatter`、`itemStyle.color` 等
 - 交互：hover 命中检测、string tooltip、click `toggleSelect`、`highlight` / `downplay` action、inside dataZoom 滚轮
 - 仅 canvas 渲染，无动画中间帧
-- 公开 JS API：`init` / `setOption` / `dispose` / `use`（只提示）；事件与 `setOption` 第二参数仍在对齐中
+- 公开 JS API：`init` / `setOption` / `getOption` / `resize` / `clear` / `dispose` / `use`（只提示）；事件总线仍在对齐中
 
 尚未完整实现 echarts 全量 API。已实现 / 未实现与例外见上文四块。

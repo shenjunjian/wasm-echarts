@@ -4,7 +4,14 @@ mod merge;
 mod parse;
 
 pub use merge::{merge_option, MergeMode};
-pub use parse::parse_option_value;
+pub use parse::{option_value_to_js, parse_option_value};
+
+/// `setOption` 第二参数（官方 `notMerge | SetOptionOpts`）
+#[derive(Debug, Clone, Default)]
+pub struct SetOptionFlags {
+    pub not_merge: bool,
+    pub replace_merge: Vec<String>,
+}
 
 use indexmap::IndexMap;
 use js_sys::Function;
@@ -97,20 +104,33 @@ impl OptionModel {
         }
     }
 
-    /// 解析 JsValue 并按 ECharts 规则合并
-    pub fn set_option(&mut self, option: &wasm_bindgen::JsValue) -> Result<(), wasm_bindgen::JsValue> {
+    /// 解析 JsValue；`notMerge` / `replaceMerge` 只来自第二参数，不从 option 根读取。
+    pub fn set_option(
+        &mut self,
+        option: &wasm_bindgen::JsValue,
+        flags: SetOptionFlags,
+    ) -> Result<(), wasm_bindgen::JsValue> {
         let incoming = parse_option_value(option)?;
-        let not_merge = incoming
-            .get("notMerge")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
-
-        if not_merge || self.is_empty() {
-            self.root = strip_meta_keys(incoming);
-        } else {
-            self.root = merge_option(&self.root, &incoming, MergeMode::default());
-        }
+        self.apply(incoming, flags);
         Ok(())
+    }
+
+    pub fn apply(&mut self, incoming: OptionValue, flags: SetOptionFlags) {
+        if flags.not_merge || self.is_empty() {
+            self.root = incoming;
+            return;
+        }
+        self.root = merge_option(
+            &self.root,
+            &incoming,
+            MergeMode {
+                replace_merge: flags.replace_merge,
+            },
+        );
+    }
+
+    pub fn to_js(&self) -> Result<wasm_bindgen::JsValue, wasm_bindgen::JsValue> {
+        option_value_to_js(&self.root)
     }
 
     pub fn clear(&mut self) {
@@ -118,23 +138,27 @@ impl OptionModel {
     }
 }
 
-/// 移除 setOption 元字段（notMerge / lazyUpdate / replaceMerge 等）
-fn strip_meta_keys(value: OptionValue) -> OptionValue {
-    const META_KEYS: &[&str] = &["notMerge", "lazyUpdate", "replaceMerge", "transition"];
-    match value {
-        OptionValue::Object(mut map) => {
-            for key in META_KEYS {
-                map.shift_remove(*key);
-            }
-            OptionValue::Object(map)
-        }
-        other => other,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn obj(pairs: Vec<(&str, OptionValue)>) -> OptionValue {
+        let mut m = IndexMap::new();
+        for (k, v) in pairs {
+            m.insert(k.into(), v);
+        }
+        OptionValue::Object(m)
+    }
+
+    fn series(name: &str, data: &[f64]) -> OptionValue {
+        obj(vec![
+            ("name", OptionValue::String(name.into())),
+            (
+                "data",
+                OptionValue::Array(data.iter().copied().map(OptionValue::Number).collect()),
+            ),
+        ])
+    }
 
     #[test]
     fn merge_deep_object() {
@@ -179,5 +203,141 @@ mod tests {
                 .and_then(|v| v.as_f64()),
             Some(20.0)
         );
+    }
+
+    #[test]
+    fn not_merge_replaces_entire_tree() {
+        let mut model = OptionModel::new();
+        model.apply(
+            obj(vec![
+                ("title", OptionValue::String("a".into())),
+                (
+                    "series",
+                    OptionValue::Array(vec![series("old", &[1.0, 2.0])]),
+                ),
+            ]),
+            SetOptionFlags::default(),
+        );
+        model.apply(
+            obj(vec![(
+                "series",
+                OptionValue::Array(vec![series("new", &[9.0])]),
+            )]),
+            SetOptionFlags {
+                not_merge: true,
+                ..Default::default()
+            },
+        );
+        assert!(model.root().get("title").is_none());
+        assert_eq!(
+            model
+                .root()
+                .get("series")
+                .and_then(|v| v.as_array())
+                .map(|a| a.len()),
+            Some(1)
+        );
+        assert_eq!(
+            model
+                .root()
+                .get("series")
+                .and_then(|v| v.as_array())
+                .and_then(|a| a[0].get("name"))
+                .and_then(|v| v.as_str()),
+            Some("new")
+        );
+    }
+
+    #[test]
+    fn not_merge_field_on_option_is_not_a_flag() {
+        let mut model = OptionModel::new();
+        model.apply(
+            obj(vec![
+                ("title", OptionValue::String("keep".into())),
+                (
+                    "series",
+                    OptionValue::Array(vec![series("old", &[1.0])]),
+                ),
+            ]),
+            SetOptionFlags::default(),
+        );
+        model.apply(
+            obj(vec![
+                ("notMerge", OptionValue::Bool(true)),
+                (
+                    "series",
+                    OptionValue::Array(vec![series("patched", &[2.0])]),
+                ),
+            ]),
+            SetOptionFlags::default(),
+        );
+        assert_eq!(
+            model.root().get("title").and_then(|v| v.as_str()),
+            Some("keep")
+        );
+        assert_eq!(
+            model.root().get("notMerge").and_then(|v| v.as_bool()),
+            Some(true)
+        );
+        assert_eq!(
+            model
+                .root()
+                .get("series")
+                .and_then(|v| v.as_array())
+                .and_then(|a| a[0].get("name"))
+                .and_then(|v| v.as_str()),
+            Some("patched")
+        );
+    }
+
+    #[test]
+    fn replace_merge_replaces_top_level_key() {
+        let mut model = OptionModel::new();
+        model.apply(
+            obj(vec![(
+                "series",
+                OptionValue::Array(vec![series("a", &[1.0]), series("b", &[2.0])]),
+            )]),
+            SetOptionFlags::default(),
+        );
+        model.apply(
+            obj(vec![(
+                "series",
+                OptionValue::Array(vec![series("only", &[3.0])]),
+            )]),
+            SetOptionFlags {
+                replace_merge: vec!["series".into()],
+                ..Default::default()
+            },
+        );
+        let series = model.root().get("series").and_then(|v| v.as_array()).unwrap();
+        assert_eq!(series.len(), 1);
+        assert_eq!(series[0].get("name").and_then(|v| v.as_str()), Some("only"));
+    }
+
+    #[test]
+    fn without_replace_merge_series_merges_by_index() {
+        let mut model = OptionModel::new();
+        model.apply(
+            obj(vec![(
+                "series",
+                OptionValue::Array(vec![series("a", &[1.0]), series("b", &[2.0])]),
+            )]),
+            SetOptionFlags::default(),
+        );
+        model.apply(
+            obj(vec![(
+                "series",
+                OptionValue::Array(vec![series("patched", &[9.0])]),
+            )]),
+            SetOptionFlags::default(),
+        );
+        let series = model.root().get("series").and_then(|v| v.as_array()).unwrap();
+        assert_eq!(series.len(), 2);
+        assert_eq!(
+            series[0].get("name").and_then(|v| v.as_str()),
+            Some("patched")
+        );
+        assert_eq!(series[1].get("name").and_then(|v| v.as_str()), Some("b"));
     }
 }

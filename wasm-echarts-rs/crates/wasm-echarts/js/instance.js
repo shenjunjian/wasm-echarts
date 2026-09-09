@@ -29,8 +29,56 @@ function isCanvas(dom) {
   return !!(dom && typeof dom.getContext === 'function');
 }
 
-function warnUnimplemented(name) {
-  console.warn(`[wasm-echarts] ${name} 未实现`);
+function toPositiveNumber(value) {
+  if (value == null) {
+    return undefined;
+  }
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) {
+    return undefined;
+  }
+  return n;
+}
+
+function resolveDim(value, fallback) {
+  if (value == null || value === 'auto') {
+    return fallback;
+  }
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) {
+    return fallback;
+  }
+  return Math.round(n);
+}
+
+function normalizeReplaceMerge(value) {
+  if (value == null) {
+    return [];
+  }
+  if (typeof value === 'string') {
+    return [value];
+  }
+  if (Array.isArray(value)) {
+    return value.filter((key) => typeof key === 'string');
+  }
+  return [];
+}
+
+/**
+ * 官方 `setOption(option, notMerge?, lazyUpdate?)` 或 `setOption(option, opts)`。
+ * `lazyUpdate` / `silent` 同步执行（立刻 flush）。
+ */
+function parseSetOptionFlags(notMergeOrOpts) {
+  if (notMergeOrOpts != null && typeof notMergeOrOpts === 'object') {
+    return {
+      notMerge: !!notMergeOrOpts.notMerge,
+      replaceMerge: normalizeReplaceMerge(notMergeOrOpts.replaceMerge),
+    };
+  }
+  return {
+    notMerge: !!notMergeOrOpts,
+    replaceMerge: [],
+  };
 }
 
 /**
@@ -114,52 +162,67 @@ export class ECharts {
   }
 
   /**
-   * 波次 1：只把 option 交给 native。第二参数 notMerge / opts 在波次 2 对齐。
+   * `setOption(option)` / `setOption(option, notMerge, lazyUpdate?)` /
+   * `setOption(option, { notMerge, replaceMerge, silent, lazyUpdate })`。
+   * `notMerge` 不是 option 里的字段。`lazyUpdate` 同步 flush。
    */
-  setOption(option) {
+  setOption(option, notMerge, lazyUpdate) {
     this._assertAlive();
-    this._native.set_option(option);
+    const flags = parseSetOptionFlags(notMerge);
+    this._native.set_option(option, {
+      notMerge: flags.notMerge,
+      replaceMerge: flags.replaceMerge,
+    });
     this._paintIfBound();
   }
 
   getOption() {
-    warnUnimplemented('getOption');
-    return undefined;
+    this._assertAlive();
+    return this._native.get_option();
   }
 
   /**
-   * `resize()` / `resize({ width, height, devicePixelRatio })`；
-   * 也接受 native 三位置参数 `resize(w, h, dpr)`。
+   * `resize()` 无参读 canvas；`resize({ width, height, devicePixelRatio })`；
+   * 也接受 native 三位置参数 `resize(w, h, dpr)`。`width`/`height` 为 `'auto'` 时回退到 canvas。
    */
   resize(opts, heightArg, dprArg) {
     this._assertAlive();
+    const currentW = this.getWidth();
+    const currentH = this.getHeight();
+    const currentDpr = this.getDevicePixelRatio();
+    const fromDom = () => {
+      if (!this._dom) {
+        return { width: currentW, height: currentH };
+      }
+      return {
+        width: this._dom.clientWidth || this._dom.width || currentW,
+        height: this._dom.clientHeight || this._dom.height || currentH,
+      };
+    };
+
     let width;
     let height;
-    let dpr;
+    let dpr = currentDpr;
     if (opts == null) {
-      if (this._dom) {
-        width = this._dom.clientWidth || this._dom.width || this.getWidth();
-        height = this._dom.clientHeight || this._dom.height || this.getHeight();
-      } else {
-        width = this.getWidth();
-        height = this.getHeight();
-      }
-      dpr = this.getDevicePixelRatio();
+      const size = fromDom();
+      width = size.width;
+      height = size.height;
     } else if (typeof opts === 'object') {
-      width = opts.width ?? this.getWidth();
-      height = opts.height ?? this.getHeight();
-      dpr = opts.devicePixelRatio ?? opts.dpr ?? this.getDevicePixelRatio();
+      const size = fromDom();
+      width = resolveDim(opts.width, size.width);
+      height = resolveDim(opts.height, size.height);
+      dpr = toPositiveNumber(opts.devicePixelRatio ?? opts.dpr) ?? currentDpr;
     } else {
-      width = opts;
-      height = heightArg ?? this.getHeight();
-      dpr = dprArg ?? this.getDevicePixelRatio();
+      width = resolveDim(opts, currentW);
+      height = resolveDim(heightArg, currentH);
+      dpr = toPositiveNumber(dprArg) ?? currentDpr;
     }
     this._native.resize(width, height, dpr);
     this._paintIfBound();
   }
 
   clear() {
-    warnUnimplemented('clear');
+    this.setOption({ series: [] }, true);
   }
 
   dispatchAction(payload) {

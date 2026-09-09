@@ -10,7 +10,7 @@ todos:
     status: completed
   - id: setoption-resize
     content: setOption 第二参数 notMerge/opts；getOption；resize(opts)；clear/isDisposed；修掉 option 根上剔 notMerge
-    status: pending
+    status: completed
   - id: events-pointer
     content: on/off + init(canvas) 绑定指针与自动上屏；showTip/hideTip；非官方 hatch 仍导出并文档化
     status: pending
