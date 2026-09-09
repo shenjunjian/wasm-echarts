@@ -1,24 +1,24 @@
 ---
 name: wasm-echarts API 对齐
-overview: 对照官方 echarts-master/src/core/echarts.ts 与 export/core.ts，当前 wasm-echarts 几乎没有公开 JS API 表面：只有 wasm-bindgen 的 EChartsInstance + snake_case。本计划先落硬规范与 JS facade（沿用 wasm-zrender 做法），把入口/实例方法对齐到官方命名与签名；图表 option 覆盖另列波次，不一次移植全量。
+overview: 对照官方 echarts-master/src/core/echarts.ts 与 export/core.ts，用 JS facade 把公开入口/实例方法对齐到官方命名与签名。WASM 不分包按需加载，echarts.use 只打印提示。与官方不一致处、多出来的非官方 API、已实现/未实现范围都写进文档。
 todos:
   - id: spec-agent
-    content: 把例外/必须一致/后置项写入 AGENT.md，替换 EChartsInstance 为唯一公开 API 的过时描述
+    content: 把例外/必须一致/后置项写入 AGENT.md；明确 use 只提示、公开 API 对齐、差异与非官方 API 必须文档化
     status: pending
   - id: facade-skeleton
-    content: 新建 js/ facade：init/dispose/实例表/version；Vite alias 改指 js/；示例改为官方 init + setOption
+    content: 新建 js/ facade：init/dispose/use（console 提示）/实例表/version；Vite alias 改指 js/；示例改为官方 init + setOption
     status: pending
   - id: setoption-resize
     content: setOption 第二参数 notMerge/opts；getOption；resize(opts)；clear/isDisposed；修掉 option 根上剔 notMerge
     status: pending
   - id: events-pointer
-    content: on/off + init(canvas) 绑定指针与自动上屏；showTip/hideTip；消化 handle_pointer_* 为内部
+    content: on/off + init(canvas) 绑定指针与自动上屏；showTip/hideTip；非官方 hatch 仍导出并文档化
     status: pending
   - id: option-semantics
     content: 已有 4 类图：axisLabel.formatter、pie center/radius、symbol/symbolSize、label 图元、CallbackDataParams 补字段、convertToPixel 最小集
     status: pending
   - id: docs-verify
-    content: 更新文档与全部 echarts 示例；手工走通 init/setOption 合并/notMerge/on click/dispatchAction/dispose
+    content: 文档写清：与官方一致/不一致、多出来的非官方 API、已实现与未实现；示例改走 init；手工验收
     status: pending
 isProject: false
 ---
@@ -49,10 +49,14 @@ echarts.dispose(chart);
 
 差距主要在 **公开 JS 表面**，不是「四个图表完全不能画」。line/bar/pie/scatter 的 option **形态**已经接近官方，但调用方式、方法名、第二参数、事件总线都未对齐。
 
+公开 JS API **尽量与官方同名同签名**。做不到或语义不同的，不改名糊弄，而是在文档写明。多出来的非官方方法也要文档列出，避免用户当官方 API 用。已实现 / 未实现（图表、组件、action、option 字段）单独成表，随实现更新。
+
+WASM 是整包模块，**不为减小体积做 `echarts.use` 动态加载**。`use` 仍导出（签名对齐），实现只 `console.info` 提示：已开发的图表/组件都编进 WASM 了，不必 `use`。
+
 ```mermaid
 flowchart TB
   site["site examples"] --> facade["js/index.js 公开 API"]
-  facade --> core["init dispose setOption on dispatchAction"]
+  facade --> core["init dispose use setOption on dispatchAction"]
   core --> native["pkg/wasm_echarts.js 内部 handle"]
   native --> rust["wasm-echarts rust: OptionModel + ChartView"]
   rust --> zr["rust-zrender ZRenderer"]
@@ -64,24 +68,34 @@ flowchart TB
 
 对齐 wasm-zrender 的写法：例外写死、必须一致可核对、后置项不混进「已对齐」。
 
-**允许例外（仅此五条）：**
+**允许例外（须在文档「与官方不一致」节列出）：**
 
-- 字体：WASM 不读系统字体；需要 `registerFont`（可挂在 echarts 命名空间，或文档写明走 rust-zrender 全局字体表）。
+- 字体：WASM 不读系统字体；需要 `registerFont`（可挂在 echarts 命名空间）。
 - 动画：不播中间帧；`setOption` / `animation` 直接终态。`lazyUpdate` 可同步执行（等价立刻 flush）。
-- 离屏：仅 canvas；`refresh()` 仍可作内部/逃逸 hatch 返回 RGBA。`init(canvas)` 自动 `putImageData`。无 SVG（`renderToSVGString` / `getSvgDataURL` 不实现）。
-- 宿主：`init(canvas, theme?, opts?)`；`init(null, null, { width, height, devicePixelRatio })` 允许离屏（官方客户端 `init` 无 dom 会抛错，这是 WASM 例外）。
-- 扩展系统不做：`use` / `registerPreprocessor` / `registerProcessor` / `registerLayout` / `registerVisual` / `registerCoordinateSystem` / `registerCustomSeries` / `extend*Model` 本波只做空实现或明确未导出。`getZr()` 因 crate 隔离（wasm-echarts 不依赖 wasm-zrender）本波不导出。
+- 离屏：仅 canvas；`init(canvas)` 自动 `putImageData`。无 SVG（`renderToSVGString` / `getSvgDataURL` 不实现，文档标明）。
+- 宿主：`init(canvas, theme?, opts?)`；`init(null, null, { width, height, devicePixelRatio })` 允许离屏（官方客户端无 dom 会抛错）。
+- `use(...)`：**导出且签名对齐**，但不按需加载。实现只打印提示（例如 `console.info`）：已开发的模块都在 WASM 里，不必 `use`。调用可忽略参数并立即返回。不为减小体积做动态 `use`。
+- `getZr()` 因 crate 隔离（wasm-echarts 不依赖 wasm-zrender）本波不导出，文档写「未实现」。
 
-**必须一致：**
+**必须一致（公开 JS 表面）：**
 
-- 公开入口与官方同构：`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version`（`'6.1.0'`）。
+- 入口：`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version`（`'6.1.0'`）/ `use`（提示实现）。
 - 实例方法 camelCase，签名对齐：`setOption` / `getOption` / `resize` / `dispatchAction` / `on` / `off` / `getWidth` / `getHeight` / `getDevicePixelRatio` / `isDisposed` / `clear` / `dispose`。
 - `setOption(option)` 与 `setOption(option, notMerge)` / `setOption(option, { notMerge, replaceMerge, silent })`。`notMerge` **不是** option 里的字段（当前 [`option/mod.rs`](wasm-echarts-rs/crates/wasm-echarts/src/option/mod.rs) 从 option 根上剥 `notMerge`，这是错的）。
 - `resize()` 无参（读 canvas 尺寸）与 `resize({ width, height, devicePixelRatio })`。
-- `init(canvas)` 后指针事件由 facade 绑定，用户不再手写 `handle_pointer_move`；发出官方事件名 `click` / `mouseover` / `mouseout` / `globalout`。
+- `init(canvas)` 后指针事件由 facade 绑定；发出官方事件名 `click` / `mouseover` / `mouseout` / `globalout`。
 - 已接线的 `dispatchAction` type 名保持官方字符串：`highlight` / `downplay` / `select` / `unselect` / `toggleSelect` / `dataZoom`；并补 `showTip` / `hideTip`。
 
-**本波不挡主路径（后置，不混进「已对齐」）：** `connect`/`disconnect`、`setTheme`/`registerTheme`、`registerMap`、`appendData`、`convertToPixel` 完整 finder、`getDataURL`/`renderToCanvas`、`showLoading`、`graphic`/`util`/`number`/`format` 命名空间、polar/gauge/其余 chart、legend 绘制、media query、完整 SeriesData、`getZr()`。
+**文档硬规则（与实现对齐同等重要）：**
+
+公开文档（[`site/echarts/docs/index.html`](wasm-echarts-rs/site/echarts/docs/index.html)、根 README、AGENT.md）必须始终有这四块，实现变更时同步改：
+
+1. **与官方一致的公开 API**：可按官方文档调用的方法与签名。
+2. **与官方不一致 / 例外**：`use` 提示语义、`init(null)`、无 SVG、动画终态、字体、`lazyUpdate` 同步等。
+3. **多出来的非官方 API**：`refresh`、`findHover` / `handlePointerMove` 等 WASM hatch；写清用途、何时该用、何时不该当官方 API。
+4. **已实现 / 未实现**：图表类型、组件、`dispatchAction` type、option 字段生效范围。未实现的官方方法仍尽量导出同名，内部 `console.warn` 并在此表标「未实现」。
+
+**本波不挡主路径（后置，不混进「已对齐」，但要出现在「未实现」表）：** `connect`/`disconnect`、`setTheme`/`registerTheme`、`registerMap`、`appendData`、`convertToPixel` 完整 finder、`getDataURL`/`renderToCanvas`、`showLoading`、`graphic`/`util`/`number`/`format` 命名空间、`registerPreprocessor` 等扩展注册、polar/gauge/其余 chart、legend 绘制、media query、完整 SeriesData、`getZr()`。
 
 ---
 
@@ -95,9 +109,10 @@ flowchart TB
 | `dispose(chart \| dom \| id)` | 仅实例 `dispose()`，无模块函数、无实例表 | 不一致 |
 | `getInstanceByDom` / `getInstanceById` | 无 | 不一致 |
 | `version` / `dependencies` | 无 | 不一致 |
-| `connect` / `disconnect` | 无 | 后置 |
-| `registerTheme` / `registerMap` / `getMap` / `registerLocale` | 无 | 后置 |
-| `use` / `registerAction` / `registerPreprocessor` / `registerProcessor` / `registerLayout` / `registerVisual` / `registerLoading` / `registerCoordinateSystem` / `registerCustomSeries` / `registerTransform` | 无 | 后置（扩展系统） |
+| `connect` / `disconnect` | 无 | 后置（文档标未实现） |
+| `registerTheme` / `registerMap` / `getMap` / `registerLocale` | 无 | 后置（文档标未实现） |
+| `use(...)` | 无 | **本波导出**：只 `console.info` 提示已编进 WASM，不必 `use` |
+| `registerAction` / `registerPreprocessor` / `registerProcessor` / `registerLayout` / `registerVisual` / `registerLoading` / `registerCoordinateSystem` / `registerCustomSeries` / `registerTransform` | 无 | 后置（文档标未实现；不为体积做动态加载） |
 | `setPlatformAPI` / `setCanvasCreator` | 无 | 后置；离屏不创建 DOM canvas |
 | `PRIORITY` / `dataTool` | 无 | 后置 |
 | `export/api.ts`：`graphic` `util` `number` `time` `format` `helper` `matrix` `vector` `color` `env` `parseGeoJSON` `Model` `ChartView`… | 无 | 后置（工具/扩展） |
@@ -122,11 +137,17 @@ flowchart TB
 | `getDataURL` / `getConnectedDataURL` / `renderToCanvas` / `renderToSVGString` | 无；有内部 `refresh()`→RGBA | `refresh` 作例外 hatch；DataURL 后置 |
 | `getZr` / `isSSR` / `updateLabelLayout` / `makeActionFromEvent` | 无 | 后置 / 不做 SSR |
 
-### 当前多出来的非官方 API（facade 内收，不要作为公开主表面）
+### 当前多出来的非官方 API（必须文档化）
 
-[`instance.rs`](wasm-echarts-rs/crates/wasm-echarts/src/instance.rs)：`refresh`、`find_hover`、`handle_pointer_move`、`handle_pointer_leave`、`apply_data_zoom_wheel`、`get_tooltip_content`、`benchmark_render`、`has_option`、`option_has_functions`。
+官方没有、本仓库因 WASM 离屏需要而多出来的方法，**不冒充官方 API**，但要在文档「多出来的非官方 API」里写清。
 
-这些可以继续作为 **native 内部方法**；facade 的 `init(canvas)` 消化指针与上屏。`benchmark_render` 可留在文档/bench 示例里从 native 调，或挂 `echarts.__native`。
+[`instance.rs`](wasm-echarts-rs/crates/wasm-echarts/src/instance.rs) 现有：`refresh`、`find_hover`、`handle_pointer_move`、`handle_pointer_leave`、`apply_data_zoom_wheel`、`get_tooltip_content`、`benchmark_render`、`has_option`、`option_has_functions`。
+
+处理原则：
+
+- **主路径消化**：`init(canvas)` 后自动上屏与绑指针，普通用户不必再调 `handle_pointer_*` / 手动 `putImageData`。
+- **仍公开并文档化**：离屏无 canvas、自绘 tooltip、bench 等场景需要 hatch。facade 用 camelCase 再导出一层（如 `refresh`、`findHover`、`handlePointerMove`、`handlePointerLeave`、`applyDataZoomWheel`、`getTooltipContent`、`benchmarkRender`），并注明「非官方」。
+- `registerFont` 同样是 WASM 例外，放进「与官方不一致」+「非官方补充」。
 
 ---
 
@@ -175,9 +196,19 @@ flowchart TB
 新建 [`wasm-echarts-rs/crates/wasm-echarts/js/`](wasm-echarts-rs/crates/wasm-echarts/js/)：
 
 - `index.js`：官方核心命名导出；`default` 仍是 wasm-bindgen `initWasm`。
-- `echarts.js`：`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version`；实例表。
-- `instance.js`：包装 native `EChartsInstance`；camelCase；Eventful 风格 `on`/`off`；`init(canvas)` 绑 pointer + 自动 `putImageData`；wheel → 内部 `apply_data_zoom_wheel`。
+- `echarts.js`：`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version` / `use`（只打印提示）；实例表。
+- `instance.js`：包装 native `EChartsInstance`；camelCase；Eventful 风格 `on`/`off`；`init(canvas)` 绑 pointer + 自动 `putImageData`；wheel → 内部 `apply_data_zoom_wheel`。非官方 hatch 亦 camelCase 导出。
 - 兼容：可再 `export { EChartsInstance }` 以免旧示例立刻碎，但文档与 site **改走官方写法**。
+
+`use` 实现约定（不要做动态 import / 不要按 feature 再编 wasm）：
+
+```javascript
+export function use() {
+  console.info(
+    '[wasm-echarts] 已开发的图表与组件都编进 WASM，无需 echarts.use(...)。'
+  );
+}
+```
 
 [`site/vite.config.js`](wasm-echarts-rs/site/vite.config.js) 的 `@wasm-echarts` 改为指向 `js/`（同 zrender）。native 仍是 `pkg/`。
 
@@ -191,14 +222,15 @@ Rust 侧用 `js_name` 或保留 snake_case 给 native、由 facade 翻译均可�
 
 ### 波次 0 — 规范落盘
 
-把上节写入 [`AGENT.md`](AGENT.md)「目标与约束」和「三、wasm-echarts」；本计划作为逐项清单。改掉「只有 EChartsInstance」的过时用法说明。
+把上节写入 [`AGENT.md`](AGENT.md)「目标与约束」和「三、wasm-echarts」；本计划作为逐项清单。改掉「只有 EChartsInstance」的过时用法说明。文档四块（一致 / 不一致 / 非官方 API / 已实现与未实现）先搭好标题，后续波次填表。
 
 ### 波次 1 — facade 骨架 + 入口
 
-- `init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version`。
+- `init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version` / `use`（`console.info` 提示，无加载逻辑）。
 - 实例：`setOption`→native `set_option`，`resize`/`getWidth`/`getHeight`/`dispose` 转调。
 - `init(canvas)` 自动上屏（与 zrender 相同例外）。
-- site：[`bar.js`](wasm-echarts-rs/site/echarts/examples/bar.js) 等改为官方写法；临时可内部仍 `refresh` 一次以验证。
+- 非官方 hatch 同步 camelCase 导出，并在文档列名。
+- site：[`bar.js`](wasm-echarts-rs/site/echarts/examples/bar.js) 等改为官方写法。
 
 ### 波次 2 — `setOption` / `resize` 签名
 
@@ -206,14 +238,15 @@ Rust 侧用 `js_name` 或保留 snake_case 给 native、由 facade 翻译均可�
 - `getOption()`：把 `OptionValue` 转回普通 JSON（函数字段可省略或保留为原 Function）。
 - `resize()` / `resize({ width, height, devicePixelRatio })`；有 canvas 时无参读 `clientWidth/Height`。
 - `clear` = `setOption({ series: [] }, true)`；`isDisposed`。
-- `replaceMerge` 最小：顶层 key 整段替换（比官方按 id 弱，文档标明）。
+- `replaceMerge` 最小：顶层 key 整段替换（比官方按 id 弱，**文档标不一致**）。
 
-### 波次 3 — 事件 + 指针（消化非官方方法）
+### 波次 3 — 事件 + 指针（主路径消化，hatch 仍文档化）
 
 - facade `on`/`off`：`click`、`mouseover`、`mouseout`、`globalout`。
 - `init(canvas)`：mousemove/click/leave/wheel 全部进 facade；payload 尽量像官方 `ECElementEvent`（`event`、`seriesIndex`、`dataIndex`）。
-- tooltip：facade 内建简单 DOM（string HTML），用户不必再抄 [`interactive.js`](wasm-echarts-rs/site/echarts/examples/interactive.js) 那套 `handle_pointer_move`。HTMLElement formatter 仍后置。
+- tooltip：facade 内建简单 DOM（string HTML），用户不必再抄 [`interactive.js`](wasm-echarts-rs/site/echarts/examples/interactive.js) 那套 `handlePointerMove`。HTMLElement formatter 仍后置。
 - `dispatchAction({ type: 'showTip' | 'hideTip', seriesIndex, dataIndex })`。
+- `handlePointerMove` 等仍导出，文档写「非官方；init(canvas) 时一般不需要」。
 
 ### 波次 4 — 已支持图表的 option 语义（画出来就错的字段）
 
@@ -228,10 +261,18 @@ Rust 侧用 `js_name` 或保留 snake_case 给 native、由 facade 翻译均可�
 
 ### 波次 5 — 文档与验收
 
-- [`site/echarts/docs/index.html`](wasm-echarts-rs/site/echarts/docs/index.html)、根 README、AGENT.md 全部改成 `echarts.init`。
-- 示例：line/bar/pie/scatter/interactive/merge/bench 走 facade；interactive 不再调用 `handle_pointer_*`。
-- 手工：`init(canvas)` 出图、二次 `setOption` 合并、`notMerge: true`、click `on`、`dispatchAction('toggleSelect')`、wheel dataZoom、dispose 后再 init。
+文档必须写清四块（site 文档页为主，README / AGENT.md 同步）：
 
-### 明确仍后置（不进本计划验收）
+- **与官方一致**：`init` / `setOption` / `resize` / `dispatchAction` / `on` / `off` / `dispose` / `use`（仅提示）等可照官方调用的部分。
+- **与官方不一致**：`use` 不加载模块、`init(null)`、动画终态、仅 canvas、字体、`lazyUpdate` 同步、`replaceMerge` 弱语义等。
+- **多出来的非官方 API**：`refresh`、`findHover`、`handlePointerMove`、`handlePointerLeave`、`applyDataZoomWheel`、`getTooltipContent`、`benchmarkRender`、`registerFont` 等。
+- **已实现 / 未实现**：line/bar/pie/scatter 与哪些 option 字段生效；legend/polar/其余 chart/`getZr`/`connect` 等标未实现。
 
-legend / title / polar / gauge / 面积图 / Custom `renderItem` / media / SeriesData 全管道 / `getZr` / `connect` / 主题 / `getDataURL` / Loading / 其余 20 种 chart。需要时另开计划，与「API 已对齐」分开说。
+其它：
+
+- 示例：line/bar/pie/scatter/interactive/merge/bench 走 facade；interactive 优先 `on('click')`，不必再调 `handlePointer*`。
+- 手工：`init(canvas)` 出图、二次 `setOption` 合并、`notMerge: true`、click `on`、`echarts.use()` 只出提示、`dispatchAction('toggleSelect')`、wheel dataZoom、dispose 后再 init。
+
+### 明确仍后置（不进本计划验收，但进「未实现」表）
+
+legend / title / polar / gauge / 面积图 / Custom `renderItem` / media / SeriesData 全管道 / `getZr` / `connect` / 主题 / `getDataURL` / Loading / 其余 20 种 chart / `registerPreprocessor` 等扩展注册。需要时另开计划，与「公开 API 已对齐」分开说。
