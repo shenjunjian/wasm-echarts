@@ -17,19 +17,19 @@
 
   <main class="page">
     <h1>wasm-echarts</h1>
-    <p class="lead">图表 option 管线 WASM 实现。实例直接 <code>import { EChartsInstance } from '@wasm-echarts'</code>，再 <code>set_option</code> / <code>refresh</code> 上屏。</p>
+    <p class="lead">图表 option 管线 WASM 实现。公开 API 对齐官方 <code>init</code> / <code>setOption</code>（JS facade 进行中）。当前实例仍走 native <code>EChartsInstance</code>。</p>
 
     <div class="card-grid">
       <article class="card">
         <h3>文档</h3>
-        <p>快速开始、setOption、函数回调、feature flags 与官方差异。</p>
+        <p>快速开始、与官方一致/不一致、非官方 API、已实现与未实现。</p>
         <div class="card-actions">
           <a class="btn btn-primary" href="./docs/">阅读文档</a>
         </div>
       </article>
       <article class="card">
         <h3>实例</h3>
-        <p>折线、柱状、饼图、散点及交互、set_option 合并等；每个示例 JS 完整独立。</p>
+        <p>折线、柱状、饼图、散点及交互、option 合并等；每个示例 JS 完整独立。</p>
         <div class="card-actions">
           <a class="btn btn-primary" href="./examples/">浏览实例</a>
         </div>

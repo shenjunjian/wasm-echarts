@@ -4,7 +4,7 @@ overview: 对照官方 echarts-master/src/core/echarts.ts 与 export/core.ts，�
 todos:
   - id: spec-agent
     content: 把例外/必须一致/后置项写入 AGENT.md；明确 use 只提示、公开 API 对齐、差异与非官方 API 必须文档化
-    status: pending
+    status: completed
   - id: facade-skeleton
     content: 新建 js/ facade：init/dispose/use（console 提示）/实例表/version；Vite alias 改指 js/；示例改为官方 init + setOption
     status: pending

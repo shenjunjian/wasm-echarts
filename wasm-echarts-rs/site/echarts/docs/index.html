@@ -17,7 +17,11 @@
 
   <main class="page page-narrow">
     <h1>wasm-echarts 文档</h1>
-    <p class="lead">在浏览器侧对齐 ECharts canvas 模式的核心用法。每个实例都是完整独立脚本，直接 import <code>@wasm-echarts</code>。</p>
+    <p class="lead">
+      公开 JS API 对齐官方 ECharts canvas 用法（<code>init</code> / <code>setOption</code>）。
+      JS facade 尚未落地；当前实例仍 import native <code>EChartsInstance</code>。
+      逐项清单见仓库 <code>.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md</code>。
+    </p>
 
     <div class="doc-section">
       <h3>快速开始</h3>
@@ -29,7 +33,33 @@ cd site && npm install && npm run dev
     </div>
 
     <div class="doc-section">
-      <h3>EChartsInstance API</h3>
+      <h3>1. 与官方一致的公开 API</h3>
+      <p>下列为目标签名（须与官方同名同签名）。<strong>当前不可按此调用</strong>；波次 1 起由 <code>js/</code> facade 落地。</p>
+      <ul>
+        <li><code>init(canvas, theme?, opts?)</code> — 创建实例；<code>init(null, null, { width, height, devicePixelRatio })</code> 允许离屏</li>
+        <li><code>dispose(chart | canvas | id)</code> / <code>getInstanceByDom</code> / <code>getInstanceById</code></li>
+        <li><code>version</code> — <code>'6.1.0'</code></li>
+        <li><code>use(...)</code> — 导出且签名对齐，只打印提示，不按需加载</li>
+        <li>实例：<code>setOption</code> / <code>getOption</code> / <code>resize</code> / <code>dispatchAction</code> / <code>on</code> / <code>off</code> / <code>getWidth</code> / <code>getHeight</code> / <code>getDevicePixelRatio</code> / <code>isDisposed</code> / <code>clear</code> / <code>dispose</code></li>
+      </ul>
+    </div>
+
+    <div class="doc-section">
+      <h3>2. 与官方不一致 / 例外</h3>
+      <ul>
+        <li><code>use(...)</code> 不加载模块，只 <code>console.info</code>：已开发的图表/组件都编进 WASM，不必 <code>use</code></li>
+        <li><code>init(null)</code> 允许离屏（官方客户端无 dom 会抛错）</li>
+        <li>仅 canvas；无 SVG / <code>renderToSVGString</code> / <code>getSvgDataURL</code></li>
+        <li>动画不播中间帧；<code>lazyUpdate</code> 同步执行</li>
+        <li>字体须 <code>registerFont</code>；WASM 不读系统字体</li>
+        <li><code>getZr()</code> 本波不导出（crate 隔离）</li>
+        <li><code>notMerge</code> 当前被当 option 根字段剥掉（错误，将改为第二参数）</li>
+      </ul>
+    </div>
+
+    <div class="doc-section">
+      <h3>3. 多出来的非官方 API</h3>
+      <p>因 WASM 离屏需要。<strong>不要当官方 API 用</strong>。<code>init(canvas)</code> 落地后，普通用户不必再调指针 hatch / 手动 <code>putImageData</code>。</p>
       <pre>import initWasm, { EChartsInstance } from '@wasm-echarts';
 
 await initWasm();
@@ -55,14 +85,35 @@ ctx.putImageData(
   0,
 );</pre>
       <ul>
-        <li><code>new EChartsInstance(w, h, dpr)</code> — 创建实例</li>
-        <li><code>set_option(option)</code> — 设置 option 并重算图元</li>
+        <li><code>new EChartsInstance(w, h, dpr)</code> — native 构造（目标：<code>init</code>）</li>
+        <li><code>set_option(option)</code> — 设置 option（目标：<code>setOption</code>）</li>
         <li><code>refresh()</code> — 离屏绘制，返回 RGBA</li>
         <li><code>handle_pointer_move(x, y)</code> / <code>handle_pointer_leave()</code> — hover 高亮、axisPointer、tooltip 文本</li>
         <li><code>find_hover(x, y)</code> — 命中检测</li>
         <li><code>dispatch_action(action)</code> — <code>toggleSelect</code> / <code>highlight</code> 等</li>
         <li><code>apply_data_zoom_wheel(x, deltaY)</code> — inside dataZoom</li>
+        <li><code>get_tooltip_content(si, di)</code> — 自绘 tooltip</li>
         <li><code>benchmark_render(n)</code> — 渲染均值耗时（毫秒）</li>
+      </ul>
+    </div>
+
+    <div class="doc-section">
+      <h3>4. 已实现 / 未实现</h3>
+      <p><strong>已实现（部分生效）</strong></p>
+      <ul>
+        <li>图表：line、bar、pie、scatter（feature flag 写死在 rust，不是 <code>echarts.use</code>）</li>
+        <li>cartesian：单 x/y 轴；category / value；grid 边距</li>
+        <li>交互：hover 高亮、toggleSelect、wheel inside dataZoom、竖线 axisPointer、string tooltip</li>
+        <li>轴标签 Text（<code>axisLabel.formatter</code> 解析存在，轴侧调用待完善）</li>
+        <li><code>dispatchAction</code>：<code>highlight</code> / <code>downplay</code> / <code>select</code> / <code>unselect</code> / <code>toggleSelect</code> / <code>dataZoom</code></li>
+      </ul>
+      <p><strong>未实现（后置，不混进「已对齐」）</strong></p>
+      <ul>
+        <li>Charts：Radar、Map、Gauge、Funnel、Heatmap、Custom <code>renderItem</code> 等其余类型</li>
+        <li>Components：legend、title、toolbox、visualMap、geo、polar、graphic、brush、timeline、dataset</li>
+        <li>Actions：<code>showTip</code> / <code>hideTip</code>、legend*、restore 等</li>
+        <li><code>connect</code> / 主题 / <code>registerMap</code> / <code>getZr</code> / <code>getDataURL</code> / Loading / media query</li>
+        <li>option 未按官方生效：pie <code>radius</code>/<code>center</code>、<code>symbol</code>/<code>symbolSize</code>、series label、多 grid / 双 y 轴</li>
       </ul>
     </div>
 
@@ -73,24 +124,6 @@ ctx.putImageData(
         在渲染/交互阶段回调。含函数的 option 见
         <a href="../examples/interactive.html">交互合集</a>。
       </p>
-    </div>
-
-    <div class="doc-section">
-      <h3>已支持图表与交互（MVP）</h3>
-      <ul>
-        <li>图表：line、bar、pie、scatter</li>
-        <li>交互：hover 高亮、toggleSelect、wheel dataZoom、axisPointer 竖线、string tooltip</li>
-        <li>轴标签 Text 渲染（formatter 解析存在，轴侧调用待完善）</li>
-      </ul>
-    </div>
-
-    <div class="doc-section">
-      <h3>与官方 ECharts 差异</h3>
-      <ul>
-        <li>无 SVG、无动画过渡、legend / dataZoom 滑块未绘制</li>
-        <li>series label、RichText、gauge、polar 等待实现</li>
-        <li>tooltip 暂不支持 HTMLElement 返回值；DOM tooltip 由示例自行定位</li>
-      </ul>
     </div>
   </main>
 </body>
