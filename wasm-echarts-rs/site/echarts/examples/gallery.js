@@ -9,13 +9,13 @@ import benchSource from './bench.js?raw';
 
 mountExampleGallery(document.getElementById('app'), {
   title: 'wasm-echarts 实例',
-  description: '左侧切换示例，右侧查看完整接入代码与 iframe 预览。',
+  description: '每个示例是完整独立脚本，直接 import @wasm-echarts。右侧查看源码与 iframe 预览。',
   defaultId: 'line',
   examples: [
     {
       id: 'line',
       title: '折线图 line',
-      description: 'category 轴 + inside dataZoom',
+      description: 'category 轴折线图',
       previewUrl: './line.html',
       source: lineSource,
     },
@@ -29,7 +29,7 @@ mountExampleGallery(document.getElementById('app'), {
     {
       id: 'pie',
       title: '饼图 pie',
-      description: '扇区 + tooltip',
+      description: '扇区饼图',
       previewUrl: './pie.html',
       source: pieSource,
     },
@@ -49,8 +49,8 @@ mountExampleGallery(document.getElementById('app'), {
     },
     {
       id: 'merge',
-      title: 'setOption 合并 merge',
-      description: '二次 setOption 演示',
+      title: 'set_option 合并 merge',
+      description: '二次 set_option 合并',
       previewUrl: './merge.html',
       source: mergeSource,
     },

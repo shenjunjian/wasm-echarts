@@ -29,12 +29,12 @@ export default defineConfig({
   resolve: {
     alias: {
       '@wasm-zrender': resolve(repoRoot, 'crates/wasm-zrender/js'),
-      '@wasm-echarts': resolve(repoRoot, 'crates/wasm-echarts/pkg'),
+      '@wasm-echarts': resolve(repoRoot, 'crates/wasm-echarts/pkg/wasm_echarts.js'),
     },
   },
   assetsInclude: ['**/*.wasm'],
   optimizeDeps: {
-    exclude: ['@wasm-zrender', '@wasm-echarts/wasm_echarts.js'],
+    exclude: ['@wasm-zrender', '@wasm-echarts'],
   },
   plugins: [
     {

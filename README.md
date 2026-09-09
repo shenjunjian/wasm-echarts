@@ -24,7 +24,7 @@ wasm-echarts/
 │   ├── site/                     # 文档站（Vite 多页 + 实例）
 │   │   ├── index.html
 │   │   ├── main.js
-│   │   └── js/echarts.js         # 对齐 echarts 的 JS 薄壳
+│   │   └── echarts/examples/     # 每个示例直接 import @wasm-echarts
 │   └── crates/
 │       ├── rust-zrender/         # 纯 Rust lib：zrender 渲染核心（底层依赖）
 │       ├── wasm-zrender/         # wasm-pack：对齐 zrender export.ts 的 init/Group/Rect API
@@ -269,65 +269,53 @@ npm run dev
 - echarts 实例：http://127.0.0.1:5173/echarts/examples/
 - zrender 实例：http://127.0.0.1:5173/zrender/examples/
 
-### 2. 在页面中接入（推荐 JS 薄壳）
+### 2. 在页面中接入（`@wasm-echarts`）
 
-引用 `site/src/echarts/echarts.js`（或构建产物），它封装了 canvas 创建、像素绘制、resize、事件与 tooltip：
+文档站实例都是完整独立脚本，直接使用包导出的 `EChartsInstance`。site 通过 Vite alias `@wasm-echarts` 指向 `crates/wasm-echarts/pkg/wasm_echarts.js`。
 
 ```html
-<div id="chart" style="width:480px;height:360px"></div>
+<canvas id="canvas"></canvas>
 <script type="module">
-  import echarts from './js/echarts.js';
+  import initWasm, { EChartsInstance } from '@wasm-echarts';
 
-  const chart = await echarts.init(document.getElementById('chart'), {
-    renderer: 'canvas', // 目前仅支持 canvas
-  });
+  await initWasm();
 
-  chart.setOption({
+  const canvas = document.getElementById('canvas');
+  const width = 480;
+  const height = 360;
+  canvas.width = width;
+  canvas.height = height;
+
+  const chart = new EChartsInstance(width, height, 1);
+  chart.set_option({
     xAxis: { type: 'category', data: ['Mon', 'Tue', 'Wed'] },
     yAxis: { type: 'value' },
     series: [{ type: 'line', name: '销量', data: [120, 200, 150] }],
   });
 
-  chart.on('click', ({ hit }) => {
-    console.log(hit);
-  });
+  const rgba = chart.refresh();
+  const ctx = canvas.getContext('2d');
+  ctx.putImageData(
+    new ImageData(new Uint8ClampedArray(rgba), chart.width(), chart.height()),
+    0,
+    0,
+  );
 </script>
 ```
 
-薄壳 API 与 echarts canvas 模式对齐：
+指针交互（hover / 点击 / 滚轮）由示例自行绑定：`handle_pointer_move`、`find_hover`、`dispatch_action`、`apply_data_zoom_wheel`。完整写法见 `site/echarts/examples/interactive.js`。
 
 | 方法 | 说明 |
 |------|------|
-| `echarts.init(dom, opts?)` | 初始化，返回 Promise\<Chart\> |
-| `chart.setOption(option, opts?)` | 设置 option 并立即重绘 |
-| `chart.resize(opts?)` | 按容器或指定宽高重绘（内置 ResizeObserver） |
-| `chart.on(type, handler)` | 监听 `click` / `mouseover` / `mouseout` |
-| `chart.dispatchAction(action)` | 转发至 WASM |
-| `chart.getOption()` | 返回 `{ hasOption, hasFunctions }` |
-| `chart.dispose()` | 销毁实例 |
-
-### 3. 直接使用 WASM 包（无薄壳）
-
-适合自定义渲染管线（例如自行管理 canvas / WebGL）：
-
-```javascript
-import initWasm, { EChartsInstance } from './pkg/wasm_echarts.js';
-
-await initWasm();
-
-const w = 480, h = 360, dpr = window.devicePixelRatio || 1;
-const instance = new EChartsInstance(w, h, dpr);
-
-instance.set_option({
-  xAxis: { type: 'category', data: ['A', 'B', 'C'] },
-  yAxis: { type: 'value' },
-  series: [{ type: 'bar', data: [10, 20, 30] }],
-});
-
-const rgba = instance.refresh(); // Uint8Array，长度 w*h*dpr*dpr*4
-const ctx = canvas.getContext('2d');
-ctx.putImageData(new ImageData(new Uint8ClampedArray(rgba), w * dpr, h * dpr), 0, 0);
-```
+| `new EChartsInstance(w, h, dpr)` | 创建实例 |
+| `set_option(option)` | 设置 option 并重算图元 |
+| `refresh()` | 离屏绘制，返回 RGBA `Uint8Array` |
+| `handle_pointer_move(x, y)` | hover 高亮、axisPointer、tooltip 文本 |
+| `find_hover(x, y)` | 命中检测 |
+| `dispatch_action(action)` | `toggleSelect` / `highlight` 等 |
+| `apply_data_zoom_wheel(x, deltaY)` | inside dataZoom |
+| `benchmark_render(n)` | 渲染均值耗时（毫秒） |
+| `dispose()` | 释放 option |
 
 修改 Rust 源码后需重新执行 `wasm-pack build`，浏览器侧硬刷新（Ctrl+Shift+R）即可加载新 wasm。
 

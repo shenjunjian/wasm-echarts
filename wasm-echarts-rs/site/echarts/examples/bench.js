@@ -1,24 +1,41 @@
-import echarts from '../../src/echarts/echarts.js';
+import initWasm, { EChartsInstance } from '@wasm-echarts';
+
+const width = 480;
+const height = 360;
 
 async function main() {
-  const chart = await echarts.init(document.getElementById('chart'), {
-    width: 480,
-    height: 360,
-  });
+  await initWasm();
 
-  chart.setOption({
-    tooltip: { trigger: 'item', axisPointer: { type: 'line' } },
-    dataZoom: [{ type: 'inside', xAxisIndex: 0 }],
+  const canvas = document.getElementById('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
+
+  const chart = new EChartsInstance(width, height, 1);
+  chart.set_option({
     xAxis: { type: 'category', data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] },
     yAxis: { type: 'value' },
     series: [{ type: 'line', name: '销量', data: [120, 200, 150, 80, 70] }],
   });
 
-  const avgMs = chart.benchmark(30);
+  paint(chart, canvas);
+
+  const avgMs = chart.benchmark_render(30);
   const logEl = document.getElementById('log');
   if (logEl) {
     logEl.textContent = `benchmark_render 均值 ${avgMs.toFixed(2)} ms（30 次）`;
   }
+}
+
+function paint(chart, canvas) {
+  const rgba = chart.refresh();
+  const ctx = canvas.getContext('2d');
+  ctx.putImageData(
+    new ImageData(new Uint8ClampedArray(rgba), chart.width(), chart.height()),
+    0,
+    0,
+  );
 }
 
 main();
