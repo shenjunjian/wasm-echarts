@@ -100,6 +100,14 @@ impl EChartsInstance {
             .map_err(|e| JsValue::from_str(&e.to_string()))
     }
 
+    /// 把全局 fontdb 同步到本实例（`registerFont` 之后由 facade 调用）。
+    pub fn update_font_database(&mut self) -> Result<(), JsValue> {
+        rust_zrender::with_resolved_font_config(|resolved| {
+            self.zr.update_font_database(resolved);
+        })
+        .map_err(|e| JsValue::from_str(&e.to_string()))
+    }
+
     pub fn find_hover(&mut self, x: f64, y: f64) -> JsValue {
         match self.zr.find_hover(x, y) {
             Some(hit) => hit_to_js(&hit),

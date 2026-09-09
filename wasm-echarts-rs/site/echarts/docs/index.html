@@ -30,23 +30,17 @@
 cd ../..
 cd site && npm install && npm run dev
 # 打开 http://127.0.0.1:5173/echarts/examples/</pre>
-    </div>
-
-    <div class="doc-section">
-      <h3>1. 与官方一致的公开 API</h3>
-      <p>可按官方文档调用。</p>
-      <ul>
-        <li><code>init(canvas, theme?, opts?)</code> — 创建实例；<code>init(null, null, { width, height, devicePixelRatio })</code> 允许离屏。<code>init(canvas)</code> 后自动上屏，并绑定 mousemove / click / leave / wheel</li>
-        <li><code>dispose(chart | canvas | id)</code> / <code>getInstanceByDom</code> / <code>getInstanceById</code></li>
-        <li><code>version</code> — <code>'6.1.0'</code></li>
-        <li><code>use(...)</code> — 导出且签名对齐，只打印提示，不按需加载</li>
-        <li>实例：<code>setOption(option)</code> / <code>setOption(option, notMerge | opts)</code> / <code>getOption</code> / <code>resize</code> / <code>clear</code> / <code>dispatchAction</code> / <code>on</code> / <code>off</code> / <code>getWidth</code> / <code>getHeight</code> / <code>getDevicePixelRatio</code> / <code>isDisposed</code> / <code>dispose</code> / <code>getDom</code> / <code>getId</code> / <code>convertToPixel</code> / <code>convertFromPixel</code>（cartesian <code>xAxis</code>/<code>yAxis</code>/<code>grid</code> 最小集）</li>
-        <li>指针事件名：<code>click</code> / <code>mouseover</code> / <code>mouseout</code> / <code>globalout</code>（payload 含 <code>event</code>、<code>seriesIndex</code>、<code>dataIndex</code>）</li>
-        <li><code>dispatchAction</code>：<code>highlight</code> / <code>downplay</code> / <code>select</code> / <code>unselect</code> / <code>toggleSelect</code> / <code>dataZoom</code> / <code>showTip</code> / <code>hideTip</code></li>
-      </ul>
-      <pre>import initWasm, { init } from '@wasm-echarts';
+      <pre>import initWasm, { init, registerFont } from '@wasm-echarts';
 
 await initWasm();
+
+const bytes = new Uint8Array(
+  await (await fetch('/fonts/NotoSansSC-Regular.ttf')).arrayBuffer()
+);
+registerFont(bytes, {
+  familyName: 'Noto Sans SC',
+  sansSerif: ['Noto Sans SC'],
+});
 
 const canvas = document.getElementById('canvas');
 canvas.width = 480;
@@ -66,54 +60,228 @@ chart.on('click', (params) => {
     </div>
 
     <div class="doc-section">
+      <h3>1. 与官方一致的公开 API</h3>
+      <p>可按官方文档调用（签名对齐）。default export 仍是 wasm-bindgen 的 <code>initWasm</code>，命名导出才是 echarts API。</p>
+      <table>
+        <thead>
+          <tr><th>导出 / 方法</th><th>签名与说明</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>init</code></td>
+            <td><code>init(canvas, theme?, opts?)</code>。有 canvas 时 <code>setOption</code> 自动上屏，并绑定 mousemove / click / leave / wheel。<code>init(null, null, { width, height, devicePixelRatio })</code> 允许离屏（见例外）。</td>
+          </tr>
+          <tr>
+            <td><code>dispose</code></td>
+            <td><code>dispose(chart | canvas | id)</code></td>
+          </tr>
+          <tr>
+            <td><code>getInstanceByDom</code> / <code>getInstanceById</code></td>
+            <td>按 canvas / id 取回实例</td>
+          </tr>
+          <tr>
+            <td><code>version</code></td>
+            <td><code>'6.1.0'</code></td>
+          </tr>
+          <tr>
+            <td><code>use</code></td>
+            <td>导出且签名对齐；只打印提示，不按需加载（见例外）</td>
+          </tr>
+          <tr>
+            <td><code>setOption</code></td>
+            <td><code>setOption(option)</code> / <code>setOption(option, notMerge, lazyUpdate?)</code> / <code>setOption(option, { notMerge, replaceMerge, silent, lazyUpdate })</code>。<code>notMerge</code> 不是 option 字段。</td>
+          </tr>
+          <tr>
+            <td><code>getOption</code></td>
+            <td>已合并 option 转回普通 JSON；函数字段保留为原 Function</td>
+          </tr>
+          <tr>
+            <td><code>resize</code></td>
+            <td><code>resize()</code> 无参读 canvas；<code>resize({ width, height, devicePixelRatio })</code>；<code>'auto'</code> 回退到 canvas</td>
+          </tr>
+          <tr>
+            <td><code>clear</code></td>
+            <td>等价 <code>setOption({ series: [] }, true)</code></td>
+          </tr>
+          <tr>
+            <td><code>on</code> / <code>off</code></td>
+            <td><code>click</code> / <code>mouseover</code> / <code>mouseout</code> / <code>globalout</code>。<code>on(event, handler)</code> 或 <code>on(event, query, handler)</code>。payload 含 <code>event</code>、<code>seriesIndex</code>、<code>dataIndex</code>。</td>
+          </tr>
+          <tr>
+            <td><code>dispatchAction</code></td>
+            <td>已接线：<code>highlight</code> / <code>downplay</code> / <code>select</code> / <code>unselect</code> / <code>toggleSelect</code> / <code>dataZoom</code> / <code>showTip</code> / <code>hideTip</code>。其它 type <code>console.warn</code>。</td>
+          </tr>
+          <tr>
+            <td><code>getWidth</code> / <code>getHeight</code> / <code>getDevicePixelRatio</code> / <code>isDisposed</code> / <code>dispose</code> / <code>getDom</code> / <code>getId</code></td>
+            <td>实例生命周期与尺寸</td>
+          </tr>
+          <tr>
+            <td><code>convertToPixel</code> / <code>convertFromPixel</code></td>
+            <td>cartesian 最小集：finder <code>{ xAxisIndex }</code> / <code>{ yAxisIndex }</code> / <code>{ gridIndex }</code> / <code>{ seriesIndex }</code> 或 <code>'xAxis'</code> / <code>'yAxis'</code> / <code>'grid'</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="doc-section">
       <h3>2. 与官方不一致 / 例外</h3>
-      <ul>
-        <li><code>use(...)</code> 不加载模块，只 <code>console.info</code>：已开发的图表/组件都编进 WASM，不必 <code>use</code></li>
-        <li><code>init(null)</code> 允许离屏（官方客户端无 dom 会抛错）</li>
-        <li>仅 canvas；无 SVG / <code>renderToSVGString</code> / <code>getSvgDataURL</code></li>
-        <li>动画不播中间帧；<code>lazyUpdate</code> / <code>silent</code> 同步 flush</li>
-        <li>字体须 <code>registerFont</code>；WASM 不读系统字体（尚未接到 wasm-echarts 模块）</li>
-        <li><code>getZr()</code> 本波不导出（crate 隔离）</li>
-        <li><code>notMerge</code> 只作 <code>setOption</code> 第二参数；写在 option 根上不会当合并开关</li>
-        <li><code>replaceMerge</code> 只按顶层 key 整段替换，不按 component <code>id</code></li>
-        <li>default export 是 wasm-bindgen <code>initWasm</code>，不是 echarts 命名空间对象</li>
-        <li>tooltip 为 facade 内建简单 DOM（string HTML），不是官方 TooltipView；HTMLElement formatter 未实现</li>
-      </ul>
+      <table>
+        <thead>
+          <tr><th>项</th><th>现状 / 约定</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>use(...)</code></td>
+            <td>不加载模块，只 <code>console.info</code>：已开发的图表/组件都编进 WASM，不必 <code>use</code></td>
+          </tr>
+          <tr>
+            <td><code>init(null)</code></td>
+            <td>允许离屏（官方客户端无 dom 会抛错）</td>
+          </tr>
+          <tr>
+            <td>渲染</td>
+            <td>仅 canvas；无 SVG / <code>renderToSVGString</code> / <code>getSvgDataURL</code></td>
+          </tr>
+          <tr>
+            <td>动画</td>
+            <td>不播中间帧；<code>setOption</code> / <code>animation</code> 直接终态。<code>lazyUpdate</code> / <code>silent</code> 同步 flush</td>
+          </tr>
+          <tr>
+            <td>字体</td>
+            <td>WASM 不读系统字体。轴标签 / series label 走 rust-zrender fontdb；须从 <code>@wasm-echarts</code> 调 <code>registerFont</code>（与 wasm-zrender 的 fontdb 不共享）。未注册时 <code>refresh</code> 会报 <code>no default font found</code></td>
+          </tr>
+          <tr>
+            <td><code>notMerge</code></td>
+            <td>只作 <code>setOption</code> 第二参数；写在 option 根上不会当合并开关</td>
+          </tr>
+          <tr>
+            <td><code>replaceMerge</code></td>
+            <td>只按顶层 key 整段替换，不按 component <code>id</code></td>
+          </tr>
+          <tr>
+            <td><code>getZr()</code></td>
+            <td>因 crate 隔离本波不导出</td>
+          </tr>
+          <tr>
+            <td>default export</td>
+            <td>wasm-bindgen <code>initWasm</code>，不是 echarts 命名空间对象</td>
+          </tr>
+          <tr>
+            <td>tooltip</td>
+            <td>facade 内建简单 string HTML DOM，不是官方 TooltipView；HTMLElement formatter 未实现</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <div class="doc-section">
       <h3>3. 多出来的非官方 API</h3>
       <p>因 WASM 离屏需要。<strong>不要当官方 API 用</strong>。<code>init(canvas)</code> 后普通用户不必再手动 <code>putImageData</code>，也不必再绑指针或自绘 tooltip。</p>
-      <ul>
-        <li><code>refresh()</code> — 离屏绘制，返回 RGBA</li>
-        <li><code>handlePointerMove(x, y)</code> / <code>handlePointerLeave()</code> — 非官方；<code>init(canvas)</code> 时一般不需要</li>
-        <li><code>findHover(x, y)</code> — 命中检测</li>
-        <li><code>applyDataZoomWheel(x, deltaY)</code> — 非官方；<code>init(canvas)</code> 时滚轮已绑定</li>
-        <li><code>getTooltipContent(si, di)</code> — 自绘 tooltip（string HTML）；<code>init(canvas)</code> 时 facade 已内建 DOM</li>
-        <li><code>benchmarkRender(n)</code> — 渲染均值耗时（毫秒）</li>
-      </ul>
+      <table>
+        <thead>
+          <tr><th>方法</th><th>何时用</th><th>何时不要用</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>refresh()</code></td>
+            <td>离屏无 canvas，需要 RGBA 自行 <code>putImageData</code></td>
+            <td><code>init(canvas)</code> 后 <code>setOption</code> 已自动上屏</td>
+          </tr>
+          <tr>
+            <td><code>findHover(x, y)</code></td>
+            <td>自管命中检测</td>
+            <td>主路径用 <code>on('mouseover')</code></td>
+          </tr>
+          <tr>
+            <td><code>handlePointerMove(x, y)</code> / <code>handlePointerLeave()</code></td>
+            <td>离屏或自管指针</td>
+            <td><code>init(canvas)</code> 时一般不需要</td>
+          </tr>
+          <tr>
+            <td><code>applyDataZoomWheel(x, deltaY)</code></td>
+            <td>自管滚轮</td>
+            <td><code>init(canvas)</code> 时滚轮已绑定</td>
+          </tr>
+          <tr>
+            <td><code>getTooltipContent(si, di)</code></td>
+            <td>自绘 tooltip（string HTML）</td>
+            <td><code>init(canvas)</code> 时 facade 已内建 DOM</td>
+          </tr>
+          <tr>
+            <td><code>benchmarkRender(n)</code></td>
+            <td>渲染均值耗时（毫秒）</td>
+            <td>不是官方性能 API</td>
+          </tr>
+          <tr>
+            <td><code>hasOption</code> / <code>optionHasFunctions</code></td>
+            <td>状态查询</td>
+            <td>不是官方 API</td>
+          </tr>
+          <tr>
+            <td><code>registerFont(data, opts?)</code> / <code>clearFonts()</code></td>
+            <td>注册 TTF/OTF/WOFF bytes（<code>opts.familyName</code>、<code>opts.sansSerif</code>）；已创建实例会热更新 fontdb。轴标签渲染前必调</td>
+            <td>不是官方 ECharts API；不要从 <code>@wasm-zrender</code> 注册并期望本模块生效</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <div class="doc-section">
       <h3>4. 已实现 / 未实现</h3>
-      <p><strong>已实现（部分生效）</strong></p>
-      <ul>
-        <li>图表：line、bar、pie、scatter（feature flag 写死在 rust，不是 <code>echarts.use</code>）</li>
-        <li>cartesian：单 x/y 轴；category / value；grid 边距；<code>convertToPixel</code> / <code>convertFromPixel</code> 的 xAxis/yAxis/grid 最小集</li>
-        <li>交互：<code>init(canvas)</code> 绑指针；hover 高亮、内建 string tooltip、<code>on('click')</code>、wheel inside dataZoom、竖线 axisPointer</li>
-        <li>轴标签 Text；<code>axisLabel.formatter</code>（函数或 <code>{value}</code> 模板）已进轴</li>
-        <li>line/scatter：<code>symbol</code>（circle/rect/emptyCircle）与 <code>symbolSize</code>（数或函数）；series <code>label.show</code> 画 Text</li>
-        <li>pie：<code>center</code> / <code>radius</code>（含环形 <code>[r0, r]</code>）/ <code>startAngle</code> / <code>clockwise</code>；label + 简单 labelLine</li>
-        <li>CallbackDataParams：<code>componentType</code> / <code>seriesType</code> / <code>percent</code>（pie）/ <code>data</code></li>
-        <li><code>dispatchAction</code>：<code>highlight</code> / <code>downplay</code> / <code>select</code> / <code>unselect</code> / <code>toggleSelect</code> / <code>dataZoom</code> / <code>showTip</code> / <code>hideTip</code></li>
-      </ul>
-      <p><strong>未实现（后置，不混进「已对齐」）</strong></p>
+      <h4>已实现（部分生效）</h4>
+      <table>
+        <thead>
+          <tr><th>范围</th><th>现状</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>图表</td>
+            <td>line / bar / pie / scatter（feature flag 写死在 rust，不是 <code>echarts.use(BarChart)</code>）</td>
+          </tr>
+          <tr>
+            <td>cartesian</td>
+            <td>单 x/y 轴；category / value；grid 边距；<code>convertToPixel</code> / <code>convertFromPixel</code> 最小集</td>
+          </tr>
+          <tr>
+            <td>line / scatter</td>
+            <td><code>symbol</code>（circle / rect / emptyCircle）与 <code>symbolSize</code>（数或函数）；series <code>label.show</code> 画 Text</td>
+          </tr>
+          <tr>
+            <td>bar</td>
+            <td>Rect，带宽 0.6；<code>label.show</code></td>
+          </tr>
+          <tr>
+            <td>pie</td>
+            <td><code>center</code> / <code>radius</code>（含环形 <code>[r0, r]</code>）/ <code>startAngle</code> / <code>clockwise</code>；label + 简单 labelLine</td>
+          </tr>
+          <tr>
+            <td>轴</td>
+            <td>轴标签 Text；<code>axisLabel.formatter</code>（函数或 <code>{value}</code> 模板）</td>
+          </tr>
+          <tr>
+            <td>CallbackDataParams</td>
+            <td><code>componentType</code> / <code>seriesType</code> / <code>percent</code>（pie）/ <code>data</code></td>
+          </tr>
+          <tr>
+            <td>交互</td>
+            <td><code>init(canvas)</code> 绑指针；hover 高亮、内建 string tooltip、<code>on('click')</code>、wheel inside dataZoom、竖线 axisPointer</td>
+          </tr>
+          <tr>
+            <td><code>dispatchAction</code></td>
+            <td><code>highlight</code> / <code>downplay</code> / <code>select</code> / <code>unselect</code> / <code>toggleSelect</code> / <code>dataZoom</code> / <code>showTip</code> / <code>hideTip</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h4>未实现（后置，不混进「已对齐」）</h4>
+      <p>下列官方入口已导出同名，内部只 <code>console.warn</code>：<code>connect</code> / <code>disconnect</code> / <code>registerTheme</code> / <code>registerMap</code> / <code>getMap</code> / <code>registerLocale</code> / <code>setPlatformAPI</code> / <code>registerPreprocessor</code>。</p>
+      <p>实例上尚未导出（不要当已实现）：<code>getZr</code> / <code>setTheme</code> / <code>appendData</code> / <code>getDataURL</code> / <code>renderToCanvas</code> / <code>showLoading</code> / <code>hideLoading</code> / <code>containPixel</code> / <code>convertToLayout</code> / <code>getVisual</code>。</p>
       <ul>
         <li>Charts：Radar、Map、Gauge、Funnel、Heatmap、Custom <code>renderItem</code> 等其余类型</li>
         <li>Components：legend、title、toolbox、visualMap、geo、polar、graphic、brush、timeline、dataset</li>
-        <li>Actions：legend*、restore 等</li>
+        <li>Actions：legend*、restore、brush、timeline、geo roam 等</li>
         <li><code>connect</code> / 主题 / <code>registerMap</code> / <code>getZr</code> / <code>getDataURL</code> / Loading / media query / <code>convertToPixel</code> 完整 finder</li>
-        <li>option 未按官方生效：pie <code>roseType</code>、多 grid / 双 y 轴、<code>symbol</code> 仅 circle/rect/emptyCircle</li>
+        <li>option 名字在但未按官方做：pie <code>roseType</code>、多 grid / 双 y 轴、<code>symbol</code> 仅 circle/rect/emptyCircle、色板不是官方 palette 全套</li>
         <li>tooltip HTMLElement formatter / <code>confine</code> / <code>trigger: 'axis'</code></li>
       </ul>
     </div>
@@ -121,10 +289,38 @@ chart.on('click', (params) => {
     <div class="doc-section">
       <h3>函数 option</h3>
       <p>
-        WASM 侧可识别 option 中的函数字段（如 <code>tooltip.formatter</code>、<code>series[].itemStyle.color</code>），
+        WASM 侧可识别 option 中的函数字段（如 <code>tooltip.formatter</code>、<code>series[].itemStyle.color</code>、<code>axisLabel.formatter</code>、<code>symbolSize</code>），
         在渲染/交互阶段回调。含函数的 option 见
         <a href="../examples/interactive.html">交互合集</a>。
       </p>
+    </div>
+
+    <div class="doc-section">
+      <h3>实例对照（验收）</h3>
+      <p>全部示例走 <code>init(canvas)</code> + <code>setOption</code>，不直接 <code>new EChartsInstance</code>。</p>
+      <table>
+        <thead>
+          <tr><th>示例</th><th>覆盖</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><a href="../examples/#line">line</a> / <a href="../examples/#bar">bar</a> / <a href="../examples/#pie">pie</a> / <a href="../examples/#scatter">scatter</a></td>
+            <td><code>init(canvas)</code> 出图；轴 formatter、pie center/radius、symbol/label</td>
+          </tr>
+          <tr>
+            <td><a href="../examples/#merge">merge</a></td>
+            <td>二次 <code>setOption</code> 深合并、<code>notMerge: true</code>、<code>getOption</code>、dispose 后再 init</td>
+          </tr>
+          <tr>
+            <td><a href="../examples/#interactive">interactive</a></td>
+            <td><code>use()</code> 只出提示；<code>on('click')</code> + <code>dispatchAction('toggleSelect')</code>；hover tooltip；wheel dataZoom。不必调 <code>handlePointer*</code></td>
+          </tr>
+          <tr>
+            <td><a href="../examples/#bench">bench</a></td>
+            <td>非官方 <code>benchmarkRender</code></td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </main>
 </body>

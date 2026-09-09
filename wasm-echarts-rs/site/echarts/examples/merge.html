@@ -7,9 +7,17 @@
   <link rel="stylesheet" href="/src/shared/preview.css" />
 </head>
 <body>
-  <div class="preview-root">
-    <canvas id="canvas"></canvas>
+  <div class="preview-root preview-root--compare">
+    <figure>
+      <figcaption>二次 setOption 深合并</figcaption>
+      <canvas id="canvas-merge"></canvas>
+    </figure>
+    <figure>
+      <figcaption>notMerge: true 整树替换</figcaption>
+      <canvas id="canvas-not-merge"></canvas>
+    </figure>
   </div>
+  <div id="log" class="preview-log">setOption 合并对照…</div>
   <script type="module" src="./merge.js"></script>
 </body>
 </html>

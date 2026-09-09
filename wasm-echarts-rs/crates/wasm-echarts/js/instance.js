@@ -631,6 +631,14 @@ export class ECharts {
     return this._native.refresh();
   }
 
+  /**
+   * 非官方：把全局 fontdb 同步到本实例。`registerFont` 已自动调用，一般不必手调。
+   */
+  updateFontDatabase() {
+    this._assertAlive();
+    this._native.update_font_database();
+  }
+
   findHover(x, y) {
     this._assertAlive();
     return this._native.find_hover(x, y);

@@ -1,6 +1,7 @@
 mod bridge;
 mod chart;
 mod coord;
+mod font;
 mod instance;
 mod interaction;
 mod model;
@@ -11,6 +12,7 @@ mod utils;
 mod visual;
 
 use wasm_bindgen::prelude::*;
+pub use font::{clear_fonts, register_font};
 pub use instance::EChartsInstance;
 
 #[wasm_bindgen(start)]

@@ -1,10 +1,26 @@
-import initWasm, { init } from '@wasm-echarts';
+import initWasm, { init, use, registerFont } from '@wasm-echarts';
 
 const width = 480;
 const height = 360;
+const FONT_FAMILY = 'Noto Sans SC';
+const FONT_URL = '/fonts/NotoSansSC-Regular.ttf';
+
+async function loadFont() {
+  const response = await fetch(FONT_URL);
+  if (!response.ok) {
+    throw new Error(`字体加载失败: ${FONT_URL} (${response.status})`);
+  }
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  registerFont(bytes, {
+    familyName: FONT_FAMILY,
+    sansSerif: [FONT_FAMILY],
+  });
+}
 
 async function main() {
   await initWasm();
+  use();
+  await loadFont();
 
   const canvas = document.getElementById('canvas');
   canvas.width = width;

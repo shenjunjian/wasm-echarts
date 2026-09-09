@@ -19,6 +19,8 @@ export {
   registerLocale,
   setPlatformAPI,
   registerPreprocessor,
+  registerFont,
+  clearFonts,
   ECharts,
 } from './echarts.js';
 

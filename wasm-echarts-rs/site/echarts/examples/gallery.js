@@ -9,7 +9,7 @@ import benchSource from './bench.js?raw';
 
 mountExampleGallery(document.getElementById('app'), {
   title: 'wasm-echarts 实例',
-  description: '每个示例是完整独立脚本，直接 import @wasm-echarts。右侧查看源码与 iframe 预览。',
+  description: '每个示例是完整独立脚本，直接 import @wasm-echarts。轴标签渲染前须 registerFont。右侧查看源码与 iframe 预览。',
   defaultId: 'line',
   examples: [
     {
@@ -43,14 +43,14 @@ mountExampleGallery(document.getElementById('app'), {
     {
       id: 'interactive',
       title: '交互合集 interactive',
-      description: 'on(click) + 内建 tooltip / hover / wheel zoom',
+      description: 'use() 提示 + on(click) / toggleSelect / tooltip / wheel zoom',
       previewUrl: './interactive.html',
       source: interactiveSource,
     },
     {
       id: 'merge',
       title: 'setOption 合并 merge',
-      description: '二次 setOption 深合并 + getOption',
+      description: '深合并、notMerge: true、dispose 后再 init',
       previewUrl: './merge.html',
       source: mergeSource,
     },

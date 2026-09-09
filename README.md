@@ -136,7 +136,7 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 
 - `use(...)` 导出但不按需加载，只 `console.info` 提示已编进 WASM。
 - `init(null)` 允许离屏；仅 canvas，无 SVG。
-- 动画终态；`lazyUpdate` 同步；字体须 `registerFont`（尚未接到 wasm-echarts 模块）。
+- 动画终态；`lazyUpdate` 同步；字体须从 `@wasm-echarts` 调 `registerFont`（与 wasm-zrender fontdb 不共享）。
 - `getZr()` 本波不导出。
 - `notMerge` 只作 `setOption` 第二参数，写在 option 根上不会当合并开关。
 - `replaceMerge` 只按顶层 key 整段替换，不按 component `id`。
@@ -153,11 +153,14 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 | `refresh` | 返回 RGBA；离屏无 canvas 时用 |
 | `findHover` / `handlePointerMove` / `handlePointerLeave` | 非官方 hatch；`init(canvas)` 时一般不需要 |
 | `applyDataZoomWheel` / `getTooltipContent` / `benchmarkRender` | 非官方；滚轮已绑定、tooltip 已内建 DOM、bench |
+| `registerFont` / `clearFonts` | WASM 字体例外；轴标签 / series label 渲染前必调 |
+| `hasOption` / `optionHasFunctions` | 状态查询（非官方） |
 
 #### 4. 已实现 / 未实现
 
 - **已实现（部分生效）**：line / bar / pie / scatter；单 cartesian；`axisLabel.formatter`；pie `center`/`radius`/`startAngle`/`clockwise`；`symbol`/`symbolSize`；series label；CallbackDataParams（`componentType`/`seriesType`/`percent`/`data`）；`convertToPixel` cartesian 最小集；inside dataZoom 滚轮；`on`/`off` 指针事件；内建 string tooltip；`showTip`/`hideTip`；hover / toggleSelect；竖线 axisPointer。
-- **未实现**：legend / title / polar / gauge / 其余 chart、`connect`、主题、`getZr`、`getDataURL`、Loading、`convertToPixel` 完整 finder。详见 [AGENT.md](AGENT.md) 与 [echarts 文档](wasm-echarts-rs/site/echarts/docs/index.html)。
+- **未实现（已导出、只 `console.warn`）**：`connect` / `disconnect` / `registerTheme` / `registerMap` / `getMap` / `registerLocale` / `setPlatformAPI` / `registerPreprocessor`。
+- **未实现（实例未导出）**：`getZr` / `setTheme` / `appendData` / `getDataURL` / `showLoading` / `containPixel` 等。legend / title / polar / gauge / 其余 chart、主题、Loading、`convertToPixel` 完整 finder。详见 [AGENT.md](AGENT.md) 与 [echarts 文档](wasm-echarts-rs/site/echarts/docs/index.html)。
 
 native `EChartsInstance`（`wasm_echarts.d.ts`）是内部 handle，不要从 site 直接 `new`。
 

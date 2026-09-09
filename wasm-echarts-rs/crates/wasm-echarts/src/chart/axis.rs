@@ -47,6 +47,9 @@ fn add_axis_text(
     align: TextAlign,
     baseline: TextBaseline,
 ) {
+    if content.is_empty() {
+        return;
+    }
     let text_idx = zr.storage.create_text(Text::new(content, x, y).with_style(TextStyle {
         fill: "#666".into(),
         font_size: 11.0,
@@ -57,8 +60,18 @@ fn add_axis_text(
     zr.storage.group_add_child(group, ChildRef::Text(text_idx));
 }
 
-fn format_label(formatter: Option<&OptionValue>, raw: &JsValue, index: u32, fallback: &str) -> String {
-    resolve_axis_formatter(formatter, raw, index, fallback)
+fn format_tick(formatter: Option<&OptionValue>, fallback: &str, index: u32, numeric: Option<f64>) -> String {
+    match formatter {
+        Some(OptionValue::String(s)) => s.replace("{value}", fallback),
+        Some(OptionValue::Function(_)) => {
+            let axis_value = match numeric {
+                Some(n) => JsValue::from(n),
+                None => JsValue::from_str(fallback),
+            };
+            resolve_axis_formatter(formatter, &axis_value, index, fallback)
+        }
+        _ => fallback.to_string(),
+    }
 }
 
 fn render_x_labels(
@@ -89,12 +102,7 @@ fn render_x_labels(
         let local = i - zoom_start;
         let x = g.x + (local as f64 + 0.5) / visible as f64 * g.width;
         let y = g.y + g.height + 14.0;
-        let label = format_label(
-            formatter,
-            &JsValue::from_str(raw_label),
-            i as u32,
-            raw_label,
-        );
+        let label = format_tick(formatter, raw_label, i as u32, None);
         add_axis_text(zr, group, &label, x, y, TextAlign::Center, TextBaseline::Top);
     }
 }
@@ -115,12 +123,7 @@ fn render_x_value_labels(
     for i in 0..=split_count {
         let value = xmin + span * i as f64 / split_count as f64;
         let fallback = format_axis_number(value);
-        let label = format_label(
-            formatter,
-            &JsValue::from(value),
-            i as u32,
-            &fallback,
-        );
+        let label = format_tick(formatter, &fallback, i as u32, Some(value));
         let (x, _) = coord.value_to_point(value, model.y_axis.value_min());
         let y = g.y + g.height + 14.0;
         add_axis_text(zr, group, &label, x, y, TextAlign::Center, TextBaseline::Top);
@@ -144,12 +147,7 @@ fn render_y_labels(
     for i in 0..=split_count {
         let value = ymin + span * i as f64 / split_count as f64;
         let fallback = format_axis_number(value);
-        let label = format_label(
-            formatter,
-            &JsValue::from(value),
-            i as u32,
-            &fallback,
-        );
+        let label = format_tick(formatter, &fallback, i as u32, Some(value));
         let (_, y) = coord.data_to_point(0, value);
         let x = g.x - 8.0;
         add_axis_text(zr, group, &label, x, y, TextAlign::Right, TextBaseline::Middle);

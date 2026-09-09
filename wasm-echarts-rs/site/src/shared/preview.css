@@ -33,6 +33,24 @@ body {
   image-rendering: pixelated;
 }
 
+.preview-root--compare {
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1rem 1.25rem;
+  padding-bottom: 2.5rem;
+}
+
+.preview-root--compare figure {
+  margin: 0;
+}
+
+.preview-root--compare figcaption {
+  font: 0.75rem/1.4 system-ui, sans-serif;
+  color: #5c6370;
+  margin-bottom: 0.35rem;
+  text-align: center;
+}
+
 .preview-root--fill {
   padding: 0;
   align-items: stretch;

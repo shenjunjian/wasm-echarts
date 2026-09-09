@@ -235,9 +235,9 @@ dispose(zr);
 
 `docs-site` / `demo-zrender` / `demo-echarts` 在规划 YAML 仍为 pending，**site 工程已落地**：首页缘由/限制 + 双产品文档/实例，实例页左源码右预览。
 
-### wasm-echarts API 规范对齐（波次 0–4 已完成）
+### wasm-echarts API 规范对齐（波次 0–5 已完成）
 
-规范已写入上文「目标与约束」；逐项清单以 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](../.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md) 为权威。JS facade 骨架在 `crates/wasm-echarts/js/`：`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version` / `use`（只 `console.info`）。site / README 从 `@wasm-echarts`（`js/index.js`）导入，`pkg/` 只作内部 handle。示例走官方 `init(canvas)` + `setOption`；`init(canvas)` 后自动 `putImageData` 并绑定指针。波次 2：`setOption(option, notMerge | opts)`、`getOption`、`resize()` / `resize({ width, height, devicePixelRatio })`、`clear` = `setOption({ series: [] }, true)`；`notMerge` 只作第二参数，不再从 option 根读取。波次 3：`on`/`off` 发出 `click` / `mouseover` / `mouseout` / `globalout`；内建 string tooltip DOM；`dispatchAction` 接 `showTip` / `hideTip`。波次 4：`axisLabel.formatter` 进轴 Text；pie `center`/`radius`/`startAngle`/`clockwise`；line/scatter `symbol`/`symbolSize`；`label.show` 画 Text；CallbackDataParams 补 `componentType`/`seriesType`/`percent`/`data`；`convertToPixel`/`convertFromPixel` cartesian 最小集。公开用法是官方 `init` / `setOption` / `on`，不要把 native `EChartsInstance` / `set_option` / `handlePointerMove` 当公开 API。
+规范已写入上文「目标与约束」；逐项清单以 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](../.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md) 为权威。JS facade 骨架在 `crates/wasm-echarts/js/`：`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version` / `use`（只 `console.info`）。site / README 从 `@wasm-echarts`（`js/index.js`）导入，`pkg/` 只作内部 handle。示例走官方 `init(canvas)` + `setOption`；`init(canvas)` 后自动 `putImageData` 并绑定指针。波次 2：`setOption(option, notMerge | opts)`、`getOption`、`resize()` / `resize({ width, height, devicePixelRatio })`、`clear` = `setOption({ series: [] }, true)`；`notMerge` 只作第二参数，不再从 option 根读取。波次 3：`on`/`off` 发出 `click` / `mouseover` / `mouseout` / `globalout`；内建 string tooltip DOM；`dispatchAction` 接 `showTip` / `hideTip`。波次 4：`axisLabel.formatter` 进轴 Text；pie `center`/`radius`/`startAngle`/`clockwise`；line/scatter `symbol`/`symbolSize`；`label.show` 画 Text；CallbackDataParams 补 `componentType`/`seriesType`/`percent`/`data`；`convertToPixel`/`convertFromPixel` cartesian 最小集。波次 5：文档四块（一致 / 不一致 / 非官方 API / 已实现与未实现）已写入 `site/echarts/docs/index.html`、根 README、本文件；示例 line/bar/pie/scatter/interactive/merge/bench 全部走 `init`；interactive 用 `on('click')` + `use()` 提示，不必 `handlePointer*`；merge 覆盖深合并、`notMerge: true`、dispose 后再 init。公开用法是官方 `init` / `setOption` / `on`，不要把 native `EChartsInstance` / `set_option` / `handlePointerMove` 当公开 API。
 
 ---
 
@@ -599,7 +599,7 @@ chart-line, chart-bar, chart-pie, chart-scatter
 | `init(null)` | 允许离屏（官方客户端无 dom 会抛错） |
 | 动画 | 不播中间帧；`lazyUpdate` 同步执行 |
 | 渲染 | 仅 canvas；无 SVG / `renderToSVGString` / `getSvgDataURL` |
-| 字体 | 须 `registerFont`；WASM 不读系统字体 |
+| 字体 | 须从 `@wasm-echarts` 调 `registerFont`；WASM 不读系统字体。与 wasm-zrender 的 fontdb **不共享** |
 | `notMerge` | 只作 `setOption` 第二参数；写在 option 根上不会当合并开关 |
 | `replaceMerge` | 只按**顶层 key**整段替换，不按 component `id`（比官方弱） |
 | `lazyUpdate` / `silent` | 同步 flush，忽略排队与静默 |
@@ -621,7 +621,7 @@ chart-line, chart-bar, chart-pie, chart-scatter
 | `getTooltipContent` | `get_tooltip_content` | 自绘 tooltip；`init(canvas)` 时 facade 已内建 string DOM |
 | `benchmarkRender` | `benchmark_render` | 渲染耗时 |
 | `hasOption` / `optionHasFunctions` | `has_option` / `option_has_functions` | 状态查询 |
-| （待挂）`registerFont` | — | WASM 字体例外；尚未接到 wasm-echarts 模块 |
+| `registerFont` / `clearFonts` | `registerFont` / `clearFonts` | WASM 字体例外；轴标签 / series label 渲染前必调；已有实例热更新 fontdb |
 
 #### 4. 已实现 / 未实现
 
@@ -646,13 +646,17 @@ chart-line, chart-bar, chart-pie, chart-scatter
 
 **未实现（后置，不混进「已对齐」）**
 
+已导出同名、内部只 `console.warn`：`connect` / `disconnect` / `registerTheme` / `registerMap` / `getMap` / `registerLocale` / `setPlatformAPI` / `registerPreprocessor`。
+
+实例上尚未导出：`getZr` / `setTheme` / `appendData` / `getDataURL` / `renderToCanvas` / `showLoading` / `hideLoading` / `containPixel` / `convertToLayout` / `getVisual`。
+
 Charts：Radar、Map、Tree、Treemap、Graph、Chord、Gauge、Funnel、Parallel、Sankey、Boxplot、Candlestick、EffectScatter、Lines、Heatmap、PictorialBar、ThemeRiver、Sunburst、Custom（`renderItem`+`api`）。
 
 Components：legend（含绘制与 `legendToggleSelect`）、title、toolbox、visualMap、geo、polar、radar、singleAxis、calendar、graphic、brush、timeline、markPoint/Line/Area、dataset/transform、aria、thumbnail。
 
 Actions：legend\*、restore、brush、timeline、geo roam 等。
 
-其它：`connect`/`disconnect`、主题、`registerMap`、`appendData`、`convertToPixel` 完整 finder（polar/geo/`seriesId` 等）、`getDataURL`/`renderToCanvas`、`showLoading`、`getZr()`、`graphic`/`util`/`number`/`format` 命名空间、`registerPreprocessor` 等扩展注册、media query、完整 SeriesData。
+其它：主题、`convertToPixel` 完整 finder（polar/geo/`seriesId` 等）、`graphic`/`util`/`number`/`format` 命名空间、media query、完整 SeriesData。
 
 **名字在 option 里出现但未按官方做：** pie `roseType`；`tooltip.trigger: 'axis'`；色板不是官方 palette 全套；多 grid / 双 y 轴；`symbol` 仅 circle/rect/emptyCircle。
 
@@ -664,11 +668,15 @@ Actions：legend\*、restore、brush、timeline、geo roam 等。
 
 | 文件 | 职责 |
 |------|------|
-| `index.js` | 官方命名导出；`default` 仍是 `initWasm`；`version = '6.1.0'` |
-| `echarts.js` | `init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `use`（只提示）；实例表 |
+| `index.js` | 官方命名导出；`default` 仍是 `initWasm`；`version = '6.1.0'`；另导出 `registerFont` / `clearFonts` |
+| `echarts.js` | `init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `use`（只提示）；`registerFont` / `clearFonts`；实例表 |
 | `instance.js` | 包装 native `EChartsInstance`；camelCase；`setOption` 第二参数 / `getOption` / `clear` / `resize`；`on`/`off`；`convertToPixel` / `convertFromPixel` 最小集；`init(canvas)` 后自动 `putImageData` 并绑指针；内建 string tooltip DOM |
 | `native.js` | 加载 `pkg/wasm_echarts.js` |
 | `wasm_echarts.js` | 兼容旧路径 `@wasm-echarts/wasm_echarts.js` |
+
+#### `font.rs`
+
+`registerFont` / `clearFonts`：把宿主传入的 TTF/OTF/WOFF bytes 写入 `rust_zrender` 全局 fontdb。与 wasm-zrender **不共享**同一份 WASM 内存。facade 在注册后遍历实例表调用 `update_font_database`。
 
 #### `instance.rs` — `EChartsInstance`（wasm-bindgen 内部 handle）
 
@@ -678,6 +686,7 @@ Actions：legend\*、restore、brush、timeline、geo roam 等。
 | `set_option(option, opts?)` | 解析 + merge（`notMerge` / `replaceMerge` 来自第二参数），全量 render |
 | `get_option()` | 已合并 option 转回 JsValue（函数保留） |
 | `refresh()` | RGBA |
+| `update_font_database()` | 把全局 fontdb 同步到本实例；`registerFont` 后由 facade 调用 |
 | `resize(w, h, dpr)` | 改画布并重绘 |
 | `find_hover(x, y)` | `{ seriesIndex, dataIndex, pathIndex, ... }` |
 | `handle_pointer_move(x, y)` | hover 高亮 + axisPointer + tooltip 文案，一次返回 |
@@ -744,7 +753,7 @@ Actions：legend\*、restore、brush、timeline、geo roam 等。
 
 #### site 示例
 
-每个 `site/echarts/examples/*.js` 都是完整独立脚本。导入 `@wasm-echarts` 的 `init`，`init(canvas)` + `setOption`；有 canvas 时自动上屏并绑指针。交互合集 `interactive.js` 用 `on('click')` + `dispatchAction('toggleSelect')`；tooltip / hover / wheel 由 facade 消化。不要把 `EChartsInstance` / `set_option` / `handlePointerMove` 当公开 API。
+每个 `site/echarts/examples/*.js` 都是完整独立脚本。导入 `@wasm-echarts` 的 `init` / `registerFont`：`await initWasm()` → `fetch` + `registerFont` → `init(canvas)` + `setOption`。轴标签 / series label 走 cosmic-text，**未注册字体时 `refresh` 会 panic `no default font found`**。有 canvas 时自动上屏并绑指针。交互合集 `interactive.js` 调 `use()`（只 `console.info`）并用 `on('click')` + `dispatchAction('toggleSelect')`；tooltip / hover / wheel 由 facade 消化。`merge.js` 对照深合并与 `notMerge: true`，并走 dispose 后再 init。不要把 `EChartsInstance` / `set_option` / `handlePointerMove` 当公开 API。文档四块在 `site/echarts/docs/index.html`。可选辅助 `site/src/echarts/fonts.js`（`ensureDefaultFont`）默认拉取 `/fonts/NotoSansSC-Regular.ttf`。
 
 浏览器测试 `crates/wasm-echarts/tests/web.rs` 目前几乎是占位（`1+1=2`）。Rust 单测在 `option` / `model` / `interaction` / `pie` 等模块内。
 
@@ -772,9 +781,14 @@ wasm-pack build --target web --dev -- --no-default-features --features "console_
 同样通过 `site`。公开写法：
 
 ```javascript
-import initWasm, { init } from '@wasm-echarts';
+import initWasm, { init, registerFont } from '@wasm-echarts';
 
 await initWasm();
+const bytes = new Uint8Array(
+  await (await fetch('/fonts/NotoSansSC-Regular.ttf')).arrayBuffer()
+);
+registerFont(bytes, { familyName: 'Noto Sans SC', sansSerif: ['Noto Sans SC'] });
+
 const chart = init(canvas);
 chart.setOption({
   xAxis: { type: 'category', data: ['A', 'B', 'C'] },
@@ -791,7 +805,7 @@ chart.setOption({
 crates/wasm-echarts/pkg/
 ├── package.json           # name: "wasm-echarts"
 ├── wasm_echarts.js
-├── wasm_echarts.d.ts      # 仅 EChartsInstance + default init
+├── wasm_echarts.d.ts      # EChartsInstance + registerFont / clearFonts + default init
 ├── wasm_echarts_bg.wasm
 └── wasm_echarts_bg.wasm.d.ts
 ```
@@ -804,11 +818,11 @@ crate `.gitignore` 含 `pkg/`。改 Rust 后必须重新 wasm-pack，浏览器�
 2. 每个实例 JS：
 
 ```javascript
-import initWasm, { init } from '@wasm-echarts';
+import initWasm, { init, registerFont } from '@wasm-echarts';
 ```
 
-再 `init(canvas)` + `setOption`。native `EChartsInstance` 仍从 facade 再导出，仅兼容旧路径，不要当公开 API。
-3. 每个实例是独立完整脚本：`site/echarts/examples/line.js` 等同名 HTML 成对出现（`<canvas id="canvas">`）
+再 `await initWasm()` → `registerFont` → `init(canvas)` + `setOption`。native `EChartsInstance` 仍从 facade 再导出，仅兼容旧路径，不要当公开 API。
+3. 每个实例是独立完整脚本：`site/echarts/examples/line.js` 等同名 HTML 成对出现（`<canvas id="canvas">`）；内联 `fetch` + `registerFont`（与 zrender `text.js` 相同）
 4. 画廊 `gallery.js` 用 Vite `?raw` 读这些 `.js` 作为左侧源码，iframe 加载同目录 HTML 预览
 5. 页面：line / bar / pie / scatter / interactive / merge / bench
 
@@ -1046,7 +1060,7 @@ npm run dev
 
 ### wasm-echarts
 
-对照 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](../.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md)。波次 0–4 已落地（入口、`setOption` 签名、指针/`on`/`off`/`showTip`、4 类图 option 语义）。文档与验收见波次 5。后置项不混进「已对齐」，但须出现在「未实现」表：
+对照 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](../.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md)。波次 0–5 已落地（入口、`setOption` 签名、指针/`on`/`off`/`showTip`、4 类图 option 语义、文档四块与示例验收）。后置项不混进「已对齐」，但须出现在「未实现」表：
 
 - legend 绘制；dataZoom slider UI；pinch
 - axisPointer 十字 / 多轴；tooltip HTMLElement / confine / `trigger: 'axis'`

@@ -9,6 +9,31 @@ import {
 export { ECharts };
 export const version = '6.1.0';
 
+function refreshLiveFontDatabases() {
+  for (const chart of instances.values()) {
+    if (!chart.isDisposed()) {
+      chart.updateFontDatabase();
+    }
+  }
+}
+
+/**
+ * 注册字体 bytes 到本模块全局 fontdb（WASM 不读系统字体）。
+ * 轴标签 / series label 渲染前必调。已创建的实例会热更新。
+ * @param {Uint8Array} data
+ * @param {{ familyName?: string, sansSerif?: string[] }} [opts]
+ */
+export function registerFont(data, opts) {
+  native.registerFont(data, opts);
+  refreshLiveFontDatabases();
+}
+
+/** 清空已注册字体（测试用）。 */
+export function clearFonts() {
+  native.clearFonts();
+  refreshLiveFontDatabases();
+}
+
 let idBase = Date.now();
 
 function unimplemented(name) {

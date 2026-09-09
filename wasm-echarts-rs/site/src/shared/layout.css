@@ -200,6 +200,31 @@ a:hover {
   font-size: 0.88em;
 }
 
+.doc-section table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  margin: 0.55rem 0 0.85rem;
+}
+
+.doc-section th,
+.doc-section td {
+  border: 1px solid var(--border);
+  padding: 0.4rem 0.55rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.doc-section th {
+  background: var(--bg);
+  font-weight: 600;
+}
+
+.doc-section h4 {
+  margin: 1rem 0 0.4rem;
+  font-size: 0.95rem;
+}
+
 .example-page {
   max-width: none;
   padding: 0;
