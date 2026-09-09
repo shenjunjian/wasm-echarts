@@ -4,6 +4,7 @@ use js_sys::{Object, Reflect};
 use wasm_bindgen::prelude::*;
 use rust_zrender::{STATE_EMPHASIS, STATE_NORMAL, STATE_SELECT, ZRenderer};
 
+use crate::coord::{convert_from_pixel, convert_to_pixel, ConvertResult};
 use crate::interaction::{DataTarget, InteractionState};
 use crate::model::GlobalModel;
 use crate::option::{parse_option_value, OptionModel, OptionValue, SetOptionFlags};
@@ -68,6 +69,16 @@ impl EChartsInstance {
 
     pub fn option_has_functions(&self) -> bool {
         option_contains_function(self.option.root())
+    }
+
+    /// `convertToPixel(finder, value)`：cartesian `xAxis` / `yAxis` / `grid` / `seriesIndex` 最小集。
+    pub fn convert_to_pixel(&self, finder: JsValue, value: JsValue) -> JsValue {
+        convert_pixel_js(&self.option, self.width, self.height, self.interaction.data_zoom, finder, value, true)
+    }
+
+    /// `convertFromPixel(finder, value)`：与 `convertToPixel` 同一 finder 最小集。
+    pub fn convert_from_pixel(&self, finder: JsValue, value: JsValue) -> JsValue {
+        convert_pixel_js(&self.option, self.width, self.height, self.interaction.data_zoom, finder, value, false)
     }
 
     pub fn resize(&mut self, width: u32, height: u32, dpr: f64) -> Result<(), JsValue> {
@@ -426,4 +437,43 @@ fn option_contains_function(value: &OptionValue) -> bool {
         OptionValue::Object(map) => map.values().any(option_contains_function),
         _ => false,
     }
+}
+
+fn convert_result_to_js(result: ConvertResult) -> JsValue {
+    match result {
+        ConvertResult::Scalar(n) => JsValue::from(n),
+        ConvertResult::Point(x, y) => {
+            let arr = js_sys::Array::new_with_length(2);
+            arr.set(0, JsValue::from(x));
+            arr.set(1, JsValue::from(y));
+            arr.into()
+        }
+    }
+}
+
+fn convert_pixel_js(
+    option: &OptionModel,
+    width: u32,
+    height: u32,
+    zoom: crate::interaction::DataZoomRange,
+    finder: JsValue,
+    value: JsValue,
+    to_pixel: bool,
+) -> JsValue {
+    if option.is_empty() {
+        return JsValue::NULL;
+    }
+    let Ok(finder) = parse_option_value(&finder) else {
+        return JsValue::NULL;
+    };
+    let Ok(value) = parse_option_value(&value) else {
+        return JsValue::NULL;
+    };
+    let model = GlobalModel::from_option_with_zoom(option, width, height, zoom);
+    let result = if to_pixel {
+        convert_to_pixel(&model, &finder, &value)
+    } else {
+        convert_from_pixel(&model, &finder, &value)
+    };
+    result.map(convert_result_to_js).unwrap_or(JsValue::NULL)
 }

@@ -130,7 +130,7 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 
 #### 1. 与官方一致的公开 API
 
-`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version`（`'6.1.0'`）/ `use`（只提示）；实例 `setOption(option)` / `setOption(option, notMerge | opts)` / `getOption` / `resize` / `clear` / `dispatchAction` / `on` / `off` / `getWidth` / `getHeight` / `getDevicePixelRatio` / `isDisposed` / `dispose` / `getDom` / `getId`。`init(canvas)` 后 `setOption` 自动上屏，并绑定指针（`click` / `mouseover` / `mouseout` / `globalout`）。`dispatchAction` 已接线：`highlight` / `downplay` / `select` / `unselect` / `toggleSelect` / `dataZoom` / `showTip` / `hideTip`。
+`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version`（`'6.1.0'`）/ `use`（只提示）；实例 `setOption(option)` / `setOption(option, notMerge | opts)` / `getOption` / `resize` / `clear` / `dispatchAction` / `on` / `off` / `getWidth` / `getHeight` / `getDevicePixelRatio` / `isDisposed` / `dispose` / `getDom` / `getId` / `convertToPixel` / `convertFromPixel`（cartesian `xAxis`/`yAxis`/`grid` 最小集）。`init(canvas)` 后 `setOption` 自动上屏，并绑定指针（`click` / `mouseover` / `mouseout` / `globalout`）。`dispatchAction` 已接线：`highlight` / `downplay` / `select` / `unselect` / `toggleSelect` / `dataZoom` / `showTip` / `hideTip`。
 
 #### 2. 与官方不一致 / 例外
 
@@ -156,8 +156,8 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 
 #### 4. 已实现 / 未实现
 
-- **已实现（部分生效）**：line / bar / pie / scatter；单 cartesian；inside dataZoom 滚轮；`on`/`off` 指针事件；内建 string tooltip；`showTip`/`hideTip`；hover / toggleSelect；竖线 axisPointer。
-- **未实现**：legend / title / polar / gauge / 其余 chart、`connect`、主题、`getZr`、`getDataURL`、Loading、完整 `convertToPixel`。详见 [AGENT.md](AGENT.md) 与 [echarts 文档](wasm-echarts-rs/site/echarts/docs/index.html)。
+- **已实现（部分生效）**：line / bar / pie / scatter；单 cartesian；`axisLabel.formatter`；pie `center`/`radius`/`startAngle`/`clockwise`；`symbol`/`symbolSize`；series label；CallbackDataParams（`componentType`/`seriesType`/`percent`/`data`）；`convertToPixel` cartesian 最小集；inside dataZoom 滚轮；`on`/`off` 指针事件；内建 string tooltip；`showTip`/`hideTip`；hover / toggleSelect；竖线 axisPointer。
+- **未实现**：legend / title / polar / gauge / 其余 chart、`connect`、主题、`getZr`、`getDataURL`、Loading、`convertToPixel` 完整 finder。详见 [AGENT.md](AGENT.md) 与 [echarts 文档](wasm-echarts-rs/site/echarts/docs/index.html)。
 
 native `EChartsInstance`（`wasm_echarts.d.ts`）是内部 handle，不要从 site 直接 `new`。
 

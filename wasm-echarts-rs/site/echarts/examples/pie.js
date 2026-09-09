@@ -18,7 +18,9 @@ async function main() {
       {
         type: 'pie',
         name: '占比',
-        radius: '55%',
+        radius: ['30%', '55%'],
+        center: ['50%', '50%'],
+        label: { show: true, formatter: '{b}: {d}%' },
         data: [
           { name: '直接访问', value: 335 },
           { name: '邮件营销', value: 310 },

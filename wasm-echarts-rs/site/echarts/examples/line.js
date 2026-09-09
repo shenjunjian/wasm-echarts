@@ -14,9 +14,22 @@ async function main() {
 
   const chart = init(canvas);
   chart.setOption({
-    xAxis: { type: 'category', data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] },
+    xAxis: {
+      type: 'category',
+      data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+      axisLabel: { formatter: '{value}' },
+    },
     yAxis: { type: 'value' },
-    series: [{ type: 'line', name: '销量', data: [120, 200, 150, 80, 70] }],
+    series: [
+      {
+        type: 'line',
+        name: '销量',
+        data: [120, 200, 150, 80, 70],
+        symbol: 'emptyCircle',
+        symbolSize: 8,
+        label: { show: true },
+      },
+    ],
   });
 }
 

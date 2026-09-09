@@ -685,4 +685,18 @@ export class ECharts {
     this._assertAlive();
     return this._native.option_has_functions();
   }
+
+  /**
+   * cartesian 最小集：finder 为 `{ xAxisIndex }` / `{ yAxisIndex }` / `{ gridIndex }` / `{ seriesIndex }`
+   * 或 `'xAxis'` / `'yAxis'` / `'grid'`。完整 finder 未实现。
+   */
+  convertToPixel(finder, value) {
+    this._assertAlive();
+    return this._native.convert_to_pixel(finder, value);
+  }
+
+  convertFromPixel(finder, value) {
+    this._assertAlive();
+    return this._native.convert_from_pixel(finder, value);
+  }
 }

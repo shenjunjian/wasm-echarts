@@ -2,9 +2,10 @@
 
 use rust_zrender::{
     ChildRef, DisplayableProps, EcData, FillStrokeStyle, Path, PathStyle, RectShape, Shape,
-    PathStylePatch, STATE_EMPHASIS, STATE_SELECT, ZRenderer,
+    PathStylePatch, STATE_EMPHASIS, STATE_SELECT, TextAlign, TextBaseline, ZRenderer,
 };
 
+use crate::chart::label::add_label;
 use crate::coord::Cartesian2D;
 use crate::model::{GlobalModel, SeriesModel};
 use crate::visual::VisualContext;
@@ -78,6 +79,20 @@ pub fn render_bar_series(
                 line_width: Some(2.0),
                 ..Default::default()
             },
+        );
+
+        add_label(
+            zr,
+            group,
+            visual,
+            series.index,
+            i,
+            cx,
+            y - 4.0,
+            TextAlign::Center,
+            TextBaseline::Bottom,
+            &color,
+            series.index as f64 + 0.2,
         );
     }
 }

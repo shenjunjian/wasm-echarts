@@ -16,7 +16,7 @@ todos:
     status: completed
   - id: option-semantics
     content: 已有 4 类图：axisLabel.formatter、pie center/radius、symbol/symbolSize、label 图元、CallbackDataParams 补字段、convertToPixel 最小集
-    status: pending
+    status: completed
   - id: docs-verify
     content: 文档写清：与官方一致/不一致、多出来的非官方 API、已实现与未实现；示例改走 init；手工验收
     status: pending

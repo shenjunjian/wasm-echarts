@@ -20,6 +20,8 @@ async function main() {
       {
         type: 'scatter',
         name: '样本',
+        symbol: 'circle',
+        symbolSize: 12,
         data: [
           [10.0, 8.04],
           [8.07, 6.95],

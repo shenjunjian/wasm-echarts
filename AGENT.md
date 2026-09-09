@@ -123,6 +123,7 @@ echarts 图表管线在 Rust 里直接 `use rust_zrender::ZRenderer`，不经过
 
 - 入口：`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version`（`'6.1.0'`）/ `use`（提示实现）。
 - 实例方法 camelCase，签名对齐：`setOption` / `getOption` / `resize` / `dispatchAction` / `on` / `off` / `getWidth` / `getHeight` / `getDevicePixelRatio` / `isDisposed` / `clear` / `dispose`。
+- `convertToPixel` / `convertFromPixel`：cartesian `xAxis` / `yAxis` / `grid` / `seriesIndex` finder 最小集（完整 finder 后置）。
 - `setOption(option)` 与 `setOption(option, notMerge)` / `setOption(option, { notMerge, replaceMerge, silent })`。`notMerge` **不是** option 里的字段。
 - `resize()` 无参（读 canvas 尺寸）与 `resize({ width, height, devicePixelRatio })`。
 - `init(canvas)` 后指针事件由 facade 绑定；发出官方事件名 `click` / `mouseover` / `mouseout` / `globalout`。
@@ -191,10 +192,10 @@ site 示例 JS（创建 canvas；`echarts.init` / `setOption`）
 | **2 后端补齐** | shadow、isPointInPath、r0、渐变/虚线/Image | **主体完成**。conic gradient、CSS filter **未做**（刻意忽略或待办） |
 | **3 交互基础** | Handler.findHover、ECData、emphasis/select | **已完成**。Path/Image/Text 均可命中 |
 | **4 JS 薄壳 + API 骨架** | init/setOption/resize/事件、`OptionValue` | **部分完成**。`js/` facade 已有 `init`/`setOption(option, notMerge\|opts)`/`getOption`/`resize`/`clear`/`dispose`/`use`/`on`/`off`；`init(canvas)` 绑指针并内建 string tooltip |
-| **4b 回调桥** | CallbackDataParams、call0/1/2 | **部分完成**。`formatter` / `itemStyle.color` 可用；`renderItem`/`api`、`axisLabel.formatter` 接入、per-series 缓存 **未完成** |
-| **5 echarts MVP** | GlobalModel、cartesian、line/bar、Scheduler | **部分完成**。line/bar 可渲染；`replaceMerge` 仅为顶层 key 整段替换；SeriesData/Source 完整管道、media query **未完成** |
+| **4b 回调桥** | CallbackDataParams、call0/1/2 | **部分完成**。`formatter` / `itemStyle.color` / `axisLabel.formatter` / `symbolSize` 回调可用；params 含 `componentType`/`seriesType`/`percent`/`data`。`renderItem`/`api`、per-series 缓存 **未完成** |
+| **5 echarts MVP** | GlobalModel、cartesian、line/bar、Scheduler | **部分完成**。line/bar 可渲染；`axisLabel.formatter`、`symbol`/`symbolSize`、`label.show`；`convertToPixel` 最小集。`replaceMerge` 仅为顶层 key；SeriesData/Source、media query **未完成** |
 | **6 交互完善** | hover/tooltip/dataZoom/axisPointer | **部分完成**。`init(canvas)` 绑指针；hover 高亮、`on('click')`、string tooltip DOM、`showTip`/`hideTip`、wheel inside dataZoom、竖线 axisPointer。pinch、slider、HTMLElement tooltip、十字/多轴 **未完成** |
-| **7 扩展与优化** | pie/scatter、RichText、脏矩形、视觉回归 | **部分完成**。pie/scatter、轴标签 Text、`benchmark_render`、feature flags。legend、gauge、polar、面积图、RichText、脏矩形、golden PNG **未完成** |
+| **7 扩展与优化** | pie/scatter、RichText、脏矩形、视觉回归 | **部分完成**。pie（`center`/`radius`/`startAngle`/`clockwise`/`label`/`labelLine`）/ scatter（`symbol`/`symbolSize`）、轴标签 Text、`benchmark_render`、feature flags。legend、gauge、polar、面积图、RichText、脏矩形、golden PNG **未完成** |
 
 ### wasm-zrender API 规范对齐（波次 0–6 + 文档验收已完成）
 
@@ -234,9 +235,9 @@ dispose(zr);
 
 `docs-site` / `demo-zrender` / `demo-echarts` 在规划 YAML 仍为 pending，**site 工程已落地**：首页缘由/限制 + 双产品文档/实例，实例页左源码右预览。
 
-### wasm-echarts API 规范对齐（波次 0–3 已完成）
+### wasm-echarts API 规范对齐（波次 0–4 已完成）
 
-规范已写入上文「目标与约束」；逐项清单以 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](../.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md) 为权威。JS facade 骨架在 `crates/wasm-echarts/js/`：`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version` / `use`（只 `console.info`）。site / README 从 `@wasm-echarts`（`js/index.js`）导入，`pkg/` 只作内部 handle。示例走官方 `init(canvas)` + `setOption`；`init(canvas)` 后自动 `putImageData` 并绑定指针。波次 2：`setOption(option, notMerge | opts)`、`getOption`、`resize()` / `resize({ width, height, devicePixelRatio })`、`clear` = `setOption({ series: [] }, true)`；`notMerge` 只作第二参数，不再从 option 根读取。波次 3：`on`/`off` 发出 `click` / `mouseover` / `mouseout` / `globalout`；内建 string tooltip DOM；`dispatchAction` 接 `showTip` / `hideTip`。公开用法是官方 `init` / `setOption` / `on`，不要把 native `EChartsInstance` / `set_option` / `handlePointerMove` 当公开 API。
+规范已写入上文「目标与约束」；逐项清单以 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](../.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md) 为权威。JS facade 骨架在 `crates/wasm-echarts/js/`：`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version` / `use`（只 `console.info`）。site / README 从 `@wasm-echarts`（`js/index.js`）导入，`pkg/` 只作内部 handle。示例走官方 `init(canvas)` + `setOption`；`init(canvas)` 后自动 `putImageData` 并绑定指针。波次 2：`setOption(option, notMerge | opts)`、`getOption`、`resize()` / `resize({ width, height, devicePixelRatio })`、`clear` = `setOption({ series: [] }, true)`；`notMerge` 只作第二参数，不再从 option 根读取。波次 3：`on`/`off` 发出 `click` / `mouseover` / `mouseout` / `globalout`；内建 string tooltip DOM；`dispatchAction` 接 `showTip` / `hideTip`。波次 4：`axisLabel.formatter` 进轴 Text；pie `center`/`radius`/`startAngle`/`clockwise`；line/scatter `symbol`/`symbolSize`；`label.show` 画 Text；CallbackDataParams 补 `componentType`/`seriesType`/`percent`/`data`；`convertToPixel`/`convertFromPixel` cartesian 最小集。公开用法是官方 `init` / `setOption` / `on`，不要把 native `EChartsInstance` / `set_option` / `handlePointerMove` 当公开 API。
 
 ---
 
@@ -588,6 +589,7 @@ chart-line, chart-bar, chart-pie, chart-scatter
 | `dispatchAction` | 已接线 type：`highlight` / `downplay` / `select` / `unselect` / `toggleSelect` / `dataZoom` / `showTip` / `hideTip` |
 | `getDom` / `getId` | `init` 后可取 |
 | `on` / `off` | `click` / `mouseover` / `mouseout` / `globalout`；payload 含 `event`、`seriesIndex`、`dataIndex`。`on(event, handler)` 或 `on(event, query, handler)` |
+| `convertToPixel` / `convertFromPixel` | cartesian 最小集：finder `{ xAxisIndex }` / `{ yAxisIndex }` / `{ gridIndex }` / `{ seriesIndex }` 或 `'xAxis'` / `'yAxis'` / `'grid'` |
 
 #### 2. 与官方不一致 / 例外
 
@@ -628,12 +630,14 @@ chart-line, chart-bar, chart-pie, chart-scatter
 | 范围 | 现状 |
 |------|------|
 | 图表 | `line` / `bar` / `pie` / `scatter`（feature flag 写死在 rust，不是 `echarts.use(BarChart)`） |
-| cartesian | 单 `xAxis`/`yAxis`；`type: category \| value`；`grid.left/right/top/bottom` |
-| line | Polyline + 固定半径 Circle；`itemStyle.color` / `lineStyle.color` 可为函数 |
-| bar | Rect，带宽 0.6 |
-| pie | Sector；默认 startAngle 90° 顺时针；半径由 grid 推，尚未读 `radius`/`center` |
-| scatter | 双 value 轴；固定 `symbolSize` 6 |
-| tooltip.formatter | 返回 string 时可用；CallbackDataParams 缺 `componentType`/`percent`/`data` 等 |
+| cartesian | 单 `xAxis`/`yAxis`；`type: category \| value`；`grid.left/right/top/bottom`；`convertToPixel`/`convertFromPixel` 的 xAxis/yAxis/grid 最小集 |
+| line | Polyline + `symbol`（circle/rect/emptyCircle）/`symbolSize`（数或函数）；`itemStyle.color` / `lineStyle.color` 可为函数 |
+| bar | Rect，带宽 0.6；`label.show` 画 Text |
+| pie | Sector；读 `center` / `radius`（含 `[r0, r]` 环形）/ `startAngle` / `clockwise`；默认 startAngle 90° 顺时针；`label.show`（默认 true）+ 简单 `labelLine` |
+| scatter | 双 value 轴；`symbol` / `symbolSize`（默认 10） |
+| tooltip.formatter | 返回 string 时可用；CallbackDataParams 含 `componentType`/`seriesType`/`percent`（pie）/`data` |
+| series.label | `label.show` + formatter（`{a}`/`{b}`/`{c}`/`{d}` 或函数）画 Text |
+| 轴标签 | `axisLabel.formatter` 函数或 `'{value}'` 模板真正进 Text |
 | emphasis/select | 图元 state + `dispatchAction` 六个 type |
 | dataZoom | `type: 'inside'` 滚轮改 start/end 百分比窗口；无 slider UI |
 | axisPointer | option 开启时画竖线；无十字、无 `trigger: 'axis'` tooltip |
@@ -648,9 +652,9 @@ Components：legend（含绘制与 `legendToggleSelect`）、title、toolbox、v
 
 Actions：legend\*、restore、brush、timeline、geo roam 等。
 
-其它：`connect`/`disconnect`、主题、`registerMap`、`appendData`、`convertToPixel` 完整 finder、`getDataURL`/`renderToCanvas`、`showLoading`、`getZr()`、`graphic`/`util`/`number`/`format` 命名空间、`registerPreprocessor` 等扩展注册、media query、完整 SeriesData。
+其它：`connect`/`disconnect`、主题、`registerMap`、`appendData`、`convertToPixel` 完整 finder（polar/geo/`seriesId` 等）、`getDataURL`/`renderToCanvas`、`showLoading`、`getZr()`、`graphic`/`util`/`number`/`format` 命名空间、`registerPreprocessor` 等扩展注册、media query、完整 SeriesData。
 
-**名字在 option 里出现但未按官方做：** `axisLabel.formatter` 未进轴 Text；`series.label`/`labelLine` 未画；`symbol`/`symbolSize` 忽略；pie `radius`/`center`/`roseType` 未读；`tooltip.trigger: 'axis'`；色板不是官方 palette 全套；多 grid / 双 y 轴。
+**名字在 option 里出现但未按官方做：** pie `roseType`；`tooltip.trigger: 'axis'`；色板不是官方 palette 全套；多 grid / 双 y 轴；`symbol` 仅 circle/rect/emptyCircle。
 
 ### 实现了哪些内容
 
@@ -662,7 +666,7 @@ Actions：legend\*、restore、brush、timeline、geo roam 等。
 |------|------|
 | `index.js` | 官方命名导出；`default` 仍是 `initWasm`；`version = '6.1.0'` |
 | `echarts.js` | `init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `use`（只提示）；实例表 |
-| `instance.js` | 包装 native `EChartsInstance`；camelCase；`setOption` 第二参数 / `getOption` / `clear` / `resize`；`on`/`off`；`init(canvas)` 后自动 `putImageData` 并绑指针；内建 string tooltip DOM |
+| `instance.js` | 包装 native `EChartsInstance`；camelCase；`setOption` 第二参数 / `getOption` / `clear` / `resize`；`on`/`off`；`convertToPixel` / `convertFromPixel` 最小集；`init(canvas)` 后自动 `putImageData` 并绑指针；内建 string tooltip DOM |
 | `native.js` | 加载 `pkg/wasm_echarts.js` |
 | `wasm_echarts.js` | 兼容旧路径 `@wasm-echarts/wasm_echarts.js` |
 
@@ -684,6 +688,7 @@ Actions：legend\*、restore、brush、timeline、geo roam 等。
 | `benchmark_render(n)` | 全量 render+refresh 平均毫秒 |
 | `has_option()` / `option_has_functions()` / `dispose()` | 状态与释放 |
 | `width()` / `height()` / `dpr()` | 尺寸 |
+| `convert_to_pixel` / `convert_from_pixel` | cartesian `xAxis`/`yAxis`/`grid` finder 最小集 |
 
 `dispatch_action` 已实现：`highlight`、`downplay`、`select`、`unselect`、`toggleSelect`、`dataZoom`（`start`/`end` 百分比）、`showTip`、`hideTip`。其它 type 会 `console.warn`。
 
@@ -696,19 +701,19 @@ Actions：legend\*、restore、brush、timeline、geo roam 等。
 
 #### `bridge/` — 回调
 
-- `JsCallback`：`call_formatter`、`call_color`、`call_render_item`、`call_axis_formatter`
-- `build_data_params`：`seriesIndex` / `dataIndex` / `seriesName` / `name` / `value` / `color`（尚无 percent、encode 等完整 CallbackDataParams）
-- `resolve_color` / `resolve_formatter` / `resolve_axis_formatter`
+- `JsCallback`：`call_formatter`、`call_color`、`call_render_item`、`call_axis_formatter`、`call_size`
+- `build_data_params`：`componentType` / `seriesType` / `seriesIndex` / `dataIndex` / `seriesName` / `name` / `value` / `data` / `color` / pie `percent` / `$vars`
+- `resolve_color` / `resolve_formatter`（`{a}{b}{c}{d}` 模板）/ `resolve_axis_formatter`（`{value}`）/ `resolve_symbol_size`
 - `try_call_formatter`：JS throw 时 `console.error` 并降级
 
-**已接线**：`itemStyle.color` / `lineStyle.color`、`tooltip.formatter`（string）、`label.formatter` 有 resolve（系列 label 图元绘制仍弱）。
+**已接线**：`itemStyle.color` / `lineStyle.color`、`tooltip.formatter`（string）、`label.formatter` + 图元、`axisLabel.formatter` 进轴 Text、`symbol` / `symbolSize`。
 
-**未接线或未完成**：`axisLabel.formatter` 虽有 resolve 函数，轴渲染仍用类目字符串/数值格式化；`symbol` / `symbolSize`；`series.renderItem` + `api`；tooltip 返回 HTMLElement；常量回调缓存。
+**未接线或未完成**：`series.renderItem` + `api`；tooltip 返回 HTMLElement；常量回调缓存。
 
 #### `model/` + `scheduler.rs` + `render.rs`
 
 - `GlobalModel`：grid 矩形、单 x/y 轴、category 或 value、`Vec<SeriesModel>`、dataZoom 窗口
-- `DataPoint` 为简化 vec（value / 可选 x_value / name），不是完整 SeriesData/Source
+- `DataPoint` 为简化 vec（value / 可选 x_value / name / raw），不是完整 SeriesData/Source
 - Scheduler：单次全量 `run_update` → `render_chart`（先 `Storage::new()` 再重建整棵树，无增量）
 
 #### `coord/` — `Cartesian2D`
@@ -716,6 +721,7 @@ Actions：legend\*、restore、brush、timeline、geo roam 等。
 - category + value → 像素（line/bar）
 - 双 value → 像素（scatter）
 - 配合 dataZoom 的可见类目窗口
+- `convertToPixel` / `convertFromPixel`：`xAxis` / `yAxis` / `grid` finder 最小集
 
 无 polar。
 
@@ -723,11 +729,11 @@ Actions：legend\*、restore、brush、timeline、geo roam 等。
 
 | 类型 | 图元 | 说明 |
 |------|------|------|
-| line | Polyline + Circle 符号 | 色回调、emphasis/select 样式补丁、ECData |
-| bar | Rect | 带宽 0.6、基线、ECData |
-| pie | Sector | 默认 startAngle 90° 顺时针；半径由 grid 推；无 roseType / labelLine |
-| scatter | Circle | 双 value 轴；固定 symbol 半径 6 |
-| 组件 | 网格框、y 向 splitLine、轴标签 Text、竖线 axisPointer | legend / dataZoom slider 未画 |
+| line | Polyline + symbol | `symbol` circle/rect/emptyCircle（默认 emptyCircle）；`symbolSize`；label Text |
+| bar | Rect | 带宽 0.6、基线、ECData、label Text |
+| pie | Sector | `center`/`radius`/`r0`/`startAngle`/`clockwise`；label + 简单 labelLine；无 roseType |
+| scatter | symbol | 双 value 轴；`symbol`/`symbolSize`（默认 10） |
+| 组件 | 网格框、y 向 splitLine、轴标签 Text、竖线 axisPointer | `axisLabel.formatter` 已进 Text；legend / dataZoom slider 未画 |
 
 轴标签走 `ChildRef::Text` 挂到 group，`silent = true`（不抢 hover）。
 
@@ -1040,12 +1046,12 @@ npm run dev
 
 ### wasm-echarts
 
-对照 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](../.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md)。波次 0–3 已落地（入口、`setOption` 签名、指针/`on`/`off`/`showTip`）。option 语义见波次 4。后置项不混进「已对齐」，但须出现在「未实现」表：
+对照 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](../.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md)。波次 0–4 已落地（入口、`setOption` 签名、指针/`on`/`off`/`showTip`、4 类图 option 语义）。文档与验收见波次 5。后置项不混进「已对齐」，但须出现在「未实现」表：
 
 - legend 绘制；dataZoom slider UI；pinch
 - axisPointer 十字 / 多轴；tooltip HTMLElement / confine / `trigger: 'axis'`
-- `axisLabel.formatter` 真正画轴；series label / labelLine
-- `symbol` / `symbolSize`；CustomSeries `renderItem` + `api`
+- pie `roseType` / 完整 label 避让；其余 symbol 形状
+- CustomSeries `renderItem` + `api`；`convertToPixel` 完整 finder
 - media query；完整 SeriesData；面积图；gauge；polar；多 grid / 双 y 轴
 - `connect` / 主题 / `getZr` / `getDataURL` / Loading / 其余 chart / `registerPreprocessor`
 - 视觉回归（echarts `test/*.html` → golden PNG）；JS vs WASM 基准报告

@@ -1,3 +1,5 @@
+use crate::option::OptionValue;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SeriesType {
     Line,
@@ -17,6 +19,16 @@ impl SeriesType {
             _ => SeriesType::Other,
         }
     }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            SeriesType::Line => "line",
+            SeriesType::Bar => "bar",
+            SeriesType::Pie => "pie",
+            SeriesType::Scatter => "scatter",
+            SeriesType::Other => "other",
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -25,6 +37,7 @@ pub struct DataPoint {
     pub x_value: Option<f64>,
     pub name: Option<String>,
     pub raw_index: usize,
+    pub raw: OptionValue,
 }
 
 #[derive(Debug, Clone)]

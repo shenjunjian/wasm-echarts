@@ -40,6 +40,22 @@ impl JsCallback {
         ret.as_string()
             .ok_or_else(|| JsValue::from_str("axis formatter must return string"))
     }
+
+    /// symbolSize: `(rawValue, params) => number | [w, h]`
+    pub fn call_size(&self, value: &JsValue, params: &JsValue) -> Result<f64, JsValue> {
+        let ret = self.0.call2(&JsValue::NULL, value, params)?;
+        if let Some(n) = ret.as_f64() {
+            return Ok(n);
+        }
+        if js_sys::Array::is_array(&ret) {
+            let arr = js_sys::Array::from(&ret);
+            return arr
+                .get(0)
+                .as_f64()
+                .ok_or_else(|| JsValue::from_str("symbolSize array item must be number"));
+        }
+        Err(JsValue::from_str("symbolSize must return number"))
+    }
 }
 
 /// 安全调用：捕获 JS throw，console.error 后返回 None

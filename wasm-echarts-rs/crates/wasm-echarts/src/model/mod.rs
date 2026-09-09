@@ -132,12 +132,12 @@ fn parse_grid(value: Option<&OptionValue>, width: f64, height: f64) -> GridRect 
     let default_top = 40.0;
     let default_bottom = 50.0;
 
-    let (left, right, top, bottom) = match value {
+        let (left, right, top, bottom) = match value {
         Some(OptionValue::Object(map)) => (
-            parse_margin(map.get("left"), width, default_left),
-            parse_margin(map.get("right"), width, default_right),
-            parse_margin(map.get("top"), height, default_top),
-            parse_margin(map.get("bottom"), height, default_bottom),
+            crate::utils::parse_percent(map.get("left"), width, default_left),
+            crate::utils::parse_percent(map.get("right"), width, default_right),
+            crate::utils::parse_percent(map.get("top"), height, default_top),
+            crate::utils::parse_percent(map.get("bottom"), height, default_bottom),
         ),
         _ => (default_left, default_right, default_top, default_bottom),
     };
@@ -147,19 +147,6 @@ fn parse_grid(value: Option<&OptionValue>, width: f64, height: f64) -> GridRect 
         y: top,
         width: (width - left - right).max(1.0),
         height: (height - top - bottom).max(1.0),
-    }
-}
-
-fn parse_margin(value: Option<&OptionValue>, total: f64, default_px: f64) -> f64 {
-    match value {
-        Some(OptionValue::Number(n)) => *n,
-        Some(OptionValue::String(s)) if s.ends_with('%') => {
-            s.trim_end_matches('%')
-                .parse::<f64>()
-                .map(|p| total * p / 100.0)
-                .unwrap_or(default_px)
-        }
-        _ => default_px,
     }
 }
 
@@ -312,12 +299,20 @@ mod tests {
                     x_value: Some(1.0),
                     name: None,
                     raw_index: 0,
+                    raw: OptionValue::Array(vec![
+                        OptionValue::Number(1.0),
+                        OptionValue::Number(10.0),
+                    ]),
                 },
                 DataPoint {
                     value: 20.0,
                     x_value: Some(9.0),
                     name: None,
                     raw_index: 1,
+                    raw: OptionValue::Array(vec![
+                        OptionValue::Number(9.0),
+                        OptionValue::Number(20.0),
+                    ]),
                 },
             ],
         }];

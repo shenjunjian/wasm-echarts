@@ -14,9 +14,20 @@ async function main() {
 
   const chart = init(canvas);
   chart.setOption({
-    xAxis: { type: 'category', data: ['A', 'B', 'C', 'D'] },
-    yAxis: { type: 'value' },
-    series: [{ type: 'bar', name: '数量', data: [40, 90, 60, 120] }],
+    xAxis: {
+      type: 'category',
+      data: ['A', 'B', 'C', 'D'],
+      axisLabel: { formatter: '{value}' },
+    },
+    yAxis: { type: 'value', axisLabel: { formatter: '{value}' } },
+    series: [
+      {
+        type: 'bar',
+        name: '数量',
+        data: [40, 90, 60, 120],
+        label: { show: true },
+      },
+    ],
   });
 }
 

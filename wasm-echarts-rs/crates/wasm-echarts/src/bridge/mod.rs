@@ -7,5 +7,8 @@ mod params;
 mod resolve;
 
 pub use callback::{try_call_formatter, JsCallback};
-pub use params::build_data_params;
-pub use resolve::{default_series_color, resolve_axis_formatter, resolve_color, resolve_formatter};
+pub use params::{build_data_params, DataParamsInput};
+pub use resolve::{
+    default_series_color, resolve_axis_formatter, resolve_color, resolve_formatter,
+    resolve_symbol_size,
+};

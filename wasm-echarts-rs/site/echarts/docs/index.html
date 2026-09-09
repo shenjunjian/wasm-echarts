@@ -40,7 +40,7 @@ cd site && npm install && npm run dev
         <li><code>dispose(chart | canvas | id)</code> / <code>getInstanceByDom</code> / <code>getInstanceById</code></li>
         <li><code>version</code> — <code>'6.1.0'</code></li>
         <li><code>use(...)</code> — 导出且签名对齐，只打印提示，不按需加载</li>
-        <li>实例：<code>setOption(option)</code> / <code>setOption(option, notMerge | opts)</code> / <code>getOption</code> / <code>resize</code> / <code>clear</code> / <code>dispatchAction</code> / <code>on</code> / <code>off</code> / <code>getWidth</code> / <code>getHeight</code> / <code>getDevicePixelRatio</code> / <code>isDisposed</code> / <code>dispose</code> / <code>getDom</code> / <code>getId</code></li>
+        <li>实例：<code>setOption(option)</code> / <code>setOption(option, notMerge | opts)</code> / <code>getOption</code> / <code>resize</code> / <code>clear</code> / <code>dispatchAction</code> / <code>on</code> / <code>off</code> / <code>getWidth</code> / <code>getHeight</code> / <code>getDevicePixelRatio</code> / <code>isDisposed</code> / <code>dispose</code> / <code>getDom</code> / <code>getId</code> / <code>convertToPixel</code> / <code>convertFromPixel</code>（cartesian <code>xAxis</code>/<code>yAxis</code>/<code>grid</code> 最小集）</li>
         <li>指针事件名：<code>click</code> / <code>mouseover</code> / <code>mouseout</code> / <code>globalout</code>（payload 含 <code>event</code>、<code>seriesIndex</code>、<code>dataIndex</code>）</li>
         <li><code>dispatchAction</code>：<code>highlight</code> / <code>downplay</code> / <code>select</code> / <code>unselect</code> / <code>toggleSelect</code> / <code>dataZoom</code> / <code>showTip</code> / <code>hideTip</code></li>
       </ul>
@@ -99,9 +99,12 @@ chart.on('click', (params) => {
       <p><strong>已实现（部分生效）</strong></p>
       <ul>
         <li>图表：line、bar、pie、scatter（feature flag 写死在 rust，不是 <code>echarts.use</code>）</li>
-        <li>cartesian：单 x/y 轴；category / value；grid 边距</li>
+        <li>cartesian：单 x/y 轴；category / value；grid 边距；<code>convertToPixel</code> / <code>convertFromPixel</code> 的 xAxis/yAxis/grid 最小集</li>
         <li>交互：<code>init(canvas)</code> 绑指针；hover 高亮、内建 string tooltip、<code>on('click')</code>、wheel inside dataZoom、竖线 axisPointer</li>
-        <li>轴标签 Text（<code>axisLabel.formatter</code> 解析存在，轴侧调用待完善）</li>
+        <li>轴标签 Text；<code>axisLabel.formatter</code>（函数或 <code>{value}</code> 模板）已进轴</li>
+        <li>line/scatter：<code>symbol</code>（circle/rect/emptyCircle）与 <code>symbolSize</code>（数或函数）；series <code>label.show</code> 画 Text</li>
+        <li>pie：<code>center</code> / <code>radius</code>（含环形 <code>[r0, r]</code>）/ <code>startAngle</code> / <code>clockwise</code>；label + 简单 labelLine</li>
+        <li>CallbackDataParams：<code>componentType</code> / <code>seriesType</code> / <code>percent</code>（pie）/ <code>data</code></li>
         <li><code>dispatchAction</code>：<code>highlight</code> / <code>downplay</code> / <code>select</code> / <code>unselect</code> / <code>toggleSelect</code> / <code>dataZoom</code> / <code>showTip</code> / <code>hideTip</code></li>
       </ul>
       <p><strong>未实现（后置，不混进「已对齐」）</strong></p>
@@ -109,8 +112,8 @@ chart.on('click', (params) => {
         <li>Charts：Radar、Map、Gauge、Funnel、Heatmap、Custom <code>renderItem</code> 等其余类型</li>
         <li>Components：legend、title、toolbox、visualMap、geo、polar、graphic、brush、timeline、dataset</li>
         <li>Actions：legend*、restore 等</li>
-        <li><code>connect</code> / 主题 / <code>registerMap</code> / <code>getZr</code> / <code>getDataURL</code> / Loading / media query</li>
-        <li>option 未按官方生效：pie <code>radius</code>/<code>center</code>、<code>symbol</code>/<code>symbolSize</code>、series label、多 grid / 双 y 轴</li>
+        <li><code>connect</code> / 主题 / <code>registerMap</code> / <code>getZr</code> / <code>getDataURL</code> / Loading / media query / <code>convertToPixel</code> 完整 finder</li>
+        <li>option 未按官方生效：pie <code>roseType</code>、多 grid / 双 y 轴、<code>symbol</code> 仅 circle/rect/emptyCircle</li>
         <li>tooltip HTMLElement formatter / <code>confine</code> / <code>trigger: 'axis'</code></li>
       </ul>
     </div>

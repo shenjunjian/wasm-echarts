@@ -1,10 +1,12 @@
 mod axis;
 mod bar;
+mod label;
 mod line;
 #[cfg(feature = "chart-pie")]
 mod pie;
 #[cfg(feature = "chart-scatter")]
 mod scatter;
+mod symbol;
 
 #[cfg(feature = "chart-bar")]
 pub use bar::render_bar_series;
@@ -39,7 +41,7 @@ pub fn render_components(
     if model.has_cartesian_series() {
         render_grid_frame(zr, group, model);
         render_split_lines(zr, group, model, &coord);
-        axis::render_axis_labels(zr, group, model, &coord, zoom_start, zoom_end);
+        axis::render_axis_labels(zr, group, model, option, &coord, zoom_start, zoom_end);
     }
 
     for series in &model.series {
