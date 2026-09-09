@@ -42,8 +42,10 @@ impl FontRegistryState {
         });
         if let Some(families) = options.sans_serif {
             self.sans_serif_override = Some(families);
-        } else if let Some(family) = family_for_mapping {
-            self.sans_serif_override = Some(vec![family]);
+        } else if self.sans_serif_override.is_none() {
+            if let Some(family) = family_for_mapping {
+                self.sans_serif_override = Some(vec![family]);
+            }
         }
         self.resolved = None;
     }
@@ -137,6 +139,72 @@ mod tests {
             ctx.fill_text("wasm-zrender 文本", 10.0, 50.0);
             let data = ctx.get_image_data(0, 0, 200, 100);
             assert!(data.chunks(4).any(|px| px[3] > 0));
+        })
+        .unwrap();
+    }
+
+    #[test]
+    fn second_font_keeps_existing_sans_serif_mapping() {
+        reset();
+        register_font(
+            TEST_FONT.to_vec(),
+            RegisterFontOptions {
+                family_name: Some("Noto Sans SC".into()),
+                sans_serif: Some(vec!["Noto Sans SC".into()]),
+            },
+        )
+        .unwrap();
+        register_font(
+            TEST_FONT.to_vec(),
+            RegisterFontOptions {
+                family_name: Some("KaiTi".into()),
+                sans_serif: None,
+            },
+        )
+        .unwrap();
+
+        with_resolved_font_config(|resolved| {
+            let mut ctx = Canvas2dContext::with_resolved(240, 80, resolved).unwrap();
+            ctx.set_font("18px KaiTi").unwrap();
+            ctx.fill_text("楷体", 10.0, 40.0);
+            let named = ctx.get_image_data(0, 0, 240, 80);
+            assert!(named.chunks(4).any(|px| px[3] > 0));
+
+            ctx.set_font("18px sans-serif").unwrap();
+            ctx.fill_text("黑体", 80.0, 40.0);
+            let generic = ctx.get_image_data(0, 0, 240, 80);
+            assert!(generic.chunks(4).any(|px| px[3] > 0));
+        })
+        .unwrap();
+    }
+
+    #[test]
+    fn windows_ttc_registers_with_family_name() {
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../site/public/fonts/msyh.ttc"
+        );
+        let Ok(bytes) = std::fs::read(path) else {
+            return;
+        };
+        reset();
+        register_font(
+            bytes,
+            RegisterFontOptions {
+                family_name: Some("Microsoft YaHei".into()),
+                sans_serif: Some(vec!["Microsoft YaHei".into()]),
+            },
+        )
+        .unwrap();
+        with_resolved_font_config(|resolved| {
+            let mut ctx = Canvas2dContext::with_resolved(240, 80, resolved).unwrap();
+            ctx.set_font("18px \"Microsoft YaHei\"").unwrap();
+            ctx.fill_text("雅黑", 10.0, 40.0);
+            let data = ctx.get_image_data(0, 0, 240, 80);
+            assert!(
+                data.chunks(4).any(|px| px[3] > 0),
+                "msyh.ttc should render named family"
+            );
         })
         .unwrap();
     }

@@ -59,7 +59,8 @@ cd ../../site && npm install && npm run dev
       <ul>
         <li><code>data</code> — <code>Uint8Array</code>，字体文件原始 bytes</li>
         <li><code>opts.familyName</code> — 可选，覆盖字体族名（不传则读字体 name table）</li>
-        <li><code>opts.sansSerif</code> — 可选，<code>string[]</code>，将 CSS <code>sans-serif</code> 映射到这些族名；若只传 <code>familyName</code> 则默认映射到该族名</li>
+        <li><code>opts.sansSerif</code> — 可选，<code>string[]</code>，将 CSS <code>sans-serif</code> 映射到这些族名。只传 <code>familyName</code> 且尚无映射时，默认映射到该族名；后续再注册其它字体不会覆盖已有 <code>sans-serif</code> 映射</li>
+        <li>Text <code>style.fontFamily</code> 会进入 canvas <code>setFont</code>（例如 <code>18px "Microsoft YaHei"</code>）；不设则用 <code>sans-serif</code></li>
       </ul>
 
       <pre>import initWasm, { init, registerFont, Text } from '@wasm-zrender';

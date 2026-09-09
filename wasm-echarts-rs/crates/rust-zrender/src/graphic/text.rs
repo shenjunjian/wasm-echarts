@@ -24,6 +24,7 @@ pub enum TextBaseline {
 pub struct TextStyle {
     pub fill: String,
     pub font_size: f32,
+    pub font_family: String,
     pub align: TextAlign,
     pub baseline: TextBaseline,
 }
@@ -33,9 +34,25 @@ impl Default for TextStyle {
         Self {
             fill: "#000".into(),
             font_size: 12.0,
+            font_family: "sans-serif".into(),
             align: TextAlign::Left,
             baseline: TextBaseline::Alphabetic,
         }
+    }
+}
+
+/// 拼成 canvas `setFont` 字符串，例如 `18px "Microsoft YaHei"`。
+pub fn canvas_font(font_size: f32, family: &str) -> String {
+    let family = family.trim();
+    if family.is_empty() {
+        return format!("{font_size}px sans-serif");
+    }
+    if family.contains(',') {
+        format!("{font_size}px {family}")
+    } else if family.contains(' ') {
+        format!("{font_size}px \"{}\"", family.replace('"', ""))
+    } else {
+        format!("{font_size}px {family}")
     }
 }
 
@@ -159,5 +176,14 @@ mod tests {
     #[test]
     fn default_fill_is_black() {
         assert_eq!(TextStyle::default().fill, "#000");
+        assert_eq!(TextStyle::default().font_family, "sans-serif");
+    }
+
+    #[test]
+    fn canvas_font_quotes_family_with_spaces() {
+        assert_eq!(canvas_font(18.0, "Microsoft YaHei"), "18px \"Microsoft YaHei\"");
+        assert_eq!(canvas_font(12.0, "KaiTi"), "12px KaiTi");
+        assert_eq!(canvas_font(11.0, "SimSun, serif"), "11px SimSun, serif");
+        assert_eq!(canvas_font(14.0, "  "), "14px sans-serif");
     }
 }

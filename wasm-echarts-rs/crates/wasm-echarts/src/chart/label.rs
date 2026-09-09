@@ -32,6 +32,7 @@ pub fn add_label(
                 font_size: 12.0,
                 align,
                 baseline,
+                ..Default::default()
             })
             .with_displayable(rust_zrender::DisplayableProps {
                 z,

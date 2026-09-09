@@ -138,7 +138,7 @@ echarts 图表管线在 Rust 里直接 `use rust_zrender::ZRenderer`，不经过
 3. **多出来的非官方 API**：`refresh`、`findHover` / `handlePointerMove` 等 WASM hatch；写清用途、何时该用、何时不该当官方 API。
 4. **已实现 / 未实现**：图表类型、组件、`dispatchAction` type、option 字段生效范围。未实现的官方方法仍尽量导出同名，内部 `console.warn` 并在此表标「未实现」。
 
-**本波不挡主路径（后置，不混进「已对齐」，但要出现在「未实现」表）：** `connect`/`disconnect`、`setTheme`/`registerTheme`、`registerMap`、`appendData`、`convertToPixel` 完整 finder、`getDataURL`/`renderToCanvas`、`showLoading`、`graphic`/`util`/`number`/`format` 命名空间、`registerPreprocessor` 等扩展注册、polar/gauge/其余 chart、legend 绘制、media query、完整 SeriesData、`getZr()`。
+**本波不挡主路径（后置，不混进「已对齐」，但要出现在「未实现」表）：** `connect`/`disconnect`、`setTheme`/`registerTheme`、`registerMap`、`appendData`、`convertToPixel` 完整 finder、`getDataURL`/`renderToCanvas`、`showLoading`、`graphic`/`util`/`number`/`format` 命名空间、`registerPreprocessor` 等扩展注册、polar/gauge/其余 chart、legend 点击筛选、media query、完整 SeriesData、`getZr()`。
 
 ---
 
@@ -195,7 +195,7 @@ site 示例 JS（创建 canvas；`echarts.init` / `setOption`）
 | **4b 回调桥** | CallbackDataParams、call0/1/2 | **部分完成**。`formatter` / `itemStyle.color` / `axisLabel.formatter` / `symbolSize` 回调可用；params 含 `componentType`/`seriesType`/`percent`/`data`。`renderItem`/`api`、per-series 缓存 **未完成** |
 | **5 echarts MVP** | GlobalModel、cartesian、line/bar、Scheduler | **部分完成**。line/bar 可渲染；`axisLabel.formatter`、`symbol`/`symbolSize`、`label.show`；`convertToPixel` 最小集。`replaceMerge` 仅为顶层 key；SeriesData/Source、media query **未完成** |
 | **6 交互完善** | hover/tooltip/dataZoom/axisPointer | **部分完成**。`init(canvas)` 绑指针；hover 高亮、`on('click')`、string tooltip DOM、`showTip`/`hideTip`、wheel inside dataZoom、竖线 axisPointer。pinch、slider、HTMLElement tooltip、十字/多轴 **未完成** |
-| **7 扩展与优化** | pie/scatter、RichText、脏矩形、视觉回归 | **部分完成**。pie（`center`/`radius`/`startAngle`/`clockwise`/`label`/`labelLine`）/ scatter（`symbol`/`symbolSize`）、轴标签 Text、`benchmark_render`、feature flags。legend、gauge、polar、面积图、RichText、脏矩形、golden PNG **未完成** |
+| **7 扩展与优化** | pie/scatter、RichText、脏矩形、视觉回归 | **部分完成**。pie（`center`/`radius`/`startAngle`/`clockwise`/`label`/`labelLine`）/ scatter（`symbol`/`symbolSize`）、轴标签 Text、title/legend 最小绘制、`fontFamily`、`benchmark_render`、feature flags。legend 点击筛选、gauge、polar、面积图、RichText、脏矩形、golden PNG **未完成** |
 
 ### wasm-zrender API 规范对齐（波次 0–6 + 文档验收已完成）
 
@@ -652,7 +652,7 @@ chart-line, chart-bar, chart-pie, chart-scatter
 
 Charts：Radar、Map、Tree、Treemap、Graph、Chord、Gauge、Funnel、Parallel、Sankey、Boxplot、Candlestick、EffectScatter、Lines、Heatmap、PictorialBar、ThemeRiver、Sunburst、Custom（`renderItem`+`api`）。
 
-Components：legend（含绘制与 `legendToggleSelect`）、title、toolbox、visualMap、geo、polar、radar、singleAxis、calendar、graphic、brush、timeline、markPoint/Line/Area、dataset/transform、aria、thumbnail。
+Components：legend 点击筛选与复杂布局、title 复杂布局、toolbox、visualMap、geo、polar、radar、singleAxis、calendar、graphic、brush、timeline、markPoint/Line/Area、dataset/transform、aria、thumbnail。
 
 Actions：legend\*、restore、brush、timeline、geo roam 等。
 
@@ -742,7 +742,7 @@ Actions：legend\*、restore、brush、timeline、geo roam 等。
 | bar | Rect | 带宽 0.6、基线、ECData、label Text |
 | pie | Sector | `center`/`radius`/`r0`/`startAngle`/`clockwise`；label + 简单 labelLine；无 roseType |
 | scatter | symbol | 双 value 轴；`symbol`/`symbolSize`（默认 10） |
-| 组件 | 网格框、y 向 splitLine、轴标签 Text、竖线 axisPointer | `axisLabel.formatter` 已进 Text；legend / dataZoom slider 未画 |
+| 组件 | 网格框、y 向 splitLine、轴标签 Text、轴名称、title / subtext、legend 色块+系列名、竖线 axisPointer | `axisLabel.formatter` 已进 Text；`fontFamily` / `fontSize` / `color` 从 textStyle、nameTextStyle、axisLabel 读入；legend 无点击筛选 |
 
 轴标签走 `ChildRef::Text` 挂到 group，`silent = true`（不抢 hover）。
 
@@ -753,7 +753,7 @@ Actions：legend\*、restore、brush、timeline、geo roam 等。
 
 #### site 示例
 
-每个 `site/echarts/examples/*.js` 都是完整独立脚本。导入 `@wasm-echarts` 的 `init` / `registerFont`：`await initWasm()` → `fetch` + `registerFont` → `init(canvas)` + `setOption`。轴标签 / series label 走 cosmic-text，**未注册字体时 `refresh` 会 panic `no default font found`**。有 canvas 时自动上屏并绑指针。交互合集 `interactive.js` 调 `use()`（只 `console.info`）并用 `on('click')` + `dispatchAction('toggleSelect')`；tooltip / hover / wheel 由 facade 消化。`merge.js` 对照深合并与 `notMerge: true`，并走 dispose 后再 init。不要把 `EChartsInstance` / `set_option` / `handlePointerMove` 当公开 API。文档四块在 `site/echarts/docs/index.html`。可选辅助 `site/src/echarts/fonts.js`（`ensureDefaultFont`）默认拉取 `/fonts/NotoSansSC-Regular.ttf`。
+每个 `site/echarts/examples/*.js` 都是完整独立脚本。导入 `@wasm-echarts` 的 `init` / `registerFont`：`await initWasm()` → `fetch` + `registerFont` → `init(canvas)` + `setOption`。轴标签 / series label / title / legend 走 cosmic-text，**未注册字体时 `refresh` 会 panic `no default font found`**。多字体示例 `fonts.js` 连续 registerFont 多份文件，再在 `title.textStyle` / `subtextStyle` / `legend.textStyle` / `nameTextStyle` / `axisLabel` 上设不同 `fontFamily`。有 canvas 时自动上屏并绑指针。交互合集 `interactive.js` 调 `use()`（只 `console.info`）并用 `on('click')` + `dispatchAction('toggleSelect')`；tooltip / hover / wheel 由 facade 消化。`merge.js` 对照深合并与 `notMerge: true`，并走 dispose 后再 init。不要把 `EChartsInstance` / `set_option` / `handlePointerMove` 当公开 API。文档四块在 `site/echarts/docs/index.html`。可选辅助 `site/src/echarts/fonts.js`（`ensureDefaultFont`）默认拉取 `/fonts/NotoSansSC-Regular.ttf`。Windows 本机可把 `C:\Windows\Fonts\msyh.ttc`、`simsun.ttc`、`simkai.ttf` 复制到 `site/public/fonts/`（微软字体不要提交 git）。
 
 浏览器测试 `crates/wasm-echarts/tests/web.rs` 目前几乎是占位（`1+1=2`）。Rust 单测在 `option` / `model` / `interaction` / `pie` 等模块内。
 
@@ -824,7 +824,7 @@ import initWasm, { init, registerFont } from '@wasm-echarts';
 再 `await initWasm()` → `registerFont` → `init(canvas)` + `setOption`。native `EChartsInstance` 仍从 facade 再导出，仅兼容旧路径，不要当公开 API。
 3. 每个实例是独立完整脚本：`site/echarts/examples/line.js` 等同名 HTML 成对出现（`<canvas id="canvas">`）；内联 `fetch` + `registerFont`（与 zrender `text.js` 相同）
 4. 画廊 `gallery.js` 用 Vite `?raw` 读这些 `.js` 作为左侧源码，iframe 加载同目录 HTML 预览。echarts 画廊是二级菜单：`groups` 第一层为图形类别（折线 / 柱状 / 饼图 / 散点 / 交互合集），第二层为该类别下的示例；每个类别可继续加多个示例。交互合集下挂 interactive / merge / bench。zrender 画廊仍用扁平 `examples`。
-5. 页面：line / bar / pie / scatter / interactive / merge / bench
+5. 页面：line / fonts / bar / pie / scatter / interactive / merge / bench
 
 ---
 
@@ -889,6 +889,7 @@ site/
 | 类别 | 页 | 验证点 |
 |------|----|--------|
 | 折线图 | line | ChartView line |
+| 折线图 | fonts | 多 `registerFont` + title / legend / 轴名称 `fontFamily` |
 | 柱状图 | bar | ChartView bar |
 | 饼图 | pie | ChartView pie |
 | 散点图 | scatter | ChartView scatter |
@@ -1065,7 +1066,7 @@ npm run dev
 
 对照 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](../.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md)。波次 0–5 已落地（入口、`setOption` 签名、指针/`on`/`off`/`showTip`、4 类图 option 语义、文档四块与示例验收）。后置项不混进「已对齐」，但须出现在「未实现」表：
 
-- legend 绘制；dataZoom slider UI；pinch
+- title / legend 最小绘制已做；legend 点击筛选、复杂布局、dataZoom slider UI、pinch 未做
 - axisPointer 十字 / 多轴；tooltip HTMLElement / confine / `trigger: 'axis'`
 - pie `roseType` / 完整 label 避让；其余 symbol 形状
 - CustomSeries `renderItem` + `api`；`convertToPixel` 完整 finder

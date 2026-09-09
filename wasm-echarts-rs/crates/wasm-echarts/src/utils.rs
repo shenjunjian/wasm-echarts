@@ -12,6 +12,14 @@ pub fn set_panic_hook() {
 }
 
 /// 解析数字或 `'12%'`。百分比相对 `relative`；缺省返回 `default`。
+pub fn first_component(value: Option<&OptionValue>) -> Option<&OptionValue> {
+    match value {
+        Some(OptionValue::Array(arr)) => arr.first(),
+        Some(v) => Some(v),
+        None => None,
+    }
+}
+
 pub fn parse_percent(value: Option<&OptionValue>, relative: f64, default: f64) -> f64 {
     match value {
         Some(OptionValue::Number(n)) => *n,

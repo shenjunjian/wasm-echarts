@@ -7,8 +7,10 @@ pub fn brush_text(ctx: &mut dyn CanvasContext, text: &Text) -> Result<(), Backen
     ctx.save();
     ctx.set_transform(text.base.transform());
 
-    let font = format!("{}px sans-serif", text.style.font_size);
-    ctx.set_font(&font);
+    ctx.set_font(&crate::graphic::text::canvas_font(
+        text.style.font_size,
+        &text.style.font_family,
+    ));
     ctx.set_text_align(text.style.align);
     ctx.set_text_baseline(text.style.baseline);
     ctx.set_fill_style(&text.style.fill)?;

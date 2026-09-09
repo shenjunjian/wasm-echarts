@@ -6,6 +6,7 @@ import scatterSource from './scatter.js?raw';
 import interactiveSource from './interactive.js?raw';
 import mergeSource from './merge.js?raw';
 import benchSource from './bench.js?raw';
+import fontsSource from './fonts.js?raw';
 
 mountExampleGallery(document.getElementById('app'), {
   title: 'wasm-echarts 实例',
@@ -22,6 +23,13 @@ mountExampleGallery(document.getElementById('app'), {
           description: 'category 轴折线图',
           previewUrl: './line.html',
           source: lineSource,
+        },
+        {
+          id: 'fonts',
+          title: '多字体',
+          description: 'registerFont 引入雅黑 / 宋体 / 楷体，分别用于标题、副标题、图例与轴单位',
+          previewUrl: './fonts.html',
+          source: fontsSource,
         },
       ],
     },

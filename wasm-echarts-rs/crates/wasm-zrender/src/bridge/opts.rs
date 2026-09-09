@@ -203,6 +203,7 @@ pub fn parse_text_style(style: &JsValue) -> TextStyle {
             .or_else(|| get_string(style, "textFill"))
             .unwrap_or_else(|| "#000".into()),
         font_size: get_f64(style, "fontSize").unwrap_or(12.0) as f32,
+        font_family: get_string(style, "fontFamily").unwrap_or_else(|| "sans-serif".into()),
         align: parse_text_align(style),
         baseline: parse_text_baseline(style),
     }

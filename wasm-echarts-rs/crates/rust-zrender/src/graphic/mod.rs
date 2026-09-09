@@ -21,4 +21,4 @@ pub use style::{
     normalize_line_dash, ColorStop, FillStrokeStyle, LinearGradientStyle, PathStyle, PatternStyle,
     RadialGradientStyle, ShadowStyle,
 };
-pub use text::{Text, TextAlign, TextBaseline, TextStyle};
+pub use text::{canvas_font, Text, TextAlign, TextBaseline, TextStyle};

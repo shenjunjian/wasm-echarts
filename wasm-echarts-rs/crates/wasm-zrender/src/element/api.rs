@@ -188,6 +188,9 @@ pub fn element_set_style(id: u32, style: &JsValue) -> Result<(), JsValue> {
                     {
                         pending.style.font_size = parsed.font_size;
                     }
+                    if get_string(style, "fontFamily").is_some() {
+                        pending.style.font_family = parsed.font_family;
+                    }
                     pending.style.align = parsed.align;
                     pending.style.baseline = parsed.baseline;
                 }

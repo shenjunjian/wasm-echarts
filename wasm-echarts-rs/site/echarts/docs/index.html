@@ -219,7 +219,7 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td><code>registerFont(data, opts?)</code> / <code>clearFonts()</code></td>
-            <td>注册 TTF/OTF/WOFF bytes（<code>opts.familyName</code>、<code>opts.sansSerif</code>）；已创建实例会热更新 fontdb。轴标签渲染前必调</td>
+            <td>注册 TTF/OTF/WOFF/TTC bytes（<code>opts.familyName</code>、<code>opts.sansSerif</code>）；后续注册若未传 <code>sansSerif</code> 不会覆盖已有 <code>sans-serif</code> 映射。已创建实例会热更新 fontdb。轴标签渲染前必调。多字体见 <a href="../examples/#fonts">fonts</a></td>
             <td>不是官方 ECharts API；不要从 <code>@wasm-zrender</code> 注册并期望本模块生效</td>
           </tr>
         </tbody>
@@ -256,7 +256,11 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td>轴</td>
-            <td>轴标签 Text；<code>axisLabel.formatter</code>（函数或 <code>{value}</code> 模板）</td>
+            <td>轴标签 Text；<code>axisLabel.formatter</code>（函数或 <code>{value}</code> 模板）；<code>xAxis.name</code> / <code>yAxis.name</code>；<code>fontFamily</code> / <code>fontSize</code> / <code>color</code></td>
+          </tr>
+          <tr>
+            <td>title / legend</td>
+            <td>title <code>text</code> / <code>subtext</code> 与 <code>textStyle</code> / <code>subtextStyle</code>；legend 色块 + 系列名（<code>textStyle.fontFamily</code>）。无点击筛选、无复杂布局</td>
           </tr>
           <tr>
             <td>CallbackDataParams</td>
@@ -278,7 +282,7 @@ chart.on('click', (params) => {
       <p>实例上尚未导出（不要当已实现）：<code>getZr</code> / <code>setTheme</code> / <code>appendData</code> / <code>getDataURL</code> / <code>renderToCanvas</code> / <code>showLoading</code> / <code>hideLoading</code> / <code>containPixel</code> / <code>convertToLayout</code> / <code>getVisual</code>。</p>
       <ul>
         <li>Charts：Radar、Map、Gauge、Funnel、Heatmap、Custom <code>renderItem</code> 等其余类型</li>
-        <li>Components：legend、title、toolbox、visualMap、geo、polar、graphic、brush、timeline、dataset</li>
+        <li>Components：legend 点击筛选与复杂布局、title 复杂布局、toolbox、visualMap、geo、polar、graphic、brush、timeline、dataset</li>
         <li>Actions：legend*、restore、brush、timeline、geo roam 等</li>
         <li><code>connect</code> / 主题 / <code>registerMap</code> / <code>getZr</code> / <code>getDataURL</code> / Loading / media query / <code>convertToPixel</code> 完整 finder</li>
         <li>option 名字在但未按官方做：pie <code>roseType</code>、多 grid / 双 y 轴、<code>symbol</code> 仅 circle/rect/emptyCircle、色板不是官方 palette 全套</li>
@@ -306,6 +310,10 @@ chart.on('click', (params) => {
           <tr>
             <td><a href="../examples/#line">line</a> / <a href="../examples/#bar">bar</a> / <a href="../examples/#pie">pie</a> / <a href="../examples/#scatter">scatter</a></td>
             <td><code>init(canvas)</code> 出图；轴 formatter、pie center/radius、symbol/label</td>
+          </tr>
+          <tr>
+            <td><a href="../examples/#fonts">fonts</a></td>
+            <td>连续 <code>registerFont</code>；title / subtext / legend / 轴名称与轴标签使用不同 <code>fontFamily</code></td>
           </tr>
           <tr>
             <td><a href="../examples/#merge">merge</a></td>

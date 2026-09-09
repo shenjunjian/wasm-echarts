@@ -1,7 +1,10 @@
 mod axis;
 mod bar;
 mod label;
+mod legend;
 mod line;
+mod text_opt;
+mod title;
 #[cfg(feature = "chart-pie")]
 mod pie;
 #[cfg(feature = "chart-scatter")]
@@ -69,6 +72,9 @@ pub fn render_components(
     if model.has_cartesian_series() {
         render_axis_pointer(zr, group, model, &coord, interaction);
     }
+
+    title::render_title(zr, group, model, option);
+    legend::render_legend(zr, group, model, option);
 
     zr.storage.add_root(ChildRef::Group(group));
 }
@@ -192,4 +198,169 @@ fn render_axis_pointer(
 
     let _ = py;
     let _ = coord;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::option::{OptionModel, OptionValue, SetOptionFlags};
+    use indexmap::IndexMap;
+    use rust_zrender::ZRenderer;
+
+    fn obj(pairs: Vec<(&str, OptionValue)>) -> OptionValue {
+        let mut m = IndexMap::new();
+        for (k, v) in pairs {
+            m.insert(k.into(), v);
+        }
+        OptionValue::Object(m)
+    }
+
+    #[test]
+    fn title_legend_and_axis_name_keep_font_family() {
+        let mut option = OptionModel::new();
+        option.apply(
+            obj(vec![
+                (
+                    "title",
+                    obj(vec![
+                        ("text", OptionValue::String("主标题".into())),
+                        ("subtext", OptionValue::String("副标题".into())),
+                        ("left", OptionValue::String("center".into())),
+                        (
+                            "textStyle",
+                            obj(vec![(
+                                "fontFamily",
+                                OptionValue::String("Microsoft YaHei".into()),
+                            )]),
+                        ),
+                        (
+                            "subtextStyle",
+                            obj(vec![("fontFamily", OptionValue::String("SimSun".into()))]),
+                        ),
+                    ]),
+                ),
+                (
+                    "legend",
+                    obj(vec![(
+                        "textStyle",
+                        obj(vec![("fontFamily", OptionValue::String("KaiTi".into()))]),
+                    )]),
+                ),
+                (
+                    "xAxis",
+                    obj(vec![
+                        ("type", OptionValue::String("category".into())),
+                        (
+                            "data",
+                            OptionValue::Array(vec![OptionValue::String("Q1".into())]),
+                        ),
+                        ("name", OptionValue::String("季度".into())),
+                        (
+                            "nameTextStyle",
+                            obj(vec![("fontFamily", OptionValue::String("SimSun".into()))]),
+                        ),
+                        (
+                            "axisLabel",
+                            obj(vec![(
+                                "fontFamily",
+                                OptionValue::String("Microsoft YaHei".into()),
+                            )]),
+                        ),
+                    ]),
+                ),
+                (
+                    "yAxis",
+                    obj(vec![
+                        ("type", OptionValue::String("value".into())),
+                        ("name", OptionValue::String("单位：万件".into())),
+                        (
+                            "nameTextStyle",
+                            obj(vec![("fontFamily", OptionValue::String("KaiTi".into()))]),
+                        ),
+                        (
+                            "axisLabel",
+                            obj(vec![
+                                ("fontFamily", OptionValue::String("SimSun".into())),
+                                ("formatter", OptionValue::String("{value} 万".into())),
+                            ]),
+                        ),
+                    ]),
+                ),
+                (
+                    "series",
+                    OptionValue::Array(vec![obj(vec![
+                        ("type", OptionValue::String("line".into())),
+                        ("name", OptionValue::String("华东".into())),
+                        (
+                            "data",
+                            OptionValue::Array(vec![OptionValue::Number(12.0)]),
+                        ),
+                    ])]),
+                ),
+            ]),
+            SetOptionFlags {
+                not_merge: true,
+                replace_merge: vec![],
+            },
+        );
+
+        let model = crate::model::GlobalModel::from_option(&option, 480, 360);
+        let mut zr = ZRenderer::new(480, 360).unwrap();
+        let group = zr.storage.create_group();
+        title::render_title(&mut zr, group, &model, &option);
+        legend::render_legend(&mut zr, group, &model, &option);
+        let coord = crate::coord::Cartesian2D::new(&model);
+        axis::render_axis_labels(
+            &mut zr,
+            group,
+            &model,
+            &option,
+            &coord,
+            0,
+            model.category_count(),
+        );
+        let texts: Vec<(String, String)> = zr
+            .storage
+            .texts()
+            .iter()
+            .map(|t| (t.content.clone(), t.style.font_family.clone()))
+            .collect();
+
+        assert!(
+            texts
+                .iter()
+                .any(|(c, f)| c == "主标题" && f == "Microsoft YaHei"),
+            "title font: {:?}",
+            texts
+        );
+        assert!(
+            texts.iter().any(|(c, f)| c == "副标题" && f == "SimSun"),
+            "subtext font: {:?}",
+            texts
+        );
+        assert!(
+            texts.iter().any(|(c, f)| c == "华东" && f == "KaiTi"),
+            "legend font: {:?}",
+            texts
+        );
+        assert!(
+            texts.iter().any(|(c, f)| c == "季度" && f == "SimSun"),
+            "xAxis name font: {:?}",
+            texts
+        );
+        assert!(
+            texts
+                .iter()
+                .any(|(c, f)| c == "单位：万件" && f == "KaiTi"),
+            "yAxis name font: {:?}",
+            texts
+        );
+        assert!(
+            texts
+                .iter()
+                .any(|(c, f)| c.contains('万') && f == "SimSun"),
+            "y axisLabel font: {:?}",
+            texts
+        );
+    }
 }

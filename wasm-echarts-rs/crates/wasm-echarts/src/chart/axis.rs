@@ -1,11 +1,12 @@
-//! 坐标轴刻度标签
+//! 坐标轴刻度标签与轴名称
 
-use rust_zrender::{
-    ChildRef, Text, TextAlign, TextBaseline, TextStyle, ZRenderer,
-};
+use rust_zrender::{TextAlign, TextBaseline, ZRenderer};
 use wasm_bindgen::JsValue;
 
 use crate::bridge::resolve_axis_formatter;
+use crate::chart::text_opt::{
+    add_silent_text, option_component, parse_chart_text_style, ChartTextStyle,
+};
 use crate::coord::Cartesian2D;
 use crate::model::{AxisType, GlobalModel};
 use crate::option::{OptionModel, OptionValue};
@@ -22,14 +23,20 @@ pub fn render_axis_labels(
 ) {
     render_x_labels(zr, group, model, option, coord, zoom_start, zoom_end);
     render_y_labels(zr, group, model, option, coord);
+    render_axis_names(zr, group, model, option);
 }
 
 fn axis_component<'a>(option: &'a OptionModel, key: &str) -> Option<&'a OptionValue> {
-    match option.root().get(key) {
-        Some(OptionValue::Array(arr)) => arr.first(),
-        Some(v) => Some(v),
-        None => None,
-    }
+    option_component(option.root(), key)
+}
+
+fn axis_label_style(option: &OptionModel, key: &str) -> ChartTextStyle {
+    parse_chart_text_style(
+        axis_component(option, key).and_then(|axis| axis.get("axisLabel")),
+        "#666",
+        11.0,
+        "sans-serif",
+    )
 }
 
 fn axis_formatter<'a>(option: &'a OptionModel, key: &str) -> Option<&'a OptionValue> {
@@ -46,18 +53,17 @@ fn add_axis_text(
     y: f64,
     align: TextAlign,
     baseline: TextBaseline,
+    style: &ChartTextStyle,
 ) {
-    if content.is_empty() {
-        return;
-    }
-    let text_idx = zr.storage.create_text(Text::new(content, x, y).with_style(TextStyle {
-        fill: "#666".into(),
-        font_size: 11.0,
-        align,
-        baseline,
-    }));
-    zr.storage.text_mut(text_idx).silent = true;
-    zr.storage.group_add_child(group, ChildRef::Text(text_idx));
+    add_silent_text(
+        zr,
+        group,
+        content,
+        x,
+        y,
+        style.to_text_style(align, baseline),
+        2.0,
+    );
 }
 
 fn format_tick(formatter: Option<&OptionValue>, fallback: &str, index: u32, numeric: Option<f64>) -> String {
@@ -90,6 +96,7 @@ fn render_x_labels(
     let g = model.grid;
     let visible = (zoom_end - zoom_start).max(1);
     let formatter = axis_formatter(option, "xAxis");
+    let style = axis_label_style(option, "xAxis");
     for i in zoom_start..zoom_end {
         let raw_label = model
             .x_categories
@@ -103,7 +110,16 @@ fn render_x_labels(
         let x = g.x + (local as f64 + 0.5) / visible as f64 * g.width;
         let y = g.y + g.height + 14.0;
         let label = format_tick(formatter, raw_label, i as u32, None);
-        add_axis_text(zr, group, &label, x, y, TextAlign::Center, TextBaseline::Top);
+        add_axis_text(
+            zr,
+            group,
+            &label,
+            x,
+            y,
+            TextAlign::Center,
+            TextBaseline::Top,
+            &style,
+        );
     }
 }
 
@@ -120,13 +136,23 @@ fn render_x_value_labels(
     let xmax = model.x_axis.value_max();
     let span = xmax - xmin;
     let formatter = axis_formatter(option, "xAxis");
+    let style = axis_label_style(option, "xAxis");
     for i in 0..=split_count {
         let value = xmin + span * i as f64 / split_count as f64;
         let fallback = format_axis_number(value);
         let label = format_tick(formatter, &fallback, i as u32, Some(value));
         let (x, _) = coord.value_to_point(value, model.y_axis.value_min());
         let y = g.y + g.height + 14.0;
-        add_axis_text(zr, group, &label, x, y, TextAlign::Center, TextBaseline::Top);
+        add_axis_text(
+            zr,
+            group,
+            &label,
+            x,
+            y,
+            TextAlign::Center,
+            TextBaseline::Top,
+            &style,
+        );
     }
 }
 
@@ -143,6 +169,7 @@ fn render_y_labels(
     let ymax = model.y_axis.value_max();
     let span = ymax - ymin;
     let formatter = axis_formatter(option, "yAxis");
+    let style = axis_label_style(option, "yAxis");
 
     for i in 0..=split_count {
         let value = ymin + span * i as f64 / split_count as f64;
@@ -150,6 +177,66 @@ fn render_y_labels(
         let label = format_tick(formatter, &fallback, i as u32, Some(value));
         let (_, y) = coord.data_to_point(0, value);
         let x = g.x - 8.0;
-        add_axis_text(zr, group, &label, x, y, TextAlign::Right, TextBaseline::Middle);
+        add_axis_text(
+            zr,
+            group,
+            &label,
+            x,
+            y,
+            TextAlign::Right,
+            TextBaseline::Middle,
+            &style,
+        );
     }
+}
+
+fn render_axis_names(
+    zr: &mut ZRenderer,
+    group: usize,
+    model: &GlobalModel,
+    option: &OptionModel,
+) {
+    let g = model.grid;
+    if let Some(name) = axis_name(option, "xAxis") {
+        let style = parse_chart_text_style(
+            axis_component(option, "xAxis").and_then(|axis| axis.get("nameTextStyle")),
+            "#666",
+            12.0,
+            "sans-serif",
+        );
+        add_silent_text(
+            zr,
+            group,
+            &name,
+            g.x + g.width + 6.0,
+            g.y + g.height,
+            style.to_text_style(TextAlign::Left, TextBaseline::Middle),
+            3.0,
+        );
+    }
+    if let Some(name) = axis_name(option, "yAxis") {
+        let style = parse_chart_text_style(
+            axis_component(option, "yAxis").and_then(|axis| axis.get("nameTextStyle")),
+            "#666",
+            12.0,
+            "sans-serif",
+        );
+        add_silent_text(
+            zr,
+            group,
+            &name,
+            g.x,
+            g.y - 8.0,
+            style.to_text_style(TextAlign::Center, TextBaseline::Bottom),
+            3.0,
+        );
+    }
+}
+
+fn axis_name(option: &OptionModel, key: &str) -> Option<String> {
+    axis_component(option, key)
+        .and_then(|axis| axis.get("name"))
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
 }
