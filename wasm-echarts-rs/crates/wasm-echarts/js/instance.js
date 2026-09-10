@@ -882,8 +882,8 @@ export class ECharts {
   }
 
   /**
-   * cartesian 最小集：finder 为 `{ xAxisIndex }` / `{ yAxisIndex }` / `{ gridIndex }` / `{ seriesIndex }`
-   * 或 `'xAxis'` / `'yAxis'` / `'grid'`。完整 finder 未实现。
+   * finder：`{ xAxisIndex }` / `{ yAxisIndex }` / `{ gridIndex }` / `{ seriesIndex }`
+   * 或 `'xAxis'` / `'yAxis'` / `'grid'`，以及 polar / geo / calendar / single / parallel / matrix / radar。
    */
   convertToPixel(finder, value) {
     this._assertAlive();

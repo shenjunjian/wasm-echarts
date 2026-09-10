@@ -19,10 +19,10 @@ Rust / WebAssembly workspace：用纯 Rust 重写 zrender 离屏 canvas 渲染�
 | API 批量补录 | `wasm-zrender_api_批量补录_89d0d2a5.plan.md` | 把 stub 图元逐步换成真实实现 |
 | zrender API 规范对齐 | `zrender_api_规范对齐_be3227a1.plan.md` | 硬规范 + JS facade；逐项清单以该计划为权威 |
 | echarts API 规范对齐 | `wasm-echarts_api_对齐_1d164d7d.plan.md` | 公开入口对齐官方 core.ts（波次 0–5 已落地）；入口签名以该计划为权威 |
-| echarts Canvas 全量对齐 | `echarts_canvas_全量对齐_3ceaa41e.plan.md` | SVG/DOM 例外以外的 canvas 语义、`getZr` 共享 Storage、22 种图与 canvas 组件。**当前未完成项以该计划为权威** |
+| echarts Canvas 全量对齐 | `echarts_canvas_全量对齐_3ceaa41e.plan.md` | SVG/DOM 例外以外的 canvas 语义、`getZr` 共享 Storage、22 种图与 canvas 组件。**第 0–8.9 波 YAML 已全部 completed**；视觉缺口以源码与下文「未实现」为准 |
 | 折线缺口补齐 | `折线缺口补齐_96423c21.plan.md` | **已废弃**，并入 canvas 全量对齐 |
 
-zrender API 规范对齐规划的 YAML todo 已全部 completed。wasm-echarts 公开入口（`init`/`setOption`/`on`）以 API 对齐计划与源码为准；canvas 能力缺口以 canvas 全量对齐计划 YAML 与源码为准。其它规划 YAML 里部分 todo 仍可能标 `pending`，以**源码为准**。下文「规划对照」会标明实际完成度。
+zrender API 规范对齐规划的 YAML todo 已全部 completed。wasm-echarts 公开入口（`init`/`setOption`/`on`）以 API 对齐计划与源码为准；canvas 全量对齐计划 YAML 已全部 completed，视觉缺口以**源码与下文「未实现」**为准。其它规划 YAML 里部分 todo 仍可能标 `pending`，以**源码为准**。下文「规划对照」会标明实际完成度。
 
 只读参考源码（仓库根目录，禁止改）：`zrender-master/`、`echarts-master/`。
 
@@ -107,20 +107,20 @@ wasm-zrender  ✗ 不依赖  wasm-echarts
 
 ### wasm-echarts API 硬规则
 
-公开表面与官方 `echarts-master/src/core/echarts.ts` / `export/core.ts` / `export/api.ts` 对齐。公开入口签名以 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](../.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md) 为权威；canvas 图表/组件/命名空间/getZr 的未完成项以 [`.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md`](../.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md) 为权威。禁止改官方目录，也禁止整文件复制官方实现。WASM 是整包模块，**不为减小体积做 `echarts.use` 动态加载**。
+公开表面与官方 `echarts-master/src/core/echarts.ts` / `export/core.ts` / `export/api.ts` 对齐。公开入口签名以 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](../.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md) 为权威；canvas 图表/组件/命名空间/`getZr` 已按 [`.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md`](../.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md) 落地（第 0–8.9 波 YAML completed），视觉与宿主缺口以源码与下文「未实现」为准。禁止改官方目录，也禁止整文件复制官方实现。WASM 是整包模块，**不为减小体积做 `echarts.use` 动态加载**。
 
-做不到或语义不同的，不改名糊弄，而是写进「与官方不一致」。多出来的非官方方法必须文档列出，避免当官方 API 用。已实现 / 未实现（图表、组件、action、option 字段）单独成表，随实现更新。未完成的 canvas 能力标「未实现」并按计划补齐；已声称支持的图，其 canvas option 族必须生效（禁止只 parse、画成直线）。
+做不到或语义不同的，不改名糊弄，而是写进「与官方不一致」。多出来的非官方方法必须文档列出，避免当官方 API 用。已实现 / 未实现（图表、组件、action、option 字段）单独成表，随实现更新。剩余视觉/宿主缺口标「未实现」（不是永久砍掉官方 canvas API）；已声称支持的图，其 canvas option 族必须生效（禁止只 parse、画成直线）。
 
 **允许例外（须在文档「与官方不一致」节列出）：**
 
 - 字体：WASM 不读系统字体；需要 `registerFont`（可挂在 echarts 命名空间）。
 - 动画：不播中间帧；`setOption` / `animation` / `universalTransition` / line grow / ripple 直接终态（第 7 波：`UniversalTransition` 只跳终态，不插值）。`lazyUpdate` 可同步执行（等价立刻 flush）。
-- 离屏：仅 canvas；`init(canvas)` 自动 `putImageData`。无 SVG（`renderToSVGString` / `getSvgDataURL` / `zr.painter.getSvgDom` 不实现）。
+- 离屏：仅 canvas；`init(canvas)` 自动 `putImageData`。无 SVG（`renderToSVGString` / `getSvgDataURL` / `zr.painter.getSvgDom` 只 `console.warn`）。
 - 宿主：`init(canvas, theme?, opts?)`；`init(null, null, { width, height, devicePixelRatio })` 允许离屏（官方客户端无 dom 会抛错）。
 - `use(...)`：**导出且签名对齐**，但不按需加载。实现只 `console.info` 提示：已开发的模块都在 WASM 里，不必 `use`。调用可忽略参数并立即返回。
 - Loading：`showLoading` / `hideLoading` **导出**；不播官方旋转动画（静态半透明遮罩 + 文案，或空操作）。
 - DOM 组件：toolbox **DataView** 浮层、SaveAsImage 的 DOM 下载条不做。Tooltip 维持现有 string DOM（官方默认即 DOM）。
-- `getZr()`：返回与 ChartView 共用 Storage 的 wasm-zrender 实例（第 1 波落地）。不是第二份 zrender wasm；无 SVG painter / hover layer；动画终态。
+- `getZr()`：返回与 ChartView 共用 Storage 的 wasm-zrender 实例。不是第二份 zrender wasm；无 SVG painter / hover layer；动画终态。`painter.getSvgDom` 只 warn。
 
 **必须一致（公开 JS 表面）：**
 
@@ -132,7 +132,7 @@ wasm-zrender  ✗ 不依赖  wasm-echarts
 - `init(canvas)` 后指针事件由 facade 绑定；发出官方事件名 `click` / `mouseover` / `mouseout` / `globalout`。
 - 已接线的 `dispatchAction` type 名保持官方字符串：`highlight` / `downplay` / `select` / `unselect` / `toggleSelect` / `dataZoom`；并补 `showTip` / `hideTip`、`legendToggleSelect` / `legendSelect` / `legendUnSelect`、`restore`、`timelineChange` / `timelinePlayChange`、`takeGlobalCursor`、`brush` / `brushEnd`、`expandAxisBreak` / `collapseAxisBreak` / `toggleAxisBreak`。
 - `export/api.ts` 命名空间：`graphic` / `util` / `number` / `time` / `format` / `helper` / `matrix` / `vector` / `color`（第 1 波从 wasm-zrender 再导出或按签名重写）；以及 `throttle`。
-- `getZr` / `getDataURL` / `renderToCanvas` / `appendData` / `setTheme` / `registerTheme` / `registerMap` / `connect` / `registerTransform` / `registerPreprocessor` / `registerProcessor` / `registerLayout` / `registerVisual` / `registerAction` / `registerCoordinateSystem` / `registerCustomSeries`：按 canvas 全量对齐计划接线，不是永久例外。
+- `getZr` / `getDataURL` / `renderToCanvas` / `appendData` / `setTheme` / `registerTheme` / `registerMap` / `connect` / `registerTransform` / `registerPreprocessor` / `registerProcessor` / `registerLayout` / `registerVisual` / `registerAction` / `registerCoordinateSystem` / `registerCustomSeries`：已接线。缺实现的同名入口 `console.warn`，不抛 `is not a function`。
 
 **文档硬规则（与实现对齐同等重要）：**
 
@@ -143,7 +143,7 @@ wasm-zrender  ✗ 不依赖  wasm-echarts
 3. **多出来的非官方 API**：`refresh`、`findHover` / `handlePointerMove` 等 WASM hatch；写清用途、何时该用、何时不该当官方 API。
 4. **已实现 / 未实现**：图表类型、组件、`dispatchAction` type、option 字段生效范围。未实现的官方方法仍尽量导出同名，内部 `console.warn`，在此表标「未实现」并按 canvas 全量对齐计划补齐。
 
-未完成项按该计划波次做，写进「未实现」表。不要把「图类型还没做」写成「canvas 能力永久例外」。
+剩余缺口写进「未实现」表（probe 失败、视觉简化、刻意不做的 SVG/DOM）。不要把「图类型还没做」写成「canvas 能力永久例外」。
 
 ---
 
@@ -244,9 +244,9 @@ dispose(zr);
 
 规范已写入上文「目标与约束」；逐项清单以 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](../.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md) 为权威。JS facade 骨架在 `crates/wasm-echarts/js/`：`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version` / `use`（只 `console.info`）。site / README 从 `@wasm-echarts`（`js/index.js`）导入，`pkg/` 只作内部 handle。示例走官方 `init(canvas)` + `setOption`；`init(canvas)` 后自动 `putImageData` 并绑定指针。波次 2：`setOption(option, notMerge | opts)`、`getOption`、`resize()` / `resize({ width, height, devicePixelRatio })`、`clear` = `setOption({ series: [] }, true)`；`notMerge` 只作第二参数，不再从 option 根读取。波次 3：`on`/`off` 发出 `click` / `mouseover` / `mouseout` / `globalout`；内建 string tooltip DOM；`dispatchAction` 接 `showTip` / `hideTip`。波次 4：`axisLabel.formatter` 进轴 Text；pie `center`/`radius`/`startAngle`/`clockwise`；line/scatter `symbol`/`symbolSize`；`label.show` 画 Text；CallbackDataParams 补 `componentType`/`seriesType`/`percent`/`data`；`convertToPixel`/`convertFromPixel` cartesian 最小集。波次 5：文档四块（一致 / 不一致 / 非官方 API / 已实现与未实现）已写入 `site/echarts/docs/index.html`、根 README、本文件；示例 line/bar/pie/scatter/interactive/merge/bench 全部走 `init`；interactive 用 `on('click')` + `use()` 提示，不必 `handlePointer*`；merge 覆盖深合并、`notMerge: true`、dispose 后再 init。公开用法是官方 `init` / `setOption` / `on`，不要把 native `EChartsInstance` / `set_option` / `handlePointerMove` 当公开 API。
 
-### wasm-echarts Canvas 全量对齐（第 0–8.8 波已落地）
+### wasm-echarts Canvas 全量对齐（第 0–8.9 波已落地）
 
-权威计划：[`.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md`](../.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md)。废止「不是一次移植完官方全量 API」以及把 `graphic`/`util`/面积/`getZr` 当永久后置的写法。[折线缺口补齐](../.cursor/plans/折线缺口补齐_96423c21.plan.md) 已废弃并入本计划。第 0 波改文档口径；第 1 波已落地单 WASM、`getZr`、公开命名空间与挡脚本的实例 API。第 2 波已落地 dataset / transform / encode / stack / sampling、多 grid / 轴、`time` / `log`。第 3 波已接线 line/bar/pie/scatter 的 canvas option 族。第 4 波已接线 legend 筛选、mark*、graphic、visualMap、slider、axisPointer、brush、timeline、toolbox。第 5 波已接线 polar / radar / singleAxis / parallel / calendar / matrix / geo 坐标系。第 6 波已接线其余官方图表（radar/gauge/candlestick/boxplot/heatmap/pictorialBar/effectScatter/funnel/chord/sunburst/tree/treemap/graph/sankey/themeRiver/map/lines/parallel/custom）及 `renderItem` + `api`；Cargo feature **默认全开**。未识别的 `series.type` 会 `console.warn`，不再静默当 `Other` 后永远不管。第 7 波已落地扩展注册 / media / labelLayout / breaks / jitter。第 8.0 基建、**8.1 bar+pie**、**8.2 scatter**、**8.3 candlestick/boxplot/heatmap/pictorialBar**、**8.4 gauge/radar**、**8.5 funnel/chord/sunburst/tree/treemap/graph/sankey/themeRiver**、**8.6 calendar/matrix/parallel**、**8.7 map/geo/lines**、**8.8 custom/dataset/graphic** 已落地（8.1–8.3、8.5–8.8 probe 失败见上文「未实现」；8.4 只同步 catalog，未跑 probe）。后续 8.9 见该计划 YAML。
+权威计划：[`.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md`](../.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md)。废止「不是一次移植完官方全量 API」以及把 `graphic`/`util`/面积/`getZr` 当永久后置的写法。[折线缺口补齐](../.cursor/plans/折线缺口补齐_96423c21.plan.md) 已废弃并入本计划。第 0 波改文档口径；第 1 波已落地单 WASM、`getZr`、公开命名空间与挡脚本的实例 API。第 2 波已落地 dataset / transform / encode / stack / sampling、多 grid / 轴、`time` / `log`。第 3 波已接线 line/bar/pie/scatter 的 canvas option 族。第 4 波已接线 legend 筛选、mark*、graphic、visualMap、slider、axisPointer、brush、timeline、toolbox。第 5 波已接线 polar / radar / singleAxis / parallel / calendar / matrix / geo 坐标系。第 6 波已接线其余官方图表（radar/gauge/candlestick/boxplot/heatmap/pictorialBar/effectScatter/funnel/chord/sunburst/tree/treemap/graph/sankey/themeRiver/map/lines/parallel/custom）及 `renderItem` + `api`；Cargo feature **默认全开**。未识别的 `series.type` 会 `console.warn`，不再静默当 `Other` 后永远不管。第 7 波已落地扩展注册 / media / labelLayout / breaks / jitter。第 8.0–8.8 按类同步官网画廊；**8.9 已落地**：去重全量 probe 281/296 `ok`，失败写入上文「未实现」；`getZr` 文档写清同一份 wasm-zrender、无 SVG painter / hover layer、动画终态；缺官方实例方法同名导出 + `console.warn`。
 
 ---
 
@@ -701,18 +701,18 @@ chart-map, chart-lines, chart-parallel, chart-custom
 | thumbnail | cartesian 缩略 + 窗口拖动改 dataZoom |
 | 指针 / tooltip | `init(canvas)` 绑 mousemove/click/leave/wheel（mousemove 合入 rAF）；hover 未变不上屏；内建 string tooltip DOM；`on`/`off` 发出 `click`/`mouseover`/`mouseout`/`globalout` |
 | showTip / hideTip | `dispatchAction({ type: 'showTip', seriesIndex, dataIndex })` 或 `{ x, y }`；`hideTip` 关 DOM，不改 hover |
-| `getZr` / 命名空间 | `getZr()` 共用 Storage；`graphic`（含 `LinearGradient`/`Rect`）/`util`/`time`/`format`/`number`/`helper`/`matrix`/`vector`/`color`/`env`；`throttle` |
+| `getZr` / 命名空间 | `getZr()` 返回与 ChartView 共用 Storage 的 wasm-zrender 实例（同一份 WASM）；`graphic`（含 `LinearGradient`/`Rect`）/`util`/`time`/`format`/`number`/`helper`/`matrix`/`vector`/`color`/`env`；`throttle`。无 SVG painter / hover layer；动画终态 |
 | Loading / 导出图 | `showLoading` 静态遮罩；`getDataURL` / `renderToCanvas`（canvas PNG/JPEG） |
 | 主题 / 地图表 / connect | `registerTheme`/`setTheme`；`registerMap`/`getMap`/`parseGeoJSON`；`geo` 画已注册地图；`connect` 转发 action |
 | `appendData` / `containPixel` | 追加 series.data；`containPixel` 按 finder 查对应 grid / polar / geo 等 |
 | media | `option.media` 按 `minWidth`/`maxWidth`/`minHeight`/`maxHeight`/`aspectRatio` 匹配；后者优先；无匹配用无 query 的默认项；`resize` 重算 |
 | 扩展注册 | `registerPreprocessor` / `Processor` / `Layout` / `Visual` / `Action` / `CoordinateSystem` / `CustomSeries` 真表；`PRIORITY` |
 
-**未实现（按 canvas 全量对齐计划补齐，不是永久例外）**
+**未实现（不是永久例外；probe 失败与视觉简化）**
 
 已导出同名、内部只 `console.warn`：`registerLocale`、`convertToLayout`、`getVisual`、`renderToSVGString`、`getSvgDataURL`、`getModel`（官方为 private）。`getConnectedDataURL` 不按 connect 拼图，回退 `getDataURL`。`isSSR()` 恒为 `false`。`updateLabelLayout` 为空操作（labelLayout 已在 `setOption` 终态做完）。
 
-Charts：未识别的 `series.type` 会 `console.warn`（不再静默当 `Other`；`registerCustomSeries` 登记过的 type 当 custom）。已接线图表的视觉/布局相对官方仍有简化（force 布局不迭代、桑基非完整节点平衡、tree 非 tidy、chord 用贝塞尔而非丝带、pictorialBar 非全部 symbolClip 语义）。treemap 大树（`treemap-disk` / `treemap-show-parent`）与 `levels` 色映射（`treemap-visual`）会 WASM panic，见第 8.5 波 probe 表。parallel 未接 `progressive`（`parallel-nutrients` 约 1.4 万条折线会卡死，见第 8.6 波）。`lines-ny` 分片 bin 未同步、`map-usa-projection` 依赖 `d3.geoAlbersUsa`，见第 8.7 波 probe 表。`bar-histogram` 依赖全局 `ecStat`，见第 8.8 波 probe 表。
+Charts：未识别的 `series.type` 会 `console.warn`（不再静默当 `Other`；`registerCustomSeries` 登记过的 type 当 custom）。已接线图表的视觉/布局相对官方仍有简化（force 布局不迭代、桑基非完整节点平衡、tree 非 tidy、chord 用贝塞尔而非丝带、pictorialBar 非全部 symbolClip 语义）。大树 treemap / `levels` 色映射、bar/candlestick `large`、parallel `progressive`、缺 `ecStat` / `bmap`、未同步的 `lines-ny` bin 见下文全量 probe 表。
 
 Components：geo roam / SVG 地图源。aria 写 DOM 属性非绘制，可后置。toolbox DataView DOM / SaveAsImage 下载条明确不做。
 
@@ -722,59 +722,27 @@ Actions：geo roam 等。
 
 **名字在 option 里出现但未按官方做：** `smoothMonotone`；色板不是官方 palette 全套；pie 完整标签避让 / `padAngle` / `alignTo`；bar `showBackground`、polar `roundCap`、`realtimeSort` 动画（只终态）；parallel `progressive`；rich text 标签当普通 Text。
 
-**官网 bar / pie probe（第 8.1 波）**：catalog 46 + 19 = 65 条，64 `ok`。失败（不改官方 option）：
+**官网全量 probe（第 8.9 波）**：27 类 `official-*-catalog.js` 去重 296 条，281 `ok`，3 timeout，12 error。失败（不改官方 option、不在 `official-runtime.js` 假实现）：
 
 | 示例 | 原因 |
 |------|------|
 | `bar-large` | 50 万柱 + `large: true`；bar 无增量/采样绘制，主线程卡死，probe 40s timeout |
-
-**官网 scatter probe（第 8.2 波）**：catalog 36 条，29 `ok`。失败（不改官方 option）：
-
-| 示例 | 原因 |
-|------|------|
-| `scatter-clustering` / `scatter-clustering-process` / `scatter-exponential-regression` / `scatter-linear-regression` / `scatter-polynomial-regression` / `scatter-logarithmic-regression` | 依赖官网统计插件 `echarts-stat` 全局 `ecStat`；本宿主未注入，不在 `official-runtime.js` 里假实现 |
-| `scatter-weibo` | 微博签到展开后海量 geo 散点；scatter `large` 仍每点一个 Path，主线程卡死，probe 40s timeout |
-
-**官网 candlestick / boxplot / heatmap / pictorialBar probe（第 8.3 波）**：catalog 10 + 4 + 7 + 8 = 29 条，27 `ok`。失败（不改官方 option）：
-
-| 示例 | 原因 |
-|------|------|
 | `candlestick-large` | 20 万 OHLC；无增量/采样绘制，主线程卡死，probe 40s timeout |
-| `heatmap-bmap` | 依赖百度地图扩展 `bmap` 坐标系；本宿主不注入。表面错误 `getModel` 未实现，即便补上也会因无 bmap 组件失败（同 `effectScatter-bmap`） |
-
-**官网 gauge / radar（第 8.4 波）**：catalog 12 + 5 = 17 条已进画廊。本轮只同步官网示例，未跑 probe。
-
-**官网 funnel / chord / sunburst / tree / treemap / graph / sankey / themeRiver probe（第 8.5 波）**：catalog 4+4+7+7+7+13+7+2 = 51 条，48 `ok`。失败（不改官方 option）：
-
-| 示例 | 原因 |
-|------|------|
+| `parallel-nutrients` | 官网 `nutrients.json` 约 1.4 万行；parallel 每条数据一条 Path、未接 `progressive: 500`，主线程卡死，probe 40s timeout |
+| `scatter-clustering` / `scatter-clustering-process` / `scatter-exponential-regression` / `scatter-linear-regression` / `scatter-polynomial-regression` / `scatter-logarithmic-regression` | 依赖官网统计插件 `echarts-stat` 全局 `ecStat`；本宿主未注入 |
+| `bar-histogram` | 同上，缺全局 `ecStat` |
+| `heatmap-bmap` | 依赖百度地图扩展 `bmap`；`getModel` 已导出只 warn 并返回 `undefined`，表面错误变为 `getComponent` of undefined。即便返回模型也会因无 bmap 失败（`effectScatter-bmap` 的 `setOption` 不抛，probe 判 `ok`、底图空） |
+| `lines-ny` | 官网 `links_ny_*.bin` 分片 URL 为字符串拼接，sync 未拉到资源；404 HTML 被当 `arraybuffer`，`Float32Array` 报 byte length 不是 4 的倍数 |
 | `treemap-disk` / `treemap-show-parent` | 官网 `disk.tree.json` 大树；递归 parse / squarify 触发 WASM panic（`unreachable`） |
 | `treemap-visual` | `series.levels.color` + `visualDimension` 渐变映射未按官方做，渲染时 WASM panic（`unreachable`） |
 
-**官网 calendar / matrix / parallel probe（第 8.6 波）**：catalog 9 + 14 + 4 = 27 条，26 `ok`。失败（不改官方 option）：
+本轮相对此前分波记录的变化：`scatter-weibo` 与 `map-usa-projection` 现为 `ok`（后者在 CDN `d3-geo` 可加载时 `d3.geoAlbersUsa` 可用；不在 runtime 里假实现 d3）。gauge 12 + radar 5 全部 `ok`。
 
-| 示例 | 原因 |
-|------|------|
-| `parallel-nutrients` | 官网 `nutrients.json` 约 1.4 万行；parallel 每条数据一条 Path、未接 `progressive: 500`，主线程卡死，probe 40s timeout |
+SVG 地图源仍未实现（`geo-svg-*` / `geo-beef-cuts` 等 probe 判 `ok` 因 `setOption` 不抛，底图为空）。`map: 'china'` / `'world'` 未预注册（`geo-lines` / `lines-airline` 等同样 `ok`、底图空）。graphic 描边/波浪/loading 因动画终态会跳到最后一帧。
 
-**官网 map / geo / lines probe（第 8.7 波）**：catalog 25 + 1 + 5 = 31 条，去重后 26 条（lines 5 条已在 map，geo 仅 `matrix-mini-bar-geo` 已在 matrix），24 `ok`。失败（不改官方 option）：
+`$` 宿主有 `get` / `getJSON` / `getScript` / `when`。不在 runtime 里假实现 `bmap` / `ecStat`。缺官方实例方法改为同名导出 + `console.warn`，避免 `xxx is not a function`。
 
-| 示例 | 原因 |
-|------|------|
-| `lines-ny` | 官网 `links_ny_*.bin` 分片 URL 为字符串拼接，sync 未拉到资源；404 HTML 被当 `arraybuffer`，`Float32Array` 报 byte length 不是 4 的倍数 |
-| `map-usa-projection` | 依赖 CDN `d3-geo` 的全局 `d3.geoAlbersUsa`；本宿主不注入 d3。表面错误 `d3.geoAlbersUsa is not a function` |
-
-SVG 地图源仍未实现（`geo-svg-*` / `geo-beef-cuts` / `geo-svg-custom-effect` 等 probe 判 `ok` 因 `setOption` 不抛，底图为空）。`map: 'china'` / `'world'` 未预注册（`geo-lines` / `lines-airline` 等同样 `ok`、底图空）。不在 runtime 里假实现 `bmap` / `d3`。
-
-**官网 custom / dataset / graphic probe（第 8.8 波）**：catalog 20 + 9 + 5 = 34 条（三类无交叉），33 `ok`。失败（不改官方 option）：
-
-| 示例 | 原因 |
-|------|------|
-| `bar-histogram` | 依赖官网统计插件 `echarts-stat` 全局 `ecStat`；本宿主未注入，不在 `official-runtime.js` 里假实现（同 scatter 回归/聚类例） |
-
-本轮按官方签名导出 `echarts.throttle`（`custom-gantt-flight` 用它节流 dataZoom）。graphic 描边/波浪/loading 示例因动画终态会跳到最后一帧。画廊交叉去重：`custom-hexbin` 已在 map、`custom-calendar-icon` 已在 calendar、多数 dataset 已在 bar/pie/line、`line-graphic` / `line-draggable` 已在 line。
-
-`$` 宿主已补 `getScript`（与已有 `get` / `getJSON` / `when` 同级），`data-transform-aggregate` 可加载 `ecSimpleTransform` 后 `registerTransform`。不在 runtime 里假实现 `bmap` / `getModel` / `ecStat`。
+画廊 catalog 条数（含跨组重复，gallery 按先声明组去重）：折线 40、柱状 46、饼图 19、散点 36、K 线 10、盒须 4、热力 7、象形柱 8、仪表盘 12、雷达 5、漏斗 4、和弦 4、旭日 7、树图 7、矩形树 7、关系图 13、桑基 7、主题河流 2、日历 9、矩阵 14、平行坐标 4、地图 25、地理 1、路径图 5、自定义系列 20、数据集 9、图形组件 5。
 
 ### 实现了哪些内容
 
@@ -787,7 +755,7 @@ SVG 地图源仍未实现（`geo-svg-*` / `geo-beef-cuts` / `geo-svg-custom-effe
 | `index.js` | 官方命名导出；`default` 仍是 `initWasm`；`version = '6.1.0'`；另导出 `registerFont` / 命名空间 / `throttle` / `parseGeoJSON` / 扩展注册 |
 | `echarts.js` | `init` / `dispose` / `use`；`connect` / `registerTheme` / `registerMap` / `parseGeoJSON` / `registerTransform` / 扩展注册再导出；命名空间与 `throttle` 再导出 |
 | `extension.js` | `registerPreprocessor` / `Processor` / `Layout` / `Visual` / `Action` / `CoordinateSystem` / `CustomSeries` / `PRIORITY` / `setPlatformAPI` |
-| `instance.js` | camelCase 实例；`getZr` / `showLoading` / `getDataURL` / `appendData` / `setTheme` / `containPixel`；指针与 tooltip；setOption 跑 preprocessor/processor |
+| `instance.js` | camelCase 实例；`getZr`（wasm-zrender，无 SVG painter）/ `showLoading` / `getDataURL` / `getRenderedCanvas` / `appendData` / `setTheme` / `containPixel`；缺实现的官方方法 `console.warn`；指针与 tooltip |
 | `graphic.js` / `util.js` / `number.js` / `time.js` / `format.js` / `helper.js` / `env.js` / `throttle.js` | `export/api.ts` 命名空间与 `throttle` |
 | `native.js` | 加载 `pkg/wasm_echarts.js` 并 `setNative` 注入 wasm-zrender |
 | `wasm_echarts.js` | 兼容旧路径 `@wasm-echarts/wasm_echarts.js` |
@@ -969,8 +937,8 @@ import initWasm, { init, registerFont } from '@wasm-echarts';
 
 再 `await initWasm()` → `registerFont` → `init(canvas)` + `setOption`。native `EChartsInstance` 仍从 facade 再导出，仅兼容旧路径，不要当公开 API。
 3. 每个实例是独立完整脚本：`site/echarts/examples/line.js` 等同名 HTML 成对出现（`<canvas id="canvas">`）；自写示例内联 `fetch` + `registerFont`（与 zrender `text.js` 相同）
-4. 画廊 `gallery.js` 用 Vite `?raw` / `import.meta.glob` 读这些 `.js` 作为左侧源码，iframe 加载同目录 HTML 预览。echarts 画廊是二级菜单：第一层为图形类别，第二层为该类别下的示例。分组顺序与自写条目在 [`official-gallery-meta.js`](wasm-echarts-rs/site/src/echarts/official-gallery-meta.js)；官网同步条目来自 `official-{category}-catalog.js`（无 catalog 且无自写示例的类不出现空菜单）。已同步：折线 40、柱状 46、饼图 19、散点 36、K 线 10、盒须 4、热力 7、象形柱 8、仪表盘 12、雷达 5、漏斗 4、和弦 4、旭日 7、树图 7、矩形树 7、关系图 13、桑基 7、主题河流 2、日历 9、矩阵 14、平行坐标 4、地图 25、地理 1、路径图 5、自定义系列 20、数据集 9、图形组件 5。官网脚本经 `src/echarts/official-runtime.js` 注入 `myChart` / `option` / `ROOT_PATH` / `CDN_PATH` / `$`（含 `get` / `getJSON` / `getScript` / `when`），**不补齐未实现 echarts API**，报错显示在预览层。数据文件在 `public/echarts-official/`。按类拉取：`node scripts/sync-official-examples.mjs --category scatter --local-dir <echarts-examples 根目录>`（`--local-dir` / `ECHARTS_EXAMPLES_DIR` 优先读本地 `public/`，避免官网大文件超时）；探测：`node scripts/probe-official-examples.mjs --category scatter`（需已启动 Vite；单例超过 40s 判 timeout 并换浏览器进程）。旧文件名 `sync-official-line-examples.mjs` / `probe-official-line.mjs` 转发到 `--category line`。交互合集下挂 interactive / merge / bench。zrender 画廊仍用扁平 `examples`。
-5. 页面：自写 line / fonts / bar / pie / scatter / interactive / merge / bench，外加已同步的官网 catalog（折线 40 + 柱状 46 + 饼图 19 + 散点 36 + K 线 10 + 盒须 4 + 热力 7 + 象形柱 8 + 仪表盘 12 + 雷达 5 + 漏斗 4 + 和弦 4 + 旭日 7 + 树图 7 + 矩形树 7 + 关系图 13 + 桑基 7 + 主题河流 2 + 日历 9 + 矩阵 14 + 平行坐标 4 + 地图 25 + 地理 1 + 路径图 5 + 自定义系列 20 + 数据集 9 + 图形组件 5；后续 8.9 收口）
+4. 画廊 `gallery.js` 用 Vite `?raw` / `import.meta.glob` 读这些 `.js` 作为左侧源码，iframe 加载同目录 HTML 预览。echarts 画廊是二级菜单：第一层为图形类别，第二层为该类别下的示例。分组顺序与自写条目在 [`official-gallery-meta.js`](wasm-echarts-rs/site/src/echarts/official-gallery-meta.js)；官网同步条目来自 `official-{category}-catalog.js`（无 catalog 且无自写示例的类不出现空菜单）。已同步：折线 40、柱状 46、饼图 19、散点 36、K 线 10、盒须 4、热力 7、象形柱 8、仪表盘 12、雷达 5、漏斗 4、和弦 4、旭日 7、树图 7、矩形树 7、关系图 13、桑基 7、主题河流 2、日历 9、矩阵 14、平行坐标 4、地图 25、地理 1、路径图 5、自定义系列 20、数据集 9、图形组件 5。官网脚本经 `src/echarts/official-runtime.js` 注入 `myChart` / `option` / `ROOT_PATH` / `CDN_PATH` / `$`（含 `get` / `getJSON` / `getScript` / `when`），**不补齐未实现 echarts API**，报错显示在预览层。数据文件在 `public/echarts-official/`。按类拉取：`node scripts/sync-official-examples.mjs --category scatter --local-dir <echarts-examples 根目录>`（`--local-dir` / `ECHARTS_EXAMPLES_DIR` 优先读本地 `public/`，避免官网大文件超时）；探测：`node scripts/probe-official-examples.mjs`（省略 `--category` 即全量；`--out file.json` 写报告；需已启动 Vite；单例超过 40s 判 timeout 并换浏览器进程）。旧文件名 `sync-official-line-examples.mjs` / `probe-official-line.mjs` 转发到 `--category line`。交互合集下挂 interactive / merge / bench。zrender 画廊仍用扁平 `examples`。
+5. 页面：自写 line / fonts / bar / pie / scatter / interactive / merge / bench，外加已同步的官网 catalog（折线 40 + 柱状 46 + 饼图 19 + 散点 36 + K 线 10 + 盒须 4 + 热力 7 + 象形柱 8 + 仪表盘 12 + 雷达 5 + 漏斗 4 + 和弦 4 + 旭日 7 + 树图 7 + 矩形树 7 + 关系图 13 + 桑基 7 + 主题河流 2 + 日历 9 + 矩阵 14 + 平行坐标 4 + 地图 25 + 地理 1 + 路径图 5 + 自定义系列 20 + 数据集 9 + 图形组件 5）。第 8.9 波去重全量 probe 281/296 `ok`。
 
 ---
 
@@ -1216,7 +1184,7 @@ npm run dev
 
 ### wasm-echarts
 
-对照 [`.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md`](../.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md)。入口对齐（`init`/`setOption`/`on`）已落地。未完成项按该计划波次做，出现在上文「未实现」表：
+对照 [`.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md`](../.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md)。入口对齐（`init`/`setOption`/`on`）与第 0–8.9 波已落地。剩余缺口出现在上文「未实现」表：
 
 - 第 1 波（已落地）：单 WASM、`getZr` 共享 Storage、`graphic`/`util`/`time` 等命名空间、挡脚本的实例 API
 - 第 2 波（已落地）：dataset / transform / encode / stack / sampling；多 grid / 轴；time / log
@@ -1225,7 +1193,7 @@ npm run dev
 - 第 5 波（已落地）：polar / radar / singleAxis / parallel / calendar / matrix / geo
 - 第 6 波（已落地）：其余官方图表 + `custom` `renderItem`/`api`；feature 默认全开
 - 第 7 波（已落地）：扩展注册真表、`labelLayout`、`axis.breaks`、`axis.jitter`、`option.media`；UniversalTransition 终态
-- 第 8 波（拆成 8.0–8.9，见 canvas 全量对齐计划）：官网画廊按类同步 + probe。8.0 基建已落地；**8.1 已落地**（bar 46 + pie 19 catalog，probe 64/65 ok，`bar-large` 超时写入上文）；**8.2 已落地**（scatter 36 catalog，probe 29/36 ok，6 条缺 `ecStat`、`scatter-weibo` 超时写入上文）；**8.3 已落地**（candlestick 10 + boxplot 4 + heatmap 7 + pictorialBar 8 catalog，probe 27/29 ok，`candlestick-large` 超时、`heatmap-bmap` 无百度地图扩展写入上文）；**8.4 已落地**（gauge 12 + radar 5 catalog 进画廊，本轮只同步未跑 probe）；**8.5 已落地**（funnel 4 + chord 4 + sunburst 7 + tree 7 + treemap 7 + graph 13 + sankey 7 + themeRiver 2 catalog，probe 48/51 ok，3 条 treemap WASM panic 写入上文）；**8.6 已落地**（calendar 9 + matrix 14 + parallel 4 catalog，probe 26/27 ok，`parallel-nutrients` 超时写入上文）；**8.7 已落地**（map 25 + geo 1 + lines 5 catalog，去重 probe 24/26 ok，`lines-ny` 分片 bin 缺失、`map-usa-projection` 缺 `d3.geoAlbersUsa` 写入上文）；**8.8 已落地**（custom 20 + dataset 9 + graphic 5 catalog，probe 33/34 ok，`bar-histogram` 缺 `ecStat` 写入上文）。8.9 全量 probe 与文档收口。每类不要求 100% 出图才合并，失败写入文档四块。
+- 第 8 波（8.0–8.9 均已落地）：官网画廊按类同步 + probe。**8.9 全量去重 probe 296 条中 281 `ok`**（3 timeout / 12 error 写入上文「未实现」）。缺官方实例方法同名导出 + `console.warn`，避免 `is not a function`。
 - 视觉回归（echarts `test/*.html` → golden PNG）；JS vs WASM 基准报告
 
 ### 明确不做
