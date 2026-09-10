@@ -325,6 +325,9 @@ fn links_of(placed: &[Placed]) -> Vec<((f64, f64), (f64, f64))> {
 }
 
 fn squarify(nodes: &[HNode], x: f64, y: f64, w: f64, h: f64, out: &mut Vec<BoxRec>) {
+    if w < 0.5 || h < 0.5 || nodes.is_empty() {
+        return;
+    }
     let total: f64 = nodes.iter().map(|n| n.value.max(0.1)).sum::<f64>().max(1e-9);
     let mut cx = x;
     let mut cy = y;

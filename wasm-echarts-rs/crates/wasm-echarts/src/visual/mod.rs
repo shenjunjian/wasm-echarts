@@ -3,8 +3,8 @@
 use wasm_bindgen::JsValue;
 
 use crate::bridge::{
-    build_data_params, default_series_color, resolve_color, resolve_formatter, resolve_symbol_size,
-    DataParamsInput,
+    build_data_params, default_item_color, default_series_color, is_special_edge_color,
+    resolve_color, resolve_formatter, resolve_symbol_size, DataParamsInput,
 };
 use crate::data::{numeric_or_time, data_point_from_parsed};
 use crate::model::{DataPoint, GlobalModel, SeriesType};
@@ -90,6 +90,15 @@ impl<'a> VisualContext<'a> {
                     .and_then(|ls| ls.get("color"))
             });
         match color_val {
+            Some(OptionValue::String(s)) if is_special_edge_color(s) => {
+                // lineStyle.color: 'source' | 'target' | 'gradient' 只作用于边，节点走色板
+                if let Some(series) = self.model.series.get(series_index) {
+                    crate::chart::visual_map::map_color(self.option, series_index, data_index, series)
+                        .unwrap_or_else(|| default_item_color(data_index).to_string())
+                } else {
+                    default_item_color(data_index).to_string()
+                }
+            }
             Some(OptionValue::String(s)) => s.clone(),
             Some(OptionValue::Function(_)) => {
                 let params = self.data_params(series_index, data_index);

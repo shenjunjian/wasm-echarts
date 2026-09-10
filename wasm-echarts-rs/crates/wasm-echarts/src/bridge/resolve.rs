@@ -146,6 +146,16 @@ pub fn default_series_color(series_index: usize) -> &'static str {
     DEFAULT_COLORS[series_index % DEFAULT_COLORS.len()]
 }
 
+/// 官方 graph / chord / sankey 边色关键字，不是 CSS 颜色。
+pub fn is_special_edge_color(s: &str) -> bool {
+    matches!(s, "source" | "target" | "gradient")
+}
+
+/// 类目型数据项色板（节点 / 扇区按 dataIndex 循环）。
+pub fn default_item_color(data_index: usize) -> &'static str {
+    DEFAULT_COLORS[data_index % DEFAULT_COLORS.len()]
+}
+
 pub fn as_js_callback(value: &OptionValue) -> Option<JsCallback> {
     match value {
         OptionValue::Function(f) => Some(JsCallback::new(f.clone())),
@@ -157,5 +167,25 @@ pub fn extract_function(value: &OptionValue) -> Option<Function> {
     match value {
         OptionValue::Function(f) => Some(f.clone()),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn edge_color_tokens_are_not_css() {
+        assert!(is_special_edge_color("source"));
+        assert!(is_special_edge_color("target"));
+        assert!(is_special_edge_color("gradient"));
+        assert!(!is_special_edge_color("#5470c6"));
+        assert!(!is_special_edge_color("red"));
+    }
+
+    #[test]
+    fn item_palette_cycles() {
+        assert_eq!(default_item_color(0), DEFAULT_COLORS[0]);
+        assert_eq!(default_item_color(DEFAULT_COLORS.len()), DEFAULT_COLORS[0]);
     }
 }

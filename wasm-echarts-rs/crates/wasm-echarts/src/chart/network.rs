@@ -3,11 +3,14 @@
 use std::f64::consts::PI;
 
 use rust_zrender::{
-    BezierCurveShape, LineShape, PolygonShape, Shape, TextAlign, TextBaseline, ZRenderer,
+    BezierCurveShape, ColorStop, FillStrokeStyle, LineShape, LinearGradientStyle, PolygonShape,
+    PathStyle, Shape, TextAlign, TextBaseline, ZRenderer,
 };
 
+use crate::bridge::{default_item_color, is_special_edge_color};
 use crate::chart::label::add_label;
-use crate::chart::path_util::{add_ec_path, fill_stroke};
+use crate::chart::path_util::{add_ec_path, fill_stroke, fill_stroke_style};
+use crate::chart::style::style_opacity;
 use crate::chart::symbol::{add_symbol, SymbolSpec};
 use crate::model::{GlobalModel, SeriesModel};
 use crate::option::OptionValue;
@@ -36,6 +39,7 @@ pub fn render_graph_series(
     series: &SeriesModel,
 ) {
     let (nodes, links) = parse_graph(visual, series, model);
+    let edge_opacity = line_opacity(visual, series, 0.7);
     for link in &links {
         let Some(a) = nodes.get(link.source) else { continue };
         let Some(b) = nodes.get(link.target) else { continue };
@@ -49,7 +53,7 @@ pub fn render_graph_series(
                 y2: b.y,
                 percent: 1.0,
             }),
-            fill_stroke("none", "#aaa", 1.0, 0.7),
+            edge_path_style(visual, series, a, b, 1.0, edge_opacity, "#aaa"),
             series.index,
             link.source,
             series.index as f64,
@@ -57,7 +61,7 @@ pub fn render_graph_series(
         );
     }
     for node in &nodes {
-        let color = visual.resolve_item_color(series.index, node.data_index);
+        let color = node_fill_color(visual, series, node);
         add_symbol(
             zr,
             group,
@@ -105,6 +109,7 @@ pub fn render_chord_series(
         node.x = cx + r * a.cos();
         node.y = cy + r * a.sin();
     }
+    let edge_opacity = line_opacity(visual, series, 0.55);
     for link in &links {
         let Some(a) = nodes.get(link.source) else { continue };
         let Some(b) = nodes.get(link.target) else { continue };
@@ -122,7 +127,7 @@ pub fn render_chord_series(
                 cpy2: Some(cy),
                 percent: 1.0,
             }),
-            fill_stroke("none", &visual.resolve_item_color(series.index, link.source), 1.5, 0.55),
+            edge_path_style(visual, series, a, b, 1.5, edge_opacity, "source"),
             series.index,
             link.source,
             series.index as f64,
@@ -130,7 +135,7 @@ pub fn render_chord_series(
         );
     }
     for node in &nodes {
-        let color = visual.resolve_item_color(series.index, node.data_index);
+        let color = node_fill_color(visual, series, node);
         add_symbol(
             zr,
             group,
@@ -189,6 +194,7 @@ pub fn render_sankey_series(
             nodes[i].y = top + (k as f64 + 0.5) * gap;
         }
     }
+    let edge_opacity = line_opacity(visual, series, 0.45);
     for link in &links {
         let Some(a) = nodes.get(link.source) else { continue };
         let Some(b) = nodes.get(link.target) else { continue };
@@ -207,7 +213,15 @@ pub fn render_sankey_series(
                 cpy2: Some(b.y),
                 percent: 1.0,
             }),
-            fill_stroke("none", &visual.resolve_item_color(series.index, link.source), (2.0 + link.value.abs().sqrt()).min(10.0) as f32, 0.45),
+            edge_path_style(
+                visual,
+                series,
+                a,
+                b,
+                (2.0 + link.value.abs().sqrt()).min(10.0) as f32,
+                edge_opacity,
+                "source",
+            ),
             series.index,
             link.source,
             series.index as f64,
@@ -215,7 +229,7 @@ pub fn render_sankey_series(
         );
     }
     for node in &nodes {
-        let color = visual.resolve_item_color(series.index, node.data_index);
+        let color = node_fill_color(visual, series, node);
         add_ec_path(
             zr,
             group,
@@ -326,6 +340,94 @@ fn parse_graph(visual: &VisualContext, series: &SeriesModel, model: &GlobalModel
         }
     }
     (nodes, links)
+}
+
+fn line_opacity(visual: &VisualContext, series: &SeriesModel, default: f32) -> f32 {
+    style_opacity(
+        visual
+            .series_option(series.index)
+            .and_then(|s| s.get("lineStyle")),
+        default,
+    )
+}
+
+fn node_fill_color(visual: &VisualContext, series: &SeriesModel, node: &Node) -> String {
+    if let Some(color) = visual
+        .series_option(series.index)
+        .and_then(|s| s.get("data").or_else(|| s.get("nodes")))
+        .and_then(|d| d.as_array())
+        .and_then(|arr| arr.get(node.data_index))
+        .and_then(|item| item.get("itemStyle"))
+        .and_then(|is| is.get("color"))
+        .and_then(|v| v.as_str())
+        .filter(|s| !is_special_edge_color(s))
+    {
+        return color.to_string();
+    }
+    let series_item = visual
+        .series_option(series.index)
+        .and_then(|s| s.get("itemStyle"))
+        .and_then(|is| is.get("color"))
+        .and_then(|v| v.as_str())
+        .filter(|s| !is_special_edge_color(s));
+    if let Some(color) = series_item {
+        return color.to_string();
+    }
+    default_item_color(node.data_index).to_string()
+}
+
+fn edge_color_token<'a>(visual: &'a VisualContext, series: &SeriesModel) -> &'a str {
+    visual
+        .series_option(series.index)
+        .and_then(|s| s.get("lineStyle"))
+        .and_then(|ls| ls.get("color"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+}
+
+fn edge_path_style(
+    visual: &VisualContext,
+    series: &SeriesModel,
+    source: &Node,
+    target: &Node,
+    width: f32,
+    opacity: f32,
+    default_token: &str,
+) -> PathStyle {
+    let token = {
+        let t = edge_color_token(visual, series);
+        if t.is_empty() {
+            default_token
+        } else {
+            t
+        }
+    };
+    let src = node_fill_color(visual, series, source);
+    let tgt = node_fill_color(visual, series, target);
+    let stroke = match token {
+        "source" => FillStrokeStyle::color(src),
+        "target" => FillStrokeStyle::color(tgt),
+        "gradient" => FillStrokeStyle::LinearGradient(LinearGradientStyle {
+            x: source.x,
+            y: source.y,
+            x2: target.x,
+            y2: target.y,
+            color_stops: vec![
+                ColorStop {
+                    offset: 0.0,
+                    color: src,
+                },
+                ColorStop {
+                    offset: 1.0,
+                    color: tgt,
+                },
+            ],
+            global: true,
+        }),
+        css if !css.is_empty() && !is_special_edge_color(css) => FillStrokeStyle::color(css),
+        _ => FillStrokeStyle::color(src),
+    };
+    fill_stroke_style(FillStrokeStyle::none(), stroke, width, opacity)
 }
 
 fn resolve_end(nodes: &[Node], value: Option<&OptionValue>) -> Option<usize> {

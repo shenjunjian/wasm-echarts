@@ -244,9 +244,9 @@ dispose(zr);
 
 规范已写入上文「目标与约束」；逐项清单以 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](../.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md) 为权威。JS facade 骨架在 `crates/wasm-echarts/js/`：`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version` / `use`（只 `console.info`）。site / README 从 `@wasm-echarts`（`js/index.js`）导入，`pkg/` 只作内部 handle。示例走官方 `init(canvas)` + `setOption`；`init(canvas)` 后自动 `putImageData` 并绑定指针。波次 2：`setOption(option, notMerge | opts)`、`getOption`、`resize()` / `resize({ width, height, devicePixelRatio })`、`clear` = `setOption({ series: [] }, true)`；`notMerge` 只作第二参数，不再从 option 根读取。波次 3：`on`/`off` 发出 `click` / `mouseover` / `mouseout` / `globalout`；内建 string tooltip DOM；`dispatchAction` 接 `showTip` / `hideTip`。波次 4：`axisLabel.formatter` 进轴 Text；pie `center`/`radius`/`startAngle`/`clockwise`；line/scatter `symbol`/`symbolSize`；`label.show` 画 Text；CallbackDataParams 补 `componentType`/`seriesType`/`percent`/`data`；`convertToPixel`/`convertFromPixel` cartesian 最小集。波次 5：文档四块（一致 / 不一致 / 非官方 API / 已实现与未实现）已写入 `site/echarts/docs/index.html`、根 README、本文件；示例 line/bar/pie/scatter/interactive/merge/bench 全部走 `init`；interactive 用 `on('click')` + `use()` 提示，不必 `handlePointer*`；merge 覆盖深合并、`notMerge: true`、dispose 后再 init。公开用法是官方 `init` / `setOption` / `on`，不要把 native `EChartsInstance` / `set_option` / `handlePointerMove` 当公开 API。
 
-### wasm-echarts Canvas 全量对齐（第 0–8.4 波已落地）
+### wasm-echarts Canvas 全量对齐（第 0–8.5 波已落地）
 
-权威计划：[`.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md`](../.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md)。废止「不是一次移植完官方全量 API」以及把 `graphic`/`util`/面积/`getZr` 当永久后置的写法。[折线缺口补齐](../.cursor/plans/折线缺口补齐_96423c21.plan.md) 已废弃并入本计划。第 0 波改文档口径；第 1 波已落地单 WASM、`getZr`、公开命名空间与挡脚本的实例 API。第 2 波已落地 dataset / transform / encode / stack / sampling、多 grid / 轴、`time` / `log`。第 3 波已接线 line/bar/pie/scatter 的 canvas option 族。第 4 波已接线 legend 筛选、mark*、graphic、visualMap、slider、axisPointer、brush、timeline、toolbox。第 5 波已接线 polar / radar / singleAxis / parallel / calendar / matrix / geo 坐标系。第 6 波已接线其余官方图表（radar/gauge/candlestick/boxplot/heatmap/pictorialBar/effectScatter/funnel/chord/sunburst/tree/treemap/graph/sankey/themeRiver/map/lines/parallel/custom）及 `renderItem` + `api`；Cargo feature **默认全开**。未识别的 `series.type` 会 `console.warn`，不再静默当 `Other` 后永远不管。第 7 波已落地扩展注册 / media / labelLayout / breaks / jitter。第 8.0 基建、**8.1 bar+pie**、**8.2 scatter**、**8.3 candlestick/boxplot/heatmap/pictorialBar**、**8.4 gauge/radar** 已落地（8.1–8.3 probe 失败见上文「未实现」；8.4 只同步 catalog，未跑 probe）。后续 8.5 起见该计划 YAML。
+权威计划：[`.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md`](../.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md)。废止「不是一次移植完官方全量 API」以及把 `graphic`/`util`/面积/`getZr` 当永久后置的写法。[折线缺口补齐](../.cursor/plans/折线缺口补齐_96423c21.plan.md) 已废弃并入本计划。第 0 波改文档口径；第 1 波已落地单 WASM、`getZr`、公开命名空间与挡脚本的实例 API。第 2 波已落地 dataset / transform / encode / stack / sampling、多 grid / 轴、`time` / `log`。第 3 波已接线 line/bar/pie/scatter 的 canvas option 族。第 4 波已接线 legend 筛选、mark*、graphic、visualMap、slider、axisPointer、brush、timeline、toolbox。第 5 波已接线 polar / radar / singleAxis / parallel / calendar / matrix / geo 坐标系。第 6 波已接线其余官方图表（radar/gauge/candlestick/boxplot/heatmap/pictorialBar/effectScatter/funnel/chord/sunburst/tree/treemap/graph/sankey/themeRiver/map/lines/parallel/custom）及 `renderItem` + `api`；Cargo feature **默认全开**。未识别的 `series.type` 会 `console.warn`，不再静默当 `Other` 后永远不管。第 7 波已落地扩展注册 / media / labelLayout / breaks / jitter。第 8.0 基建、**8.1 bar+pie**、**8.2 scatter**、**8.3 candlestick/boxplot/heatmap/pictorialBar**、**8.4 gauge/radar**、**8.5 funnel/chord/sunburst/tree/treemap/graph/sankey/themeRiver** 已落地（8.1–8.3、8.5 probe 失败见上文「未实现」；8.4 只同步 catalog，未跑 probe）。后续 8.6 起见该计划 YAML。
 
 ---
 
@@ -678,7 +678,7 @@ chart-map, chart-lines, chart-parallel, chart-custom
 | effectScatter | scatter + `rippleEffect.scale`/`number` 同心圆终态（不播扩散动画） |
 | funnel | 梯形；`sort` / `minSize`/`maxSize` / `gap` |
 | tree / treemap / sunburst | 从 `data`/`children` 递归；树分层、矩形树切分、旭日多层 Sector |
-| graph / chord / sankey | `data`/`nodes` + `links`/`edges`；circular/坐标点、和弦贝塞尔、桑基分层贝塞尔 |
+| graph / chord / sankey | `data`/`nodes` + `links`/`edges`；circular/坐标点、和弦贝塞尔、桑基分层贝塞尔；边 `lineStyle.color` 支持 `source` / `target` / `gradient` |
 | themeRiver | `singleAxis` 上按名称堆叠面积带 |
 | map / lines | 按已注册 GeoJSON 填色；`coords` 折线（geo 或 cartesian） |
 | parallel | 平行坐标每条数据一条 Polyline |
@@ -713,7 +713,7 @@ chart-map, chart-lines, chart-parallel, chart-custom
 
 实例上尚未做完：`convertToLayout` / `getVisual`。
 
-Charts：未识别的 `series.type` 会 `console.warn`（不再静默当 `Other`；`registerCustomSeries` 登记过的 type 当 custom）。已接线图表的视觉/布局相对官方仍有简化（force 布局不迭代、桑基非完整节点平衡、tree 非 tidy、chord 用贝塞尔而非丝带、pictorialBar 非全部 symbolClip 语义）。
+Charts：未识别的 `series.type` 会 `console.warn`（不再静默当 `Other`；`registerCustomSeries` 登记过的 type 当 custom）。已接线图表的视觉/布局相对官方仍有简化（force 布局不迭代、桑基非完整节点平衡、tree 非 tidy、chord 用贝塞尔而非丝带、pictorialBar 非全部 symbolClip 语义）。treemap 大树（`treemap-disk` / `treemap-show-parent`）与 `levels` 色映射（`treemap-visual`）会 WASM panic，见第 8.5 波 probe 表。
 
 Components：geo roam / SVG 地图源。aria 写 DOM 属性非绘制，可后置。toolbox DataView DOM / SaveAsImage 下载条明确不做。
 
@@ -744,6 +744,13 @@ Actions：geo roam 等。
 | `heatmap-bmap` | 依赖百度地图扩展 `bmap` 坐标系；本宿主不注入。表面错误 `getModel` 未实现，即便补上也会因无 bmap 组件失败（同 `effectScatter-bmap`） |
 
 **官网 gauge / radar（第 8.4 波）**：catalog 12 + 5 = 17 条已进画廊。本轮只同步官网示例，未跑 probe。
+
+**官网 funnel / chord / sunburst / tree / treemap / graph / sankey / themeRiver probe（第 8.5 波）**：catalog 4+4+7+7+7+13+7+2 = 51 条，48 `ok`。失败（不改官方 option）：
+
+| 示例 | 原因 |
+|------|------|
+| `treemap-disk` / `treemap-show-parent` | 官网 `disk.tree.json` 大树；递归 parse / squarify 触发 WASM panic（`unreachable`） |
+| `treemap-visual` | `series.levels.color` + `visualDimension` 渐变映射未按官方做，渲染时 WASM panic（`unreachable`） |
 
 `$` 宿主已补 `getScript`（与已有 `get` / `getJSON` / `when` 同级），`data-transform-aggregate` 可加载 `ecSimpleTransform` 后 `registerTransform`。不在 runtime 里假实现 `bmap` / `getModel`。
 
@@ -853,7 +860,7 @@ Actions：geo roam 等。
 | effectScatter | symbol + Circle | ripple 同心圆终态 |
 | funnel | Polygon | 梯形；`sort`/`gap`/`minSize` |
 | tree / treemap / sunburst | Line+symbol / Rect / Sector | `children` 递归 |
-| graph / chord / sankey | Line / Bezier / Rect | nodes + links |
+| graph / chord / sankey | Line / Bezier / Rect | nodes + links；边色 `source` / `target` / `gradient` |
 | themeRiver | Polygon | singleAxis 堆叠带 |
 | map / lines | Polygon / Polyline | 已注册地图填色；`coords` |
 | parallel | Polyline | 每条数据一条折线 |
@@ -940,8 +947,8 @@ import initWasm, { init, registerFont } from '@wasm-echarts';
 
 再 `await initWasm()` → `registerFont` → `init(canvas)` + `setOption`。native `EChartsInstance` 仍从 facade 再导出，仅兼容旧路径，不要当公开 API。
 3. 每个实例是独立完整脚本：`site/echarts/examples/line.js` 等同名 HTML 成对出现（`<canvas id="canvas">`）；自写示例内联 `fetch` + `registerFont`（与 zrender `text.js` 相同）
-4. 画廊 `gallery.js` 用 Vite `?raw` / `import.meta.glob` 读这些 `.js` 作为左侧源码，iframe 加载同目录 HTML 预览。echarts 画廊是二级菜单：第一层为图形类别，第二层为该类别下的示例。分组顺序与自写条目在 [`official-gallery-meta.js`](wasm-echarts-rs/site/src/echarts/official-gallery-meta.js)；官网同步条目来自 `official-{category}-catalog.js`（无 catalog 且无自写示例的类不出现空菜单）。已同步：折线 40、柱状 46、饼图 19、散点 36、K 线 10、盒须 4、热力 7、象形柱 8、仪表盘 12、雷达 5。官网脚本经 `src/echarts/official-runtime.js` 注入 `myChart` / `option` / `ROOT_PATH` / `CDN_PATH` / `$`（含 `get` / `getJSON` / `getScript` / `when`），**不补齐未实现 echarts API**，报错显示在预览层。数据文件在 `public/echarts-official/`。按类拉取：`node scripts/sync-official-examples.mjs --category scatter --local-dir <echarts-examples 根目录>`（`--local-dir` / `ECHARTS_EXAMPLES_DIR` 优先读本地 `public/`，避免官网大文件超时）；探测：`node scripts/probe-official-examples.mjs --category scatter`（需已启动 Vite；单例超过 40s 判 timeout 并换浏览器进程）。旧文件名 `sync-official-line-examples.mjs` / `probe-official-line.mjs` 转发到 `--category line`。交互合集下挂 interactive / merge / bench。zrender 画廊仍用扁平 `examples`。
-5. 页面：自写 line / fonts / bar / pie / scatter / interactive / merge / bench，外加已同步的官网 catalog（折线 40 + 柱状 46 + 饼图 19 + 散点 36 + K 线 10 + 盒须 4 + 热力 7 + 象形柱 8 + 仪表盘 12 + 雷达 5；后续 8.5 起按类增加）
+4. 画廊 `gallery.js` 用 Vite `?raw` / `import.meta.glob` 读这些 `.js` 作为左侧源码，iframe 加载同目录 HTML 预览。echarts 画廊是二级菜单：第一层为图形类别，第二层为该类别下的示例。分组顺序与自写条目在 [`official-gallery-meta.js`](wasm-echarts-rs/site/src/echarts/official-gallery-meta.js)；官网同步条目来自 `official-{category}-catalog.js`（无 catalog 且无自写示例的类不出现空菜单）。已同步：折线 40、柱状 46、饼图 19、散点 36、K 线 10、盒须 4、热力 7、象形柱 8、仪表盘 12、雷达 5、漏斗 4、和弦 4、旭日 7、树图 7、矩形树 7、关系图 13、桑基 7、主题河流 2。官网脚本经 `src/echarts/official-runtime.js` 注入 `myChart` / `option` / `ROOT_PATH` / `CDN_PATH` / `$`（含 `get` / `getJSON` / `getScript` / `when`），**不补齐未实现 echarts API**，报错显示在预览层。数据文件在 `public/echarts-official/`。按类拉取：`node scripts/sync-official-examples.mjs --category scatter --local-dir <echarts-examples 根目录>`（`--local-dir` / `ECHARTS_EXAMPLES_DIR` 优先读本地 `public/`，避免官网大文件超时）；探测：`node scripts/probe-official-examples.mjs --category scatter`（需已启动 Vite；单例超过 40s 判 timeout 并换浏览器进程）。旧文件名 `sync-official-line-examples.mjs` / `probe-official-line.mjs` 转发到 `--category line`。交互合集下挂 interactive / merge / bench。zrender 画廊仍用扁平 `examples`。
+5. 页面：自写 line / fonts / bar / pie / scatter / interactive / merge / bench，外加已同步的官网 catalog（折线 40 + 柱状 46 + 饼图 19 + 散点 36 + K 线 10 + 盒须 4 + 热力 7 + 象形柱 8 + 仪表盘 12 + 雷达 5 + 漏斗 4 + 和弦 4 + 旭日 7 + 树图 7 + 矩形树 7 + 关系图 13 + 桑基 7 + 主题河流 2；后续 8.6 起按类增加）
 
 ---
 
@@ -1196,7 +1203,7 @@ npm run dev
 - 第 5 波（已落地）：polar / radar / singleAxis / parallel / calendar / matrix / geo
 - 第 6 波（已落地）：其余官方图表 + `custom` `renderItem`/`api`；feature 默认全开
 - 第 7 波（已落地）：扩展注册真表、`labelLayout`、`axis.breaks`、`axis.jitter`、`option.media`；UniversalTransition 终态
-- 第 8 波（拆成 8.0–8.9，见 canvas 全量对齐计划）：官网画廊按类同步 + probe。8.0 基建已落地；**8.1 已落地**（bar 46 + pie 19 catalog，probe 64/65 ok，`bar-large` 超时写入上文）；**8.2 已落地**（scatter 36 catalog，probe 29/36 ok，6 条缺 `ecStat`、`scatter-weibo` 超时写入上文）；**8.3 已落地**（candlestick 10 + boxplot 4 + heatmap 7 + pictorialBar 8 catalog，probe 27/29 ok，`candlestick-large` 超时、`heatmap-bmap` 无百度地图扩展写入上文）；**8.4 已落地**（gauge 12 + radar 5 catalog 进画廊，本轮只同步未跑 probe）。8.5 起 funnel/chord/… → custom/dataset/graphic；8.9 全量 probe 与文档收口。每类不要求 100% 出图才合并，失败写入文档四块。
+- 第 8 波（拆成 8.0–8.9，见 canvas 全量对齐计划）：官网画廊按类同步 + probe。8.0 基建已落地；**8.1 已落地**（bar 46 + pie 19 catalog，probe 64/65 ok，`bar-large` 超时写入上文）；**8.2 已落地**（scatter 36 catalog，probe 29/36 ok，6 条缺 `ecStat`、`scatter-weibo` 超时写入上文）；**8.3 已落地**（candlestick 10 + boxplot 4 + heatmap 7 + pictorialBar 8 catalog，probe 27/29 ok，`candlestick-large` 超时、`heatmap-bmap` 无百度地图扩展写入上文）；**8.4 已落地**（gauge 12 + radar 5 catalog 进画廊，本轮只同步未跑 probe）；**8.5 已落地**（funnel 4 + chord 4 + sunburst 7 + tree 7 + treemap 7 + graph 13 + sankey 7 + themeRiver 2 catalog，probe 48/51 ok，3 条 treemap WASM panic 写入上文）。8.6 起 calendar/matrix/parallel → custom/dataset/graphic；8.9 全量 probe 与文档收口。每类不要求 100% 出图才合并，失败写入文档四块。
 - 视觉回归（echarts `test/*.html` → golden PNG）；JS vs WASM 基准报告
 
 ### 明确不做

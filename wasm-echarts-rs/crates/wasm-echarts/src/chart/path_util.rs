@@ -51,17 +51,31 @@ pub fn add_ec_path(
 }
 
 pub fn fill_stroke(fill: &str, stroke: &str, width: f32, opacity: f32) -> PathStyle {
-    PathStyle {
-        fill: if fill == "none" {
+    fill_stroke_style(
+        if fill == "none" {
             FillStrokeStyle::none()
         } else {
             FillStrokeStyle::color(fill)
         },
-        stroke: if stroke == "none" {
+        if stroke == "none" {
             FillStrokeStyle::none()
         } else {
             FillStrokeStyle::color(stroke)
         },
+        width,
+        opacity,
+    )
+}
+
+pub fn fill_stroke_style(
+    fill: FillStrokeStyle,
+    stroke: FillStrokeStyle,
+    width: f32,
+    opacity: f32,
+) -> PathStyle {
+    PathStyle {
+        fill,
+        stroke,
         line_width: width,
         opacity,
         ..Default::default()
