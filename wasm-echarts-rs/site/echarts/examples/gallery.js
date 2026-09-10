@@ -38,7 +38,13 @@ function catalogFor(category) {
 
 function buildGroups() {
   const seen = new Set();
-  const groups = [];
+  const groups = [
+    {
+      id: 'cat-interaction',
+      title: '综合功能',
+      examples: INTERACTION_EXAMPLES.map(toGalleryExample),
+    },
+  ];
 
   for (const spec of OFFICIAL_CATEGORY_GROUPS) {
     const examples = [];
@@ -59,12 +65,6 @@ function buildGroups() {
       examples,
     });
   }
-
-  groups.push({
-    id: 'cat-interaction',
-    title: '交互合集',
-    examples: INTERACTION_EXAMPLES.map(toGalleryExample),
-  });
 
   return groups;
 }
