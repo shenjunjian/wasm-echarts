@@ -1,10 +1,20 @@
 mod axis;
+pub(crate) mod axis_pointer;
 mod bar;
+pub(crate) mod brush;
+pub(crate) mod data_zoom;
+mod graphic;
 mod label;
-mod legend;
+pub(crate) mod layout;
+pub(crate) mod legend;
 mod line;
-mod text_opt;
+mod mark;
+pub(crate) mod text_opt;
 mod title;
+pub(crate) mod thumbnail;
+pub(crate) mod timeline;
+pub(crate) mod toolbox;
+pub(crate) mod visual_map;
 mod style;
 mod symbol;
 #[cfg(feature = "chart-pie")]
@@ -21,15 +31,18 @@ pub use pie::render_pie_series;
 #[cfg(feature = "chart-scatter")]
 pub use scatter::render_scatter_series;
 
-use rust_zrender::{
-    ChildRef, FillStrokeStyle, LineShape, Path, PathStyle, Shape, ZRenderer,
-};
+pub use layout::{HIT_DATA_ZOOM, HIT_LEGEND, HIT_THUMBNAIL, HIT_TIMELINE, HIT_TOOLBOX};
+pub use toolbox::{next_magic_type, TB_BRUSH, TB_DATA_VIEW, TB_DATA_ZOOM, TB_MAGIC, TB_RESTORE, TB_SAVE};
 
 use crate::coord::Cartesian2D;
 use crate::interaction::InteractionState;
 use crate::model::{GlobalModel, SeriesType};
 use crate::option::OptionModel;
 use crate::visual::VisualContext;
+
+use rust_zrender::{
+    ChildRef, FillStrokeStyle, LineShape, Path, PathStyle, Shape, ZRenderer,
+};
 
 pub fn render_components(
     zr: &mut ZRenderer,
@@ -60,6 +73,9 @@ pub fn render_components(
     }
 
     for series in &model.series {
+        if !interaction.is_name_selected(&series.name) {
+            continue;
+        }
         let coord = Cartesian2D::for_series(model, series);
         let (zoom_start, zoom_end) = model.visible_category_range_of(series.x_axis_index);
         match series.series_type {
@@ -81,21 +97,25 @@ pub fn render_components(
             }
             _ => {}
         }
+        mark::render_marks(zr, group, model, option, &visual, series);
     }
 
     if model.has_cartesian_series() {
-        let coord = Cartesian2D::new(model);
-        render_axis_pointer(zr, group, model, &coord, interaction);
+        axis_pointer::render_axis_pointer(zr, group, model, option, interaction);
     }
 
     title::render_title(zr, group, model, option);
-    legend::render_legend(zr, group, model, option);
+    legend::render_legend(zr, group, model, option, interaction);
+    visual_map::render_visual_map(zr, group, model, option, interaction);
+    data_zoom::render_data_zoom_slider(zr, group, model, option, interaction);
+    toolbox::render_toolbox(zr, group, model, option);
+    timeline::render_timeline(zr, group, model, option, interaction);
+    brush::render_brush(zr, group, model, option, interaction);
+    thumbnail::render_thumbnail(zr, group, model, option, interaction);
+    graphic::render_graphic(zr, group, model, option);
 }
 
 fn render_grid_frame(zr: &mut ZRenderer, group: usize, g: crate::model::GridRect) {
-    use rust_zrender::{
-        FillStrokeStyle, LineShape, Path, PathStyle, Shape,
-    };
     let y_axis = zr.storage.create_path(Path::new(
         Shape::Line(LineShape {
             x1: g.x,
@@ -136,10 +156,6 @@ fn render_split_lines(
     _model: &GlobalModel,
     coord: &Cartesian2D,
 ) {
-    use rust_zrender::{
-        FillStrokeStyle, LineShape, Path, PathStyle, Shape,
-    };
-
     let g = coord.grid();
     let split_count = 5;
     let ymin = coord.y_axis().value_min();
@@ -166,49 +182,6 @@ fn render_split_lines(
         ));
         zr.storage.group_add_child(group, ChildRef::Path(line));
     }
-}
-
-fn render_axis_pointer(
-    zr: &mut ZRenderer,
-    group: usize,
-    model: &GlobalModel,
-    coord: &Cartesian2D,
-    interaction: &InteractionState,
-) {
-    if !interaction.axis_pointer_enabled {
-        return;
-    }
-    let (px, py) = match (interaction.pointer_x, interaction.pointer_y) {
-        (Some(x), Some(y)) if model.grid().contains(x, y) => (x, y),
-        _ => return,
-    };
-
-    let snap_x = interaction
-        .axis_pointer_label(model, px, py)
-        .map(|(_, _, x)| x)
-        .unwrap_or(px);
-
-    let g = model.grid();
-    let line = zr.storage.create_path(Path::new(
-        Shape::Line(LineShape {
-            x1: snap_x,
-            y1: g.y,
-            x2: snap_x,
-            y2: g.y + g.height,
-            percent: 1.0,
-        }),
-        PathStyle {
-            fill: FillStrokeStyle::none(),
-            stroke: FillStrokeStyle::color("#aaa"),
-            line_width: 1.0,
-            line_dash: Some(vec![4.0, 4.0]),
-            ..Default::default()
-        },
-    ));
-    zr.storage.group_add_child(group, ChildRef::Path(line));
-
-    let _ = py;
-    let _ = coord;
 }
 
 #[cfg(test)]
@@ -318,8 +291,9 @@ mod tests {
         let model = crate::model::GlobalModel::from_option(&option, 480, 360);
         let mut zr = ZRenderer::new(480, 360).unwrap();
         let group = zr.storage.create_group();
+        let interaction = InteractionState::default();
         title::render_title(&mut zr, group, &model, &option);
-        legend::render_legend(&mut zr, group, &model, &option);
+        legend::render_legend(&mut zr, group, &model, &option, &interaction);
         axis::render_axis_labels(&mut zr, group, &model, &option);
         let texts: Vec<(String, String)> = zr
             .storage

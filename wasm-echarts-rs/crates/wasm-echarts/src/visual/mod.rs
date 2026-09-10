@@ -91,7 +91,14 @@ impl<'a> VisualContext<'a> {
                 let params = self.data_params(series_index, data_index);
                 resolve_color(color_val, &params, &fallback)
             }
-            _ => fallback,
+            _ => {
+                if let Some(series) = self.model.series.get(series_index) {
+                    crate::chart::visual_map::map_color(self.option, series_index, data_index, series)
+                        .unwrap_or(fallback)
+                } else {
+                    fallback
+                }
+            }
         }
     }
 

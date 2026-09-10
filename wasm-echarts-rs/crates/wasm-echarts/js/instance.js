@@ -97,6 +97,9 @@ function eventPoint(canvas, event) {
 }
 
 function hoverKey(hit) {
+  if (hit && hit.dataType) {
+    return `c:${hit.dataType}:${hit.dataIndex ?? 0}`;
+  }
   if (!hit || hit.seriesIndex == null || hit.dataIndex == null) {
     return null;
   }
@@ -201,6 +204,10 @@ export class ECharts {
     this._onClick = this._onPointerClick.bind(this);
     this._onLeave = this._onPointerLeave.bind(this);
     this._onWheel = this._onPointerWheel.bind(this);
+    this._onDown = this._onPointerDown.bind(this);
+    this._onUp = this._onPointerUp.bind(this);
+    this._pointerDown = null;
+    this._didDrag = false;
     this._bindHost();
   }
 
@@ -242,6 +249,8 @@ export class ECharts {
       return;
     }
     canvas.addEventListener('mousemove', this._onMove);
+    canvas.addEventListener('mousedown', this._onDown);
+    canvas.addEventListener('mouseup', this._onUp);
     canvas.addEventListener('click', this._onClick);
     canvas.addEventListener('mouseleave', this._onLeave);
     canvas.addEventListener('wheel', this._onWheel, { passive: false });
@@ -256,6 +265,8 @@ export class ECharts {
       return;
     }
     canvas.removeEventListener('mousemove', this._onMove);
+    canvas.removeEventListener('mousedown', this._onDown);
+    canvas.removeEventListener('mouseup', this._onUp);
     canvas.removeEventListener('click', this._onClick);
     canvas.removeEventListener('mouseleave', this._onLeave);
     canvas.removeEventListener('wheel', this._onWheel);
@@ -269,7 +280,10 @@ export class ECharts {
       type,
       event,
     };
-    if (hit && hit.seriesIndex != null && hit.dataIndex != null) {
+    if (hit && hit.dataType) {
+      params.componentType = hit.dataType;
+      params.dataIndex = hit.dataIndex;
+    } else if (hit && hit.seriesIndex != null && hit.dataIndex != null) {
       params.componentType = 'series';
       params.seriesIndex = hit.seriesIndex;
       params.dataIndex = hit.dataIndex;
@@ -317,7 +331,7 @@ export class ECharts {
     if (!el) {
       return;
     }
-    el.innerHTML = String(html);
+    el.innerHTML = String(html).replace(/\n/g, '<br/>');
     el.style.display = 'block';
     const x = clientX == null ? this._lastClientX : clientX;
     const y = clientY == null ? this._lastClientY : clientY;
@@ -385,10 +399,41 @@ export class ECharts {
       this._hoverHit = hit || null;
     }
     this._syncCursor(hit);
+    if (this._pointerDown && this._native && typeof this._native.handlePointerMove === 'function') {
+      const dx = x - this._pointerDown.x;
+      const dy = y - this._pointerDown.y;
+      if (dx * dx + dy * dy > 16) {
+        this._didDrag = true;
+      }
+    }
     if (this._tooltipOn && result && result.tooltip) {
       this._showTooltip(result.tooltip, event.clientX, event.clientY);
     } else {
       this._hideTooltip();
+    }
+  }
+
+  _onPointerDown(event) {
+    if (this.isDisposed()) {
+      return;
+    }
+    const { x, y } = eventPoint(this._dom, event);
+    this._pointerDown = { x, y };
+    this._didDrag = false;
+    if (this._native && typeof this._native.handlePointerDown === 'function') {
+      this._native.handlePointerDown(x, y);
+      this._paintIfBound();
+    }
+  }
+
+  _onPointerUp(event) {
+    if (this.isDisposed()) {
+      return;
+    }
+    const { x, y } = eventPoint(this._dom, event);
+    if (this._native && typeof this._native.handlePointerUp === 'function') {
+      this._native.handlePointerUp(x, y);
+      this._paintIfBound();
     }
   }
 
@@ -397,7 +442,17 @@ export class ECharts {
       return;
     }
     const { x, y } = eventPoint(this._dom, event);
-    const hit = this.findHover(x, y);
+    if (this._didDrag) {
+      this._pointerDown = null;
+      this._didDrag = false;
+      return;
+    }
+    let hit = this.findHover(x, y);
+    if (this._native && typeof this._native.handlePointerClick === 'function') {
+      hit = this._native.handlePointerClick(x, y) || hit;
+      this._paintIfBound();
+    }
+    this._pointerDown = null;
     if (hoverKey(hit) == null) {
       return;
     }
@@ -702,6 +757,26 @@ export class ECharts {
     const result = this._native.handle_pointer_move(x, y);
     this._paintIfBound();
     return result;
+  }
+
+  handlePointerDown(x, y) {
+    this._assertAlive();
+    const hit = this._native.handlePointerDown(x, y);
+    this._paintIfBound();
+    return hit;
+  }
+
+  handlePointerUp(x, y) {
+    this._assertAlive();
+    this._native.handlePointerUp(x, y);
+    this._paintIfBound();
+  }
+
+  handlePointerClick(x, y) {
+    this._assertAlive();
+    const hit = this._native.handlePointerClick(x, y);
+    this._paintIfBound();
+    return hit;
   }
 
   /**

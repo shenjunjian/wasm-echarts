@@ -110,6 +110,10 @@ impl OptionModel {
         }
     }
 
+    pub fn with_root(root: OptionValue) -> Self {
+        Self { root }
+    }
+
     pub fn root(&self) -> &OptionValue {
         &self.root
     }
@@ -203,6 +207,110 @@ impl OptionModel {
     pub fn clear(&mut self) {
         self.root = OptionValue::Object(IndexMap::new());
     }
+
+    pub fn set_legend_selected(&mut self, name: &str, selected: bool) {
+        let legend = match self.root.get_mut("legend") {
+            Some(OptionValue::Array(arr)) => arr.first_mut(),
+            Some(v) => Some(v),
+            None => {
+                self.root.as_object_mut().map(|m| {
+                    m.insert("legend".into(), OptionValue::Object(IndexMap::new()));
+                    m.get_mut("legend").unwrap()
+                })
+            }
+        };
+        let Some(legend) = legend else {
+            return;
+        };
+        if legend.as_object().is_none() {
+            *legend = OptionValue::Object(IndexMap::new());
+        }
+        let map = match legend.as_object_mut() {
+            Some(m) => m,
+            None => return,
+        };
+        let selected_map = map
+            .entry("selected".to_string())
+            .or_insert_with(|| OptionValue::Object(IndexMap::new()));
+        if selected_map.as_object().is_none() {
+            *selected_map = OptionValue::Object(IndexMap::new());
+        }
+        if let Some(obj) = selected_map.as_object_mut() {
+            obj.insert(name.to_string(), OptionValue::Bool(selected));
+        }
+    }
+
+    pub fn set_timeline_index(&mut self, index: usize) {
+        let n = OptionValue::Number(index as f64);
+        if let Some(tl) = first_mut_component(&mut self.root, "timeline") {
+            if let Some(map) = tl.as_object_mut() {
+                map.insert("currentIndex".into(), n);
+                return;
+            }
+        }
+        if let Some(base) = self.root.get_mut("baseOption") {
+            if let Some(tl) = first_mut_component(base, "timeline") {
+                if let Some(map) = tl.as_object_mut() {
+                    map.insert("currentIndex".into(), n);
+                }
+            }
+        }
+    }
+
+    pub fn set_cartesian_series_type(&mut self, ty: &str) {
+        let Some(arr) = self.root.get_mut("series").and_then(|v| v.as_array_mut()) else {
+            return;
+        };
+        for item in arr {
+            let Some(map) = item.as_object_mut() else {
+                continue;
+            };
+            let cur = map.get("type").and_then(|v| v.as_str()).unwrap_or("line");
+            if matches!(cur, "line" | "bar") {
+                map.insert("type".into(), OptionValue::String(ty.into()));
+            }
+        }
+    }
+
+    /// timeline：`merge(baseOption 或去掉 options 的根, options[index])`。
+    pub fn effective_root(&self, timeline_index: usize) -> OptionValue {
+        effective_timeline_root(&self.root, timeline_index)
+    }
+}
+
+fn first_mut_component<'a>(root: &'a mut OptionValue, key: &str) -> Option<&'a mut OptionValue> {
+    match root.get_mut(key) {
+        Some(OptionValue::Array(arr)) => arr.first_mut(),
+        Some(v) => Some(v),
+        None => None,
+    }
+}
+
+pub fn effective_timeline_root(root: &OptionValue, timeline_index: usize) -> OptionValue {
+    let options = root
+        .get("options")
+        .and_then(|v| v.as_array())
+        .filter(|a| !a.is_empty());
+    let Some(options) = options else {
+        return root.clone();
+    };
+    let overlay = &options[timeline_index.min(options.len() - 1)];
+    let base = if let Some(b) = root.get("baseOption") {
+        b.clone()
+    } else {
+        let mut b = root.clone();
+        if let Some(map) = b.as_object_mut() {
+            map.shift_remove("options");
+        }
+        b
+    };
+    merge_option(
+        &base,
+        overlay,
+        MergeMode {
+            replace_merge: Vec::new(),
+        },
+    )
 }
 
 #[cfg(test)]

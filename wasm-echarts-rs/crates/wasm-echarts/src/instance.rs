@@ -64,8 +64,9 @@ impl EChartsInstance {
     /// `opts` 为官方第二参数：`boolean` 或 `{ notMerge, replaceMerge }`。可省略。
     pub fn set_option(&mut self, option: JsValue, opts: Option<JsValue>) -> Result<(), JsValue> {
         let flags = parse_set_option_flags(opts.as_ref())?;
+        let not_merge = flags.not_merge;
         self.option.set_option(&option, flags)?;
-        self.interaction = InteractionState::from_option(&self.option);
+        self.interaction.absorb_user_option(&self.option, not_merge);
         self.render_and_apply_states();
         Ok(())
     }
@@ -140,6 +141,9 @@ impl EChartsInstance {
             .ok()
             .flatten();
         let hover_target = hit.as_ref().and_then(|h| {
+            if h.ec_data.data_type.is_some() && h.ec_data.series_index.is_none() {
+                return None;
+            }
             let si = h.ec_data.series_index?;
             let di = h.ec_data.data_index?;
             Some(DataTarget {
@@ -147,7 +151,11 @@ impl EChartsInstance {
                 data_index: di,
             })
         });
-        self.interaction.set_hover(hover_target);
+        if self.interaction.drag.is_some() {
+            self.apply_pointer_drag(x, y);
+        } else {
+            self.interaction.set_hover(hover_target);
+        }
         self.render_and_apply_states();
 
         let obj = Object::new();
@@ -160,17 +168,15 @@ impl EChartsInstance {
         if let Some((si, di)) = hover_target.map(|t| (t.series_index, t.data_index)) {
             let tip = self.get_tooltip_content(si, di);
             let _ = Reflect::set(&obj, &JsValue::from_str("tooltip"), &tip);
+        } else if self.interaction.tooltip_trigger_axis {
+            let tip = self.get_axis_tooltip(x, y);
+            let _ = Reflect::set(&obj, &JsValue::from_str("tooltip"), &tip);
         } else {
             let _ = Reflect::set(&obj, &JsValue::from_str("tooltip"), &JsValue::NULL);
         }
 
-        let model = GlobalModel::from_option_with_zoom(
-            &self.option,
-            self.width,
-            self.height,
-            self.interaction.data_zoom,
-        );
-        if let Some((cat_idx, label, snap_x)) =
+        let model = self.current_model();
+        if let Some((cat_idx, label, snap_x, _)) =
             self.interaction.axis_pointer_label(&model, x, y)
         {
             let ap = Object::new();
@@ -200,8 +206,117 @@ impl EChartsInstance {
     pub fn handle_pointer_leave(&mut self) -> Result<(), JsValue> {
         self.interaction.set_hover(None);
         self.interaction.set_pointer(None, None);
+        self.interaction.end_drag();
         self.render_and_apply_states();
         Ok(())
+    }
+
+    #[wasm_bindgen(js_name = handlePointerDown)]
+    pub fn handle_pointer_down(&mut self, x: f64, y: f64) -> JsValue {
+        self.interaction.set_pointer(Some(x), Some(y));
+        let hit = wasm_zrender::with_zr(self.zr_id, |zr| Ok(zr.find_hover(x, y)))
+            .ok()
+            .flatten();
+        let data_type = hit.as_ref().and_then(|h| h.ec_data.data_type.clone());
+        let data_index = hit.as_ref().and_then(|h| h.ec_data.data_index).unwrap_or(-1);
+        if let Some(dt) = data_type.as_deref() {
+            if dt == crate::chart::HIT_DATA_ZOOM {
+                if let Some(kind) = crate::chart::data_zoom::hit_slider_kind(data_index) {
+                    self.interaction.begin_drag(kind, x, y);
+                }
+            } else if dt == crate::chart::HIT_THUMBNAIL {
+                self.interaction
+                    .begin_drag(crate::interaction::DragKind::Thumbnail, x, y);
+            }
+        } else {
+            let model = self.current_model();
+            let in_grid = model.grid().contains(x, y);
+            if in_grid && (self.interaction.toolbox_zoom_select || crate::chart::brush::brush_enabled(&self.effective_option())) {
+                let kind = if self.interaction.toolbox_zoom_select {
+                    crate::interaction::DragKind::ToolboxZoom
+                } else {
+                    crate::interaction::DragKind::Brush
+                };
+                self.interaction.begin_drag(kind, x, y);
+                self.interaction.brush_rect = Some((x, y, x, y));
+            }
+        }
+        self.render_and_apply_states();
+        hit.as_ref().map(hit_to_js).unwrap_or(JsValue::NULL)
+    }
+
+    #[wasm_bindgen(js_name = handlePointerUp)]
+    pub fn handle_pointer_up(&mut self, x: f64, y: f64) -> Result<(), JsValue> {
+        if let Some(drag) = self.interaction.drag {
+            match drag.kind {
+                crate::interaction::DragKind::Brush => {
+                    if let Some(rect) = self.interaction.brush_rect {
+                        let model = self.current_model();
+                        let targets = crate::chart::brush::points_in_brush(&model, rect);
+                        self.interaction.clear_select();
+                        for t in targets {
+                            self.interaction.select(t);
+                        }
+                    }
+                }
+                crate::interaction::DragKind::ToolboxZoom => {
+                    if let Some((x0, _, x1, _)) = self.interaction.brush_rect {
+                        let model = self.current_model();
+                        let g = model.grid();
+                        if g.width > 0.0 {
+                            let s = ((x0.min(x1) - g.x) / g.width * 100.0).clamp(0.0, 100.0);
+                            let e = ((x0.max(x1) - g.x) / g.width * 100.0).clamp(0.0, 100.0);
+                            if e - s > 1.0 {
+                                self.interaction.set_data_zoom_range(s, e);
+                            }
+                        }
+                        self.interaction.toolbox_zoom_select = false;
+                        self.interaction.brush_rect = None;
+                    }
+                }
+                _ => {}
+            }
+        }
+        self.interaction.end_drag();
+        let _ = (x, y);
+        self.render_and_apply_states();
+        Ok(())
+    }
+
+    #[wasm_bindgen(js_name = handlePointerClick)]
+    pub fn handle_pointer_click(&mut self, x: f64, y: f64) -> JsValue {
+        let hit = wasm_zrender::with_zr(self.zr_id, |zr| Ok(zr.find_hover(x, y)))
+            .ok()
+            .flatten();
+        let data_type = hit.as_ref().and_then(|h| h.ec_data.data_type.clone());
+        let data_index = hit.as_ref().and_then(|h| h.ec_data.data_index).unwrap_or(-1);
+        match data_type.as_deref() {
+            Some(crate::chart::HIT_LEGEND) => {
+                let effective = self.effective_option();
+                if let Some(legend) = crate::chart::text_opt::option_component(effective.root(), "legend")
+                {
+                    let model = self.current_model();
+                    if let Some(name) = crate::chart::legend::legend_item_name(legend, &model, data_index as usize)
+                    {
+                        let on = self.interaction.toggle_legend(&name);
+                        self.option.set_legend_selected(&name, on);
+                        self.render_and_apply_states();
+                    }
+                }
+            }
+            Some(crate::chart::HIT_TOOLBOX) => {
+                self.handle_toolbox(data_index);
+            }
+            Some(crate::chart::HIT_TIMELINE) => {
+                if data_index >= 0 {
+                    self.interaction.timeline_index = data_index as usize;
+                    self.option.set_timeline_index(self.interaction.timeline_index);
+                    self.render_and_apply_states();
+                }
+            }
+            _ => {}
+        }
+        hit.as_ref().map(hit_to_js).unwrap_or(JsValue::NULL)
     }
 
     /// 滚轮 dataZoom（option 含 dataZoom 时生效）
@@ -209,7 +324,7 @@ impl EChartsInstance {
         if !self.interaction.data_zoom_enabled {
             return Ok(());
         }
-        let model = GlobalModel::from_option(&self.option, self.width, self.height);
+        let model = self.current_model();
         let grid = model.grid();
         let anchor = if grid.width > 0.0 {
             ((x - grid.x) / grid.width).clamp(0.0, 1.0)
@@ -226,18 +341,14 @@ impl EChartsInstance {
         if series_index < 0 || data_index < 0 {
             return JsValue::NULL;
         }
-        let model = GlobalModel::from_option_with_zoom(
-            &self.option,
-            self.width,
-            self.height,
-            self.interaction.data_zoom,
-        );
+        let model = self.current_model();
         let si = series_index as usize;
         let di = data_index as usize;
         if si >= model.series.len() || di >= model.series[si].data.len() {
             return JsValue::NULL;
         }
-        let visual = VisualContext::new(&self.option, &model);
+        let effective = self.effective_option();
+        let visual = VisualContext::new(&effective, &model);
         match visual.resolve_tooltip(si, di) {
             Some(text) => JsValue::from_str(&text),
             None => JsValue::NULL,
@@ -302,6 +413,78 @@ impl EChartsInstance {
             "hideTip" => {
                 // tooltip DOM 由 JS facade 关闭；不改 hover（与官方 hideTip 一致）
             }
+            "legendToggleSelect" => {
+                if let Some(name) = parsed.get("name").and_then(|v| v.as_str()) {
+                    let on = self.interaction.toggle_legend(name);
+                    self.option.set_legend_selected(name, on);
+                    self.render_and_apply_states();
+                }
+            }
+            "legendSelect" => {
+                if let Some(name) = parsed.get("name").and_then(|v| v.as_str()) {
+                    self.interaction.set_legend(name, true);
+                    self.option.set_legend_selected(name, true);
+                    self.render_and_apply_states();
+                }
+            }
+            "legendUnSelect" => {
+                if let Some(name) = parsed.get("name").and_then(|v| v.as_str()) {
+                    self.interaction.set_legend(name, false);
+                    self.option.set_legend_selected(name, false);
+                    self.render_and_apply_states();
+                }
+            }
+            "restore" => {
+                if let Some(snap) = self.interaction.restore_snapshot.clone() {
+                    self.option.apply(
+                        snap,
+                        crate::option::SetOptionFlags {
+                            not_merge: true,
+                            replace_merge: vec![],
+                        },
+                    );
+                    self.interaction.absorb_user_option(&self.option, true);
+                    self.render_and_apply_states();
+                }
+            }
+            "timelineChange" | "timelinePlayChange" => {
+                if let Some(idx) = parsed
+                    .get("currentIndex")
+                    .and_then(|v| v.as_f64())
+                    .map(|n| n.max(0.0) as usize)
+                {
+                    self.interaction.timeline_index = idx;
+                    self.option.set_timeline_index(idx);
+                    self.render_and_apply_states();
+                }
+            }
+            "takeGlobalCursor" => {
+                let key = parsed
+                    .get("key")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                self.interaction.toolbox_zoom_select = key == "dataZoomSelect";
+            }
+            "brush" | "brushEnd" => {
+                // 选区由指针拖拽写入；此处接受 payload.areas 最小集
+                if let Some(areas) = parsed.get("areas").and_then(|v| v.as_array()) {
+                    if let Some(range) = areas.first().and_then(|a| a.get("range")).and_then(|v| v.as_array()) {
+                        if range.len() >= 4 {
+                            let r: Vec<f64> = range.iter().filter_map(|v| v.as_f64()).collect();
+                            if r.len() >= 4 {
+                                self.interaction.brush_rect = Some((r[0], r[1], r[2], r[3]));
+                                let model = self.current_model();
+                                let targets = crate::chart::brush::points_in_brush(&model, (r[0], r[1], r[2], r[3]));
+                                self.interaction.clear_select();
+                                for t in targets {
+                                    self.interaction.select(t);
+                                }
+                                self.render_and_apply_states();
+                            }
+                        }
+                    }
+                }
+            }
             other => {
                 web_sys::console::warn_1(&JsValue::from_str(&format!(
                     "dispatchAction type '{other}' not implemented yet"
@@ -351,12 +534,7 @@ impl EChartsInstance {
         let Ok(finder) = parse_option_value(&finder) else {
             return false;
         };
-        let model = GlobalModel::from_option_with_zoom(
-            &self.option,
-            self.width,
-            self.height,
-            self.interaction.data_zoom,
-        );
+        let model = self.current_model();
         crate::coord::contain_pixel(&model, &finder, x, y)
     }
 
@@ -378,6 +556,141 @@ impl EChartsInstance {
 }
 
 impl EChartsInstance {
+    fn effective_option(&self) -> OptionModel {
+        OptionModel::with_root(self.option.effective_root(self.interaction.timeline_index))
+    }
+
+    fn current_model(&self) -> GlobalModel {
+        GlobalModel::from_option_with_zoom(
+            &self.effective_option(),
+            self.width,
+            self.height,
+            self.interaction.data_zoom,
+        )
+    }
+
+    fn apply_pointer_drag(&mut self, x: f64, y: f64) {
+        let Some(drag) = self.interaction.drag else {
+            return;
+        };
+        match drag.kind {
+            crate::interaction::DragKind::ZoomStart
+            | crate::interaction::DragKind::ZoomEnd
+            | crate::interaction::DragKind::ZoomFiller => {
+                let model = self.current_model();
+                if let Some(geom) = crate::chart::data_zoom::slider_geom(&model, &self.effective_option()) {
+                    crate::chart::data_zoom::apply_slider_drag(&mut self.interaction, geom, x);
+                }
+            }
+            crate::interaction::DragKind::Thumbnail => {
+                let model = self.current_model();
+                if let Some(geom) = crate::chart::thumbnail::thumb_geom(&model, &self.effective_option()) {
+                    crate::chart::thumbnail::apply_thumbnail_drag(&mut self.interaction, geom, x);
+                }
+            }
+            crate::interaction::DragKind::Brush | crate::interaction::DragKind::ToolboxZoom => {
+                if let Some((x0, y0, _, _)) = self.interaction.brush_rect {
+                    self.interaction.brush_rect = Some((x0, y0, x, y));
+                }
+            }
+        }
+    }
+
+    fn handle_toolbox(&mut self, id: i32) {
+        match id {
+            crate::chart::TB_RESTORE => {
+                if let Some(snap) = self.interaction.restore_snapshot.clone() {
+                    self.option.apply(
+                        snap,
+                        crate::option::SetOptionFlags {
+                            not_merge: true,
+                            replace_merge: vec![],
+                        },
+                    );
+                    self.interaction.absorb_user_option(&self.option, true);
+                    self.render_and_apply_states();
+                }
+            }
+            crate::chart::TB_MAGIC => {
+                let next = crate::chart::next_magic_type(&self.effective_option());
+                self.option.set_cartesian_series_type(&next);
+                self.render_and_apply_states();
+            }
+            crate::chart::TB_DATA_ZOOM => {
+                self.interaction.toolbox_zoom_select = !self.interaction.toolbox_zoom_select;
+            }
+            crate::chart::TB_DATA_VIEW => {
+                web_sys::console::warn_1(&JsValue::from_str(
+                    "toolbox dataView DOM overlay is not implemented",
+                ));
+            }
+            crate::chart::TB_SAVE => {
+                web_sys::console::warn_1(&JsValue::from_str(
+                    "toolbox saveAsImage DOM download bar is not implemented; use getDataURL",
+                ));
+            }
+            crate::chart::TB_BRUSH => {
+                self.interaction.toolbox_zoom_select = false;
+                if self.interaction.brush_rect.is_some() {
+                    self.interaction.brush_rect = None;
+                    self.interaction.clear_select();
+                    self.render_and_apply_states();
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn get_axis_tooltip(&self, x: f64, y: f64) -> JsValue {
+        let model = self.current_model();
+        let Some((cat_idx, label, _, _)) = self.interaction.axis_pointer_label(&model, x, y) else {
+            return JsValue::NULL;
+        };
+        let effective = self.effective_option();
+        let visual = VisualContext::new(&effective, &model);
+        let formatter = effective
+            .root()
+            .get("tooltip")
+            .and_then(|t| t.get("formatter"))
+            .cloned();
+        let mut lines = vec![label.clone()];
+        let mut first_params = None;
+        let arr = js_sys::Array::new();
+        for series in &model.series {
+            if !self.interaction.is_name_selected(&series.name) {
+                continue;
+            }
+            if cat_idx >= series.data.len() {
+                continue;
+            }
+            let params = visual.data_params(series.index, cat_idx);
+            if first_params.is_none() {
+                first_params = Some(params.clone());
+            }
+            arr.push(&params);
+            let p = &series.data[cat_idx];
+            lines.push(format!("{}: {}", series.name, p.value));
+        }
+        if let Some(fmt) = formatter.as_ref() {
+            if let Some(params) = first_params.as_ref() {
+                if let Some(text) = crate::bridge::resolve_formatter(Some(fmt), params) {
+                    return JsValue::from_str(&text);
+                }
+            }
+            if let crate::option::OptionValue::Function(f) = fmt {
+                if let Ok(ret) = f.call1(&JsValue::NULL, &arr) {
+                    if let Some(s) = ret.as_string() {
+                        return JsValue::from_str(&s);
+                    }
+                }
+            }
+        }
+        if lines.len() <= 1 {
+            return JsValue::NULL;
+        }
+        JsValue::from_str(&lines.join("\n"))
+    }
+
     fn render_and_apply_states(&mut self) {
         if self.option.is_empty() {
             return;

@@ -189,7 +189,18 @@ pub fn render_pie_series(
     let series_opt = visual.series_option(series.index);
     let layout = parse_pie_layout(series_opt, model.width as f64, model.height as f64);
     let rose = parse_rose_type(series_opt);
-    let values: Vec<f64> = series.data.iter().map(|p| p.value).collect();
+    let values: Vec<f64> = series
+        .data
+        .iter()
+        .map(|p| {
+            let name = p.name.as_deref().unwrap_or("");
+            if !name.is_empty() && !interaction.is_name_selected(name) {
+                0.0
+            } else {
+                p.value
+            }
+        })
+        .collect();
     let sectors = layout_pie_sectors(&values, &layout, rose);
     let mode_on = selected_mode_on(series_opt);
     let selected_offset = series_opt

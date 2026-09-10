@@ -19,13 +19,14 @@ pub fn render_chart(
 ) {
     zr.storage = Storage::new();
     let _ = wasm_zrender::rematerialize_mounted_roots(zr, zr_id);
-    let model = GlobalModel::from_option_with_zoom(option, width, height, interaction.data_zoom);
-    if model.series.is_empty() {
+    if option.is_empty() {
         return;
     }
+    let effective = OptionModel::with_root(option.effective_root(interaction.timeline_index));
+    let model = GlobalModel::from_option_with_zoom(&effective, width, height, interaction.data_zoom);
     let group = zr.storage.create_group();
     zr.storage.group_mut(group).base.name = CHART_ROOT_NAME.to_string();
-    render_components(zr, group, &model, option, interaction);
+    render_components(zr, group, &model, &effective, interaction);
     zr.storage.add_root(ChildRef::Group(group));
 }
 
