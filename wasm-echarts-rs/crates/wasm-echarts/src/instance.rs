@@ -134,8 +134,13 @@ impl EChartsInstance {
         .unwrap_or(JsValue::NULL)
     }
 
-    /// 阶段 6：pointer move 统一处理 hover 高亮、axisPointer、tooltip
+    /// 阶段 6：pointer move 统一处理 hover 高亮、axisPointer、tooltip。
+    /// 画面没变时跳过全量 `run_update` / 状态切换，并令 `dirty: false` 让 facade 不上屏。
     pub fn handle_pointer_move(&mut self, x: f64, y: f64) -> JsValue {
+        let prev_hover = self.interaction.hover;
+        let prev_axis_key = self.axis_pointer_visual_key();
+        let dragging = self.interaction.drag.is_some();
+
         self.interaction.set_pointer(Some(x), Some(y));
         let hit = wasm_zrender::with_zr(self.zr_id, |zr| Ok(zr.find_hover(x, y)))
             .ok()
@@ -151,14 +156,23 @@ impl EChartsInstance {
                 data_index: di,
             })
         });
-        if self.interaction.drag.is_some() {
+        if dragging {
             self.apply_pointer_drag(x, y);
         } else {
             self.interaction.set_hover(hover_target);
         }
-        self.render_and_apply_states();
+
+        let hover_changed = !dragging && self.interaction.hover != prev_hover;
+        let axis_changed = self.axis_pointer_visual_key() != prev_axis_key;
+        let dirty = dragging || hover_changed || axis_changed;
+        if dragging || axis_changed {
+            self.render_and_apply_states();
+        } else if hover_changed {
+            self.apply_interaction_states();
+        }
 
         let obj = Object::new();
+        let _ = Reflect::set(&obj, &JsValue::from_str("dirty"), &JsValue::from(dirty));
         let _ = Reflect::set(
             &obj,
             &JsValue::from_str("hit"),
@@ -175,27 +189,31 @@ impl EChartsInstance {
             let _ = Reflect::set(&obj, &JsValue::from_str("tooltip"), &JsValue::NULL);
         }
 
-        let model = self.current_model();
-        if let Some((cat_idx, label, snap_x, _)) =
-            self.interaction.axis_pointer_label(&model, x, y)
-        {
-            let ap = Object::new();
-            let _ = Reflect::set(
-                &ap,
-                &JsValue::from_str("categoryIndex"),
-                &JsValue::from(cat_idx as u32),
-            );
-            let _ = Reflect::set(
-                &ap,
-                &JsValue::from_str("label"),
-                &JsValue::from_str(&label),
-            );
-            let _ = Reflect::set(
-                &ap,
-                &JsValue::from_str("snapX"),
-                &JsValue::from(snap_x),
-            );
-            let _ = Reflect::set(&obj, &JsValue::from_str("axisPointer"), &ap);
+        if self.interaction.axis_pointer_enabled || self.interaction.tooltip_trigger_axis {
+            let model = self.current_model();
+            if let Some((cat_idx, label, snap_x, _)) =
+                self.interaction.axis_pointer_label(&model, x, y)
+            {
+                let ap = Object::new();
+                let _ = Reflect::set(
+                    &ap,
+                    &JsValue::from_str("categoryIndex"),
+                    &JsValue::from(cat_idx as u32),
+                );
+                let _ = Reflect::set(
+                    &ap,
+                    &JsValue::from_str("label"),
+                    &JsValue::from_str(&label),
+                );
+                let _ = Reflect::set(
+                    &ap,
+                    &JsValue::from_str("snapX"),
+                    &JsValue::from(snap_x),
+                );
+                let _ = Reflect::set(&obj, &JsValue::from_str("axisPointer"), &ap);
+            } else {
+                let _ = Reflect::set(&obj, &JsValue::from_str("axisPointer"), &JsValue::NULL);
+            }
         } else {
             let _ = Reflect::set(&obj, &JsValue::from_str("axisPointer"), &JsValue::NULL);
         }
@@ -595,6 +613,18 @@ impl EChartsInstance {
             self.height,
             self.interaction.data_zoom,
         )
+    }
+
+    /// axisPointer 画面是否变化：类目轴跟 category，数值轴跟 snap 像素。
+    fn axis_pointer_visual_key(&self) -> Option<(usize, u64)> {
+        if !self.interaction.axis_pointer_enabled && !self.interaction.tooltip_trigger_axis {
+            return None;
+        }
+        let x = self.interaction.pointer_x?;
+        let y = self.interaction.pointer_y?;
+        let model = self.current_model();
+        let (cat_idx, _, snap_x, _) = self.interaction.axis_pointer_label(&model, x, y)?;
+        Some((cat_idx, snap_x.to_bits()))
     }
 
     fn apply_pointer_drag(&mut self, x: f64, y: f64) {

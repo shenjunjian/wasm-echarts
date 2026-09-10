@@ -218,6 +218,8 @@ export class ECharts {
     this._onUp = this._onPointerUp.bind(this);
     this._pointerDown = null;
     this._didDrag = false;
+    this._moveRaf = 0;
+    this._pendingMove = null;
     this._bindHost();
   }
 
@@ -384,14 +386,52 @@ export class ECharts {
     this._wheelZoomOn = optionHasDataZoom(option);
   }
 
+  _cancelPendingMove() {
+    if (this._moveRaf) {
+      if (typeof cancelAnimationFrame === 'function') {
+        cancelAnimationFrame(this._moveRaf);
+      }
+      this._moveRaf = 0;
+    }
+    this._pendingMove = null;
+  }
+
   _onPointerMove(event) {
     if (this.isDisposed()) {
       return;
     }
-    const canvas = this._dom;
-    const { x, y } = eventPoint(canvas, event);
-    this._lastClientX = event.clientX;
-    this._lastClientY = event.clientY;
+    const { x, y } = eventPoint(this._dom, event);
+    this._pendingMove = {
+      x,
+      y,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      event,
+    };
+    if (typeof requestAnimationFrame !== 'function') {
+      const pending = this._pendingMove;
+      this._pendingMove = null;
+      this._dispatchPointerMove(pending);
+      return;
+    }
+    if (this._moveRaf) {
+      return;
+    }
+    this._moveRaf = requestAnimationFrame(() => {
+      this._moveRaf = 0;
+      const pending = this._pendingMove;
+      this._pendingMove = null;
+      if (!pending || this.isDisposed()) {
+        return;
+      }
+      this._dispatchPointerMove(pending);
+    });
+  }
+
+  _dispatchPointerMove(pending) {
+    const { x, y, clientX, clientY, event } = pending;
+    this._lastClientX = clientX;
+    this._lastClientY = clientY;
     const result = this.handlePointerMove(x, y);
     const hit = result && result.hit;
     const key = hoverKey(hit);
@@ -417,7 +457,7 @@ export class ECharts {
       }
     }
     if (this._tooltipOn && result && result.tooltip) {
-      this._showTooltip(result.tooltip, event.clientX, event.clientY);
+      this._showTooltip(result.tooltip, clientX, clientY);
     } else {
       this._hideTooltip();
     }
@@ -470,6 +510,7 @@ export class ECharts {
   }
 
   _onPointerLeave(event) {
+    this._cancelPendingMove();
     if (this.isDisposed()) {
       return;
     }
@@ -726,6 +767,7 @@ export class ECharts {
       return;
     }
     const id = this.id;
+    this._cancelPendingMove();
     this._unbindHost();
     this._disposeTooltip();
     this.hideLoading();
@@ -773,7 +815,9 @@ export class ECharts {
   handlePointerMove(x, y) {
     this._assertAlive();
     const result = this._native.handle_pointer_move(x, y);
-    this._paintIfBound();
+    if (!result || result.dirty !== false) {
+      this._paintIfBound();
+    }
     return result;
   }
 

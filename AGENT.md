@@ -180,7 +180,7 @@ site 示例 JS（创建 canvas；`echarts.init` / `setOption`）
 | option 解析 | `OptionValue`，函数保留为 `js_sys::Function` | 原样传入用户 option |
 | 布局 / 坐标 / 绘制 | cartesian、ChartView、Painter | — |
 | 命中检测 | Path winding + stroke 距离；Image/Text bbox | facade 绑指针并转坐标 |
-| tooltip / 高亮 | formatter 得 string；改 element state 再 refresh | facade 内建 string tooltip DOM；`on('click')` |
+| tooltip / 高亮 | formatter 得 string；hover / axisPointer / 拖拽变化才改 state 并 refresh | facade 内建 string tooltip DOM；`on('click')` |
 | resize | 重算 layout + 全量 refresh | 示例按需调用 `resize` |
 | 动画 | 跳过中间帧，写入终态 | `animate` / `when().start()` 写最后一组目标属性 |
 
@@ -199,7 +199,7 @@ site 示例 JS（创建 canvas；`echarts.init` / `setOption`）
 | **4 JS 薄壳 + API 骨架** | init/setOption/resize/事件、`OptionValue` | **部分完成**。`js/` facade 已有 `init`/`setOption(option, notMerge\|opts)`/`getOption`/`resize`/`clear`/`dispose`/`use`/`on`/`off`；`init(canvas)` 绑指针并内建 string tooltip |
 | **4b 回调桥** | CallbackDataParams、call0/1/2 | **部分完成**。`formatter` / `itemStyle.color` / `axisLabel.formatter` / `symbolSize` 回调可用；params 含 `componentType`/`seriesType`/`percent`/`data`。`renderItem` + `api.coord`/`size`/`style`/`value` 已接线（第 6 波）；per-series 缓存 **未完成** |
 | **5 echarts MVP** | GlobalModel、cartesian、line/bar、Scheduler | **部分完成**。line/bar 可渲染；`axisLabel.formatter`、`symbol`/`symbolSize`、`label.show`；`convertToPixel` 最小集。`replaceMerge` 仅为顶层 key。media query 已在第 7 波落地；完整 SeriesData 仍简化 |
-| **6 交互完善** | hover/tooltip/dataZoom/axisPointer | **部分完成**。`init(canvas)` 绑指针；hover 高亮、`on('click')`、string tooltip DOM、`showTip`/`hideTip`、inside 滚轮 + slider 拖动手柄、十字 axisPointer、`tooltip.trigger: 'axis'`。pinch、HTMLElement tooltip **未完成** |
+| **6 交互完善** | hover/tooltip/dataZoom/axisPointer | **部分完成**。`init(canvas)` 绑指针；hover 高亮（同数据项 mousemove 不上屏）、`on('click')`、string tooltip DOM、`showTip`/`hideTip`、inside 滚轮 + slider 拖动手柄、十字 axisPointer、`tooltip.trigger: 'axis'`。pinch、HTMLElement tooltip **未完成** |
 | **7 扩展与优化** | pie/scatter、RichText、脏矩形、视觉回归 | **部分完成**。官方 `export/charts.ts` 23 种图（含 chord）canvas 终态已接线（第 6 波）；RichText、脏矩形、golden PNG **未完成** |
 
 ### wasm-zrender API 规范对齐（波次 0–6 + 文档验收已完成）
@@ -244,9 +244,9 @@ dispose(zr);
 
 规范已写入上文「目标与约束」；逐项清单以 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](../.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md) 为权威。JS facade 骨架在 `crates/wasm-echarts/js/`：`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version` / `use`（只 `console.info`）。site / README 从 `@wasm-echarts`（`js/index.js`）导入，`pkg/` 只作内部 handle。示例走官方 `init(canvas)` + `setOption`；`init(canvas)` 后自动 `putImageData` 并绑定指针。波次 2：`setOption(option, notMerge | opts)`、`getOption`、`resize()` / `resize({ width, height, devicePixelRatio })`、`clear` = `setOption({ series: [] }, true)`；`notMerge` 只作第二参数，不再从 option 根读取。波次 3：`on`/`off` 发出 `click` / `mouseover` / `mouseout` / `globalout`；内建 string tooltip DOM；`dispatchAction` 接 `showTip` / `hideTip`。波次 4：`axisLabel.formatter` 进轴 Text；pie `center`/`radius`/`startAngle`/`clockwise`；line/scatter `symbol`/`symbolSize`；`label.show` 画 Text；CallbackDataParams 补 `componentType`/`seriesType`/`percent`/`data`；`convertToPixel`/`convertFromPixel` cartesian 最小集。波次 5：文档四块（一致 / 不一致 / 非官方 API / 已实现与未实现）已写入 `site/echarts/docs/index.html`、根 README、本文件；示例 line/bar/pie/scatter/interactive/merge/bench 全部走 `init`；interactive 用 `on('click')` + `use()` 提示，不必 `handlePointer*`；merge 覆盖深合并、`notMerge: true`、dispose 后再 init。公开用法是官方 `init` / `setOption` / `on`，不要把 native `EChartsInstance` / `set_option` / `handlePointerMove` 当公开 API。
 
-### wasm-echarts Canvas 全量对齐（第 0–8.1 波已落地）
+### wasm-echarts Canvas 全量对齐（第 0–8.2 波已落地）
 
-权威计划：[`.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md`](../.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md)。废止「不是一次移植完官方全量 API」以及把 `graphic`/`util`/面积/`getZr` 当永久后置的写法。[折线缺口补齐](../.cursor/plans/折线缺口补齐_96423c21.plan.md) 已废弃并入本计划。第 0 波改文档口径；第 1 波已落地单 WASM、`getZr`、公开命名空间与挡脚本的实例 API。第 2 波已落地 dataset / transform / encode / stack / sampling、多 grid / 轴、`time` / `log`。第 3 波已接线 line/bar/pie/scatter 的 canvas option 族。第 4 波已接线 legend 筛选、mark*、graphic、visualMap、slider、axisPointer、brush、timeline、toolbox。第 5 波已接线 polar / radar / singleAxis / parallel / calendar / matrix / geo 坐标系。第 6 波已接线其余官方图表（radar/gauge/candlestick/boxplot/heatmap/pictorialBar/effectScatter/funnel/chord/sunburst/tree/treemap/graph/sankey/themeRiver/map/lines/parallel/custom）及 `renderItem` + `api`；Cargo feature **默认全开**。未识别的 `series.type` 会 `console.warn`，不再静默当 `Other` 后永远不管。第 7 波已落地扩展注册 / media / labelLayout / breaks / jitter。第 8.0 基建与 **8.1 bar+pie 同步**已落地（probe 失败见上文「未实现」）。后续 8.2 起见该计划 YAML。
+权威计划：[`.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md`](../.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md)。废止「不是一次移植完官方全量 API」以及把 `graphic`/`util`/面积/`getZr` 当永久后置的写法。[折线缺口补齐](../.cursor/plans/折线缺口补齐_96423c21.plan.md) 已废弃并入本计划。第 0 波改文档口径；第 1 波已落地单 WASM、`getZr`、公开命名空间与挡脚本的实例 API。第 2 波已落地 dataset / transform / encode / stack / sampling、多 grid / 轴、`time` / `log`。第 3 波已接线 line/bar/pie/scatter 的 canvas option 族。第 4 波已接线 legend 筛选、mark*、graphic、visualMap、slider、axisPointer、brush、timeline、toolbox。第 5 波已接线 polar / radar / singleAxis / parallel / calendar / matrix / geo 坐标系。第 6 波已接线其余官方图表（radar/gauge/candlestick/boxplot/heatmap/pictorialBar/effectScatter/funnel/chord/sunburst/tree/treemap/graph/sankey/themeRiver/map/lines/parallel/custom）及 `renderItem` + `api`；Cargo feature **默认全开**。未识别的 `series.type` 会 `console.warn`，不再静默当 `Other` 后永远不管。第 7 波已落地扩展注册 / media / labelLayout / breaks / jitter。第 8.0 基建、**8.1 bar+pie**、**8.2 scatter** 已落地（probe 失败见上文「未实现」）。后续 8.3 起见该计划 YAML。
 
 ---
 
@@ -629,7 +629,7 @@ chart-map, chart-lines, chart-parallel, chart-custom
 | `notMerge` | 只作 `setOption` 第二参数；写在 option 根上不会当合并开关 |
 | `replaceMerge` | 只按**顶层 key**整段替换，不按 component `id`（比官方弱） |
 | `lazyUpdate` / `silent` | 同步 flush，忽略排队与静默 |
-| `getZr()` | 返回与 ChartView 共用 Storage 的 wasm-zrender 实例。不是第二份 zrender wasm；无 SVG painter / hover layer；动画终态 |
+| 指针重绘 | `mousemove` 仅在 hover / axisPointer / 拖拽导致画面变化时 `refresh`+`putImageData`。同一数据项上滑动只更新 tooltip DOM，不上屏。无 dirty-rect / hover layer |
 | `showLoading` / `hideLoading` | 导出；静态半透明遮罩 + 文案，不播旋转动画 |
 | default export | wasm-bindgen `initWasm`，不是 echarts 命名空间对象 |
 | tooltip DOM | facade 内建简单 string HTML；不是官方 TooltipView；HTMLElement formatter 未实现 |
@@ -698,7 +698,7 @@ chart-map, chart-lines, chart-parallel, chart-custom
 | timeline | canvas 滑条；`currentIndex` 把 `options[i]` merge 进 `baseOption` 后终态重绘 |
 | brush | canvas 框选矩形，松开后 `select` 落入点 |
 | thumbnail | cartesian 缩略 + 窗口拖动改 dataZoom |
-| 指针 / tooltip | `init(canvas)` 绑 mousemove/click/leave/wheel；内建 string tooltip DOM；`on`/`off` 发出 `click`/`mouseover`/`mouseout`/`globalout` |
+| 指针 / tooltip | `init(canvas)` 绑 mousemove/click/leave/wheel（mousemove 合入 rAF）；hover 未变不上屏；内建 string tooltip DOM；`on`/`off` 发出 `click`/`mouseover`/`mouseout`/`globalout` |
 | showTip / hideTip | `dispatchAction({ type: 'showTip', seriesIndex, dataIndex })` 或 `{ x, y }`；`hideTip` 关 DOM，不改 hover |
 | `getZr` / 命名空间 | `getZr()` 共用 Storage；`graphic`（含 `LinearGradient`/`Rect`）/`util`/`time`/`format`/`number`/`helper`/`matrix`/`vector`/`color`/`env` |
 | Loading / 导出图 | `showLoading` 静态遮罩；`getDataURL` / `renderToCanvas`（canvas PNG/JPEG） |
@@ -728,6 +728,13 @@ Actions：geo roam 等。
 | 示例 | 原因 |
 |------|------|
 | `bar-large` | 50 万柱 + `large: true`；bar 无增量/采样绘制，主线程卡死，probe 40s timeout |
+
+**官网 scatter probe（第 8.2 波）**：catalog 36 条，29 `ok`。失败（不改官方 option）：
+
+| 示例 | 原因 |
+|------|------|
+| `scatter-clustering` / `scatter-clustering-process` / `scatter-exponential-regression` / `scatter-linear-regression` / `scatter-polynomial-regression` / `scatter-logarithmic-regression` | 依赖官网统计插件 `echarts-stat` 全局 `ecStat`；本宿主未注入，不在 `official-runtime.js` 里假实现 |
+| `scatter-weibo` | 微博签到展开后海量 geo 散点；scatter `large` 仍每点一个 Path，主线程卡死，probe 40s timeout |
 
 ### 实现了哪些内容
 
@@ -761,7 +768,7 @@ Actions：geo roam 等。
 | `update_font_database()` | 把全局 fontdb 同步到本实例；`registerFont` 后由 facade 调用 |
 | `resize(w, h, dpr)` | 改画布并重绘 |
 | `find_hover(x, y)` | `{ seriesIndex, dataIndex, pathIndex, ... }` |
-| `handle_pointer_move(x, y)` | hover 高亮 + axisPointer（十字/竖线）+ `tooltip.trigger: 'axis'` 文案，一次返回 |
+| `handle_pointer_move(x, y)` | hover 高亮 + axisPointer + tooltip 文案；返回 `{ hit, tooltip, axisPointer, dirty }`。hover/axisPointer/拖拽未变时 `dirty: false`，不重建场景 |
 | `handle_pointer_leave()` | 取消 hover / 结束拖拽 |
 | `handlePointerDown` / `handlePointerUp` / `handlePointerClick` | slider / thumbnail / brush 拖拽；legend / toolbox / timeline / visualMap 点击 |
 | `get_tooltip_content(si, di)` | 调 `tooltip.formatter`，string 或 null |
@@ -896,7 +903,7 @@ chart.setOption({
 });
 ```
 
-`init(canvas)` 后 `setOption` 会自动 `putImageData`，不必再调 `refresh`。离屏用 `init(null, null, { width, height })`，再 `chart.refresh()` 拿 RGBA。有 canvas 时 facade 绑定指针：hover 高亮、string tooltip DOM、legend/toolbox/timeline 点击、slider/brush 拖拽、wheel inside dataZoom；用户 `chart.on('click', handler)` 即可。
+`init(canvas)` 后 `setOption` 会自动 `putImageData`，不必再调 `refresh`。离屏用 `init(null, null, { width, height })`，再 `chart.refresh()` 拿 RGBA。有 canvas 时 facade 绑定指针：hover 高亮、string tooltip DOM、legend/toolbox/timeline 点击、slider/brush 拖拽、wheel inside dataZoom；用户 `chart.on('click', handler)` 即可。指针移动时若 hover / axisPointer / 拖拽画面没变，跳过整图 `refresh`（tooltip 仍随鼠标走）。
 
 ### 编译产物在哪里
 
@@ -922,8 +929,8 @@ import initWasm, { init, registerFont } from '@wasm-echarts';
 
 再 `await initWasm()` → `registerFont` → `init(canvas)` + `setOption`。native `EChartsInstance` 仍从 facade 再导出，仅兼容旧路径，不要当公开 API。
 3. 每个实例是独立完整脚本：`site/echarts/examples/line.js` 等同名 HTML 成对出现（`<canvas id="canvas">`）；自写示例内联 `fetch` + `registerFont`（与 zrender `text.js` 相同）
-4. 画廊 `gallery.js` 用 Vite `?raw` / `import.meta.glob` 读这些 `.js` 作为左侧源码，iframe 加载同目录 HTML 预览。echarts 画廊是二级菜单：第一层为图形类别，第二层为该类别下的示例。分组顺序与自写条目在 [`official-gallery-meta.js`](wasm-echarts-rs/site/src/echarts/official-gallery-meta.js)；官网同步条目来自 `official-{category}-catalog.js`（无 catalog 且无自写示例的类不出现空菜单）。已同步：折线 40、柱状 46、饼图 19。官网脚本经 `src/echarts/official-runtime.js` 注入 `myChart` / `option` / `ROOT_PATH` / `CDN_PATH` / `$`（含 `get` / `getJSON` / `when`），**不补齐未实现 echarts API**，报错显示在预览层。数据文件在 `public/echarts-official/`。按类拉取：`node scripts/sync-official-examples.mjs --category bar --category pie`；探测：`node scripts/probe-official-examples.mjs --category bar --category pie`（需已启动 Vite；单例超过 40s 判 timeout 并换浏览器进程）。旧文件名 `sync-official-line-examples.mjs` / `probe-official-line.mjs` 转发到 `--category line`。交互合集下挂 interactive / merge / bench。zrender 画廊仍用扁平 `examples`。
-5. 页面：自写 line / fonts / bar / pie / scatter / interactive / merge / bench，外加已同步的官网 catalog（折线 40 + 柱状 46 + 饼图 19；后续 8.2 起按类增加）
+4. 画廊 `gallery.js` 用 Vite `?raw` / `import.meta.glob` 读这些 `.js` 作为左侧源码，iframe 加载同目录 HTML 预览。echarts 画廊是二级菜单：第一层为图形类别，第二层为该类别下的示例。分组顺序与自写条目在 [`official-gallery-meta.js`](wasm-echarts-rs/site/src/echarts/official-gallery-meta.js)；官网同步条目来自 `official-{category}-catalog.js`（无 catalog 且无自写示例的类不出现空菜单）。已同步：折线 40、柱状 46、饼图 19、散点 36。官网脚本经 `src/echarts/official-runtime.js` 注入 `myChart` / `option` / `ROOT_PATH` / `CDN_PATH` / `$`（含 `get` / `getJSON` / `when`），**不补齐未实现 echarts API**，报错显示在预览层。数据文件在 `public/echarts-official/`。按类拉取：`node scripts/sync-official-examples.mjs --category scatter --local-dir <echarts-examples 根目录>`（`--local-dir` / `ECHARTS_EXAMPLES_DIR` 优先读本地 `public/`，避免官网大文件超时）；探测：`node scripts/probe-official-examples.mjs --category scatter`（需已启动 Vite；单例超过 40s 判 timeout 并换浏览器进程）。旧文件名 `sync-official-line-examples.mjs` / `probe-official-line.mjs` 转发到 `--category line`。交互合集下挂 interactive / merge / bench。zrender 画廊仍用扁平 `examples`。
+5. 页面：自写 line / fonts / bar / pie / scatter / interactive / merge / bench，外加已同步的官网 catalog（折线 40 + 柱状 46 + 饼图 19 + 散点 36；后续 8.3 起按类增加）
 
 ---
 
@@ -958,7 +965,7 @@ site/
     ├── docs/index.html
     └── examples/              # 每个示例 = html + 完整 js
         ├── gallery.js
-        ├── official-line-catalog.js / official-bar-catalog.js / official-pie-catalog.js
+        ├── official-line-catalog.js / official-bar-catalog.js / official-pie-catalog.js / official-scatter-catalog.js
         ├── line.html / line.js
         ├── line-simple.html / bar-simple.html / pie-simple.html  # 官网同步…
         └── …
@@ -1178,7 +1185,7 @@ npm run dev
 - 第 5 波（已落地）：polar / radar / singleAxis / parallel / calendar / matrix / geo
 - 第 6 波（已落地）：其余官方图表 + `custom` `renderItem`/`api`；feature 默认全开
 - 第 7 波（已落地）：扩展注册真表、`labelLayout`、`axis.breaks`、`axis.jitter`、`option.media`；UniversalTransition 终态
-- 第 8 波（拆成 8.0–8.9，见 canvas 全量对齐计划）：官网画廊按类同步 + probe。8.0 基建已落地；**8.1 已落地**（bar 46 + pie 19 catalog，probe 64/65 ok，`bar-large` 超时写入上文）。8.2 起 scatter → … → custom/dataset/graphic；8.9 全量 probe 与文档收口。每类不要求 100% 出图才合并，失败写入文档四块。
+- 第 8 波（拆成 8.0–8.9，见 canvas 全量对齐计划）：官网画廊按类同步 + probe。8.0 基建已落地；**8.1 已落地**（bar 46 + pie 19 catalog，probe 64/65 ok，`bar-large` 超时写入上文）；**8.2 已落地**（scatter 36 catalog，probe 29/36 ok，6 条缺 `ecStat`、`scatter-weibo` 超时写入上文）。8.3 起 candlestick/boxplot/heatmap/pictorialBar → … → custom/dataset/graphic；8.9 全量 probe 与文档收口。每类不要求 100% 出图才合并，失败写入文档四块。
 - 视觉回归（echarts `test/*.html` → golden PNG）；JS vs WASM 基准报告
 
 ### 明确不做

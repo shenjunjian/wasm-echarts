@@ -6,9 +6,13 @@
  *   node scripts/sync-official-examples.mjs --category bar
  *   node scripts/sync-official-examples.mjs --category bar --category pie
  *   node scripts/sync-official-examples.mjs --list
+ *   node scripts/sync-official-examples.mjs --category scatter --local-dir C:\\Users\\shen\\Desktop\\echarts-examples-gh-pages
+ *
+ * `--local-dir` / 环境变量 ECHARTS_EXAMPLES_DIR：apache/echarts-examples 克隆根目录。
+ * 静态资源优先读 localDir/public；网络请求带超时，避免大文件卡住。
  */
 
-import { mkdir, writeFile, stat } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, stat } from 'node:fs/promises';
 import { dirname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OFFICIAL_CATEGORY_GROUPS } from '../src/echarts/official-gallery-meta.js';
@@ -23,12 +27,14 @@ const CHART_LIST_URL =
 const EXAMPLE_JS_URL = (id) =>
   `https://echarts.apache.org/examples/examples/js/${id}.js`;
 const ASSET_BASE = 'https://echarts.apache.org/examples';
+const FETCH_TIMEOUT_MS = 20000;
 
 const KNOWN_CATEGORIES = new Set(OFFICIAL_CATEGORY_GROUPS.map((g) => g.category));
 
 export function parseArgs(argv) {
   const categories = [];
   let listOnly = false;
+  let localDir = process.env.ECHARTS_EXAMPLES_DIR || '';
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--list') {
@@ -47,9 +53,21 @@ export function parseArgs(argv) {
       categories.push(arg.slice('--category='.length));
       continue;
     }
+    if (arg === '--local-dir') {
+      const value = argv[++i];
+      if (!value) {
+        throw new Error('--local-dir 需要 echarts-examples 仓库路径');
+      }
+      localDir = value;
+      continue;
+    }
+    if (arg.startsWith('--local-dir=')) {
+      localDir = arg.slice('--local-dir='.length);
+      continue;
+    }
     throw new Error(`未知参数: ${arg}`);
   }
-  return { categories, listOnly };
+  return { categories, listOnly, localDir: localDir ? resolve(localDir) : '' };
 }
 
 const htmlTemplate = (id, title) => `<!DOCTYPE html>
@@ -102,7 +120,7 @@ function collectAssetPaths(source) {
 }
 
 async function fetchText(url) {
-  const res = await fetch(url);
+  const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   if (!res.ok) {
     throw new Error(`GET ${url} failed: ${res.status}`);
   }
@@ -110,11 +128,24 @@ async function fetchText(url) {
 }
 
 async function fetchBuffer(url) {
-  const res = await fetch(url);
+  const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   if (!res.ok) {
     throw new Error(`GET ${url} failed: ${res.status}`);
   }
   return Buffer.from(await res.arrayBuffer());
+}
+
+function localPublicFile(localDir, assetPath) {
+  if (!localDir) return '';
+  return join(localDir, 'public', assetPath.replace(/^\//, ''));
+}
+
+async function readLocalFile(filePath) {
+  const buf = await readFile(filePath);
+  if (!buf.length) {
+    throw new Error(`local empty: ${filePath}`);
+  }
+  return buf;
 }
 
 function parseChartList(jsSource) {
@@ -175,14 +206,17 @@ function printUsage() {
   console.error(`用法:
   node scripts/sync-official-examples.mjs --category <name> [--category <name> ...]
   node scripts/sync-official-examples.mjs --list
+  node scripts/sync-official-examples.mjs --category scatter --local-dir <echarts-examples 根目录>
 
 已知类别: ${known}`);
 }
 
-async function downloadAssets(assetPaths) {
+async function downloadAssets(assetPaths, localDir) {
   console.log(`下载静态资源 ${assetPaths.size} 个 …`);
+  if (localDir) {
+    console.log(`本地优先: ${localDir}`);
+  }
   for (const assetPath of [...assetPaths].sort()) {
-    const url = ASSET_BASE + assetPath;
     const dest = join(publicOfficial, assetPath.replace(/^\//, ''));
     process.stdout.write(`  ${assetPath} … `);
     try {
@@ -195,19 +229,44 @@ async function downloadAssets(assetPaths) {
       } catch {
         // 不存在则下载
       }
-      const buf = await fetchBuffer(url);
+      let buf;
+      let source = 'network';
+      const localFile = localPublicFile(localDir, assetPath);
+      if (localFile) {
+        try {
+          buf = await readLocalFile(localFile);
+          source = 'local';
+        } catch {
+          buf = undefined;
+        }
+      }
+      if (!buf) {
+        buf = await fetchBuffer(ASSET_BASE + assetPath);
+      }
       await mkdir(dirname(dest), { recursive: true });
       await writeFile(dest, buf);
-      console.log(`${buf.length} bytes`);
+      console.log(`${buf.length} bytes (${source})`);
     } catch (err) {
       console.log(`FAILED ${err.message}`);
     }
   }
 }
 
-export async function syncCategories(categories, { listOnly = false } = {}) {
+export async function syncCategories(categories, { listOnly = false, localDir = '' } = {}) {
   console.log('拉取 chart-list-data.js …');
-  const listSource = await fetchText(CHART_LIST_URL);
+  let listSource;
+  const localList = localDir ? join(localDir, 'src', 'data', 'chart-list-data.js') : '';
+  if (localList) {
+    try {
+      listSource = (await readFile(localList, 'utf8'));
+      console.log(`chart-list-data.js 来自本地 ${localList}`);
+    } catch {
+      listSource = undefined;
+    }
+  }
+  if (!listSource) {
+    listSource = await fetchText(CHART_LIST_URL);
+  }
   const all = parseChartList(listSource);
 
   if (listOnly) {
@@ -243,7 +302,18 @@ export async function syncCategories(categories, { listOnly = false } = {}) {
       const id = item.id;
       const title = item.titleCN || item.title || id;
       process.stdout.write(`  ${id} … `);
-      const officialSource = await fetchText(EXAMPLE_JS_URL(id));
+      let officialSource;
+      const localJs = localDir ? join(localDir, 'public', 'examples', 'js', `${id}.js`) : '';
+      if (localJs) {
+        try {
+          officialSource = await readFile(localJs, 'utf8');
+        } catch {
+          officialSource = undefined;
+        }
+      }
+      if (!officialSource) {
+        officialSource = await fetchText(EXAMPLE_JS_URL(id));
+      }
       for (const path of collectAssetPaths(officialSource)) {
         assetPaths.add(path);
       }
@@ -267,19 +337,19 @@ export async function syncCategories(categories, { listOnly = false } = {}) {
   }
 
   if (assetPaths.size) {
-    await downloadAssets(assetPaths);
+    await downloadAssets(assetPaths, localDir);
   }
   console.log('done');
 }
 
 export async function main(argv = process.argv.slice(2)) {
-  const { categories, listOnly } = parseArgs(argv);
+  const { categories, listOnly, localDir } = parseArgs(argv);
   if (!listOnly && categories.length === 0) {
     printUsage();
     process.exitCode = 1;
     return;
   }
-  await syncCategories(categories, { listOnly });
+  await syncCategories(categories, { listOnly, localDir });
 }
 
 function isDirectRun() {

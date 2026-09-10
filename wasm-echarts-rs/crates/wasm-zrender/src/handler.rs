@@ -1,6 +1,7 @@
 //! Handler：事件分发 + draggable + DOM proxy（对齐 zrender Handler / HandlerProxy）
 //!
-//! - 有 canvas：绑定 pointer 事件，自动 putImageData
+//! - 有 canvas：绑定 pointer 事件；`attr` / drag / 非 move 事件后自动 putImageData
+//! - mousemove 本身不上屏（避免每帧整幅 RGBA 拷贝）；拖拽走 `element_set_position`
 //! - 无 DOM：通过 `zr.handler.dispatch(name, { zrX, zrY })` 注入，供测试 / Node 使用
 
 use std::cell::RefCell;
@@ -369,7 +370,12 @@ fn dispatch_pointer(
     }
 
     fire(zr_id, name, x, y, target_id, &native);
-    paint_if_bound(zr_id);
+    // mousemove 上屏由 drag 的 `element_set_position` / echarts hover 路径按需触发。
+    // 每次移动都 paint 会把整幅 RGBA 拷到 canvas，交互会卡住。
+    let is_move = name == "mousemove" || name == "pointermove";
+    if !is_move {
+        paint_if_bound(zr_id);
+    }
     Ok(())
 }
 

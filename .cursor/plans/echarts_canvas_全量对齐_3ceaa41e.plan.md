@@ -34,7 +34,7 @@ todos:
     status: completed
   - id: wave8-scatter
     content: 第 8.2 波：同步官网 scatter，probe，失败写入文档
-    status: pending
+    status: completed
   - id: wave8-cartesian-extra
     content: 第 8.3 波：candlestick / boxplot / heatmap / pictorialBar
     status: pending
