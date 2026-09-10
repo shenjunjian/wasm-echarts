@@ -1,6 +1,7 @@
 mod bridge;
 mod chart;
 mod coord;
+mod data;
 mod instance;
 mod interaction;
 mod model;
@@ -19,6 +20,11 @@ pub use wasm_zrender::{
     Point, Polygon, Polyline, RadialGradient, Rect, Ring, Rose, Sector, Star, Text, Trochoid,
     TSpan, ZRender,
 };
+
+#[wasm_bindgen(js_name = registerTransform)]
+pub fn register_transform(ty: String, func: js_sys::Function) {
+    crate::data::register_transform(ty, func);
+}
 
 #[wasm_bindgen(start)]
 pub fn main() {

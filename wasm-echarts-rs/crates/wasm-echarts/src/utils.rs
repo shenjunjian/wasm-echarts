@@ -20,6 +20,14 @@ pub fn first_component(value: Option<&OptionValue>) -> Option<&OptionValue> {
     }
 }
 
+pub fn as_components(value: Option<&OptionValue>) -> Vec<&OptionValue> {
+    match value {
+        Some(OptionValue::Array(arr)) => arr.iter().collect(),
+        Some(v) => vec![v],
+        None => Vec::new(),
+    }
+}
+
 pub fn parse_percent(value: Option<&OptionValue>, relative: f64, default: f64) -> f64 {
     match value {
         Some(OptionValue::Number(n)) => *n,

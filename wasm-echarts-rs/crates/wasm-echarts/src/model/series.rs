@@ -1,3 +1,4 @@
+use crate::data::{Sampling, StackStrategy};
 use crate::option::OptionValue;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -38,6 +39,8 @@ pub struct DataPoint {
     pub name: Option<String>,
     pub raw_index: usize,
     pub raw: OptionValue,
+    pub stack_base: f64,
+    pub stacked_value: f64,
 }
 
 #[derive(Debug, Clone)]
@@ -46,4 +49,9 @@ pub struct SeriesModel {
     pub name: String,
     pub series_type: SeriesType,
     pub data: Vec<DataPoint>,
+    pub x_axis_index: usize,
+    pub y_axis_index: usize,
+    pub stack: Option<String>,
+    pub stack_strategy: StackStrategy,
+    pub sampling: Sampling,
 }

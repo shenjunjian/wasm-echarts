@@ -6,6 +6,7 @@ use crate::bridge::{
     build_data_params, default_series_color, resolve_color, resolve_formatter, resolve_symbol_size,
     DataParamsInput,
 };
+use crate::data::{numeric_or_time, data_point_from_parsed};
 use crate::model::{DataPoint, GlobalModel, SeriesType};
 use crate::option::{option_value_to_js, OptionModel, OptionValue};
 use crate::utils::format_axis_number;
@@ -35,7 +36,11 @@ impl<'a> VisualContext<'a> {
             .name
             .as_deref()
             .or_else(|| {
-                self.model.x_categories.get(data_index).map(|s| s.as_str())
+                self.model
+                    .x_axis_at(series.x_axis_index)
+                    .category_data
+                    .get(data_index)
+                    .map(|s| s.as_str())
             })
             .unwrap_or("");
         let color = default_series_color(series_index);
@@ -195,43 +200,29 @@ pub fn parse_series_data(data: Option<&OptionValue>) -> Vec<DataPoint> {
 
 fn parse_data_point(item: &OptionValue, index: usize) -> Option<DataPoint> {
     match item {
-        OptionValue::Number(n) => Some(DataPoint {
-            value: *n,
-            x_value: None,
-            name: None,
-            raw_index: index,
-            raw: item.clone(),
-        }),
+        OptionValue::Number(n) => Some(data_point_from_parsed(*n, None, None, index, item.clone())),
         OptionValue::Object(obj) => {
-            let value = match obj.get("value") {
-                Some(OptionValue::Number(n)) => *n,
-                Some(OptionValue::Array(pair)) => pair.get(1).and_then(|v| v.as_f64()).or_else(|| pair.first().and_then(|v| v.as_f64()))?,
+            let value_field = obj.get("value");
+            let (value, x_value) = match value_field {
+                Some(OptionValue::Number(n)) => (*n, None),
+                Some(OptionValue::Array(pair)) => {
+                    let y = pair
+                        .get(1)
+                        .and_then(numeric_or_time)
+                        .or_else(|| pair.first().and_then(numeric_or_time))?;
+                    let x = pair.first().and_then(numeric_or_time);
+                    (y, x)
+                }
                 _ => return None,
             };
-            let x_value = match obj.get("value") {
-                Some(OptionValue::Array(pair)) => pair.first().and_then(|v| v.as_f64()),
-                _ => None,
-            };
             let name = obj.get("name").and_then(|v| v.as_str()).map(str::to_string);
-            Some(DataPoint {
-                value,
-                x_value,
-                name,
-                raw_index: index,
-                raw: item.clone(),
-            })
+            Some(data_point_from_parsed(value, x_value, name, index, item.clone()))
         }
         OptionValue::Array(pair) if pair.len() >= 2 => {
-            let x = pair[0].as_f64().or_else(|| pair[0].as_str().and_then(|s| s.parse().ok()));
-            let value = pair[1].as_f64()?;
+            let x = numeric_or_time(&pair[0]);
+            let value = numeric_or_time(&pair[1])?;
             let name = pair[0].as_str().map(str::to_string);
-            Some(DataPoint {
-                value,
-                x_value: x,
-                name,
-                raw_index: index,
-                raw: item.clone(),
-            })
+            Some(data_point_from_parsed(value, x, name, index, item.clone()))
         }
         _ => None,
     }

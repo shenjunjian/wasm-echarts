@@ -163,8 +163,8 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 
 #### 4. 已实现 / 未实现
 
-- **已实现（部分生效）**：line / bar / pie / scatter；单 cartesian；`getZr` 共用 Storage；`graphic`/`util`/`time` 等命名空间；`showLoading` 静态遮罩；`getDataURL`/`renderToCanvas`；`connect`/`registerTheme`/`registerMap`（表结构）；`appendData`/`containPixel`；`axisLabel.formatter`；pie `center`/`radius`/`startAngle`/`clockwise`；`symbol`/`symbolSize`；series label；CallbackDataParams；`convertToPixel` cartesian 最小集；inside dataZoom 滚轮；`on`/`off` 指针事件；内建 string tooltip；`showTip`/`hideTip`；hover / toggleSelect；竖线 axisPointer。
-- **未实现（按 canvas 全量对齐计划补齐，不是永久例外）**：已导出只 `console.warn` 的有 `registerPreprocessor` / `registerLocale` / `setPlatformAPI`。其余 chart、polar、dataset、`option.graphic` 组件、line `smooth`/`areaStyle`/`stack` 等见 [AGENT.md](AGENT.md) 与 [echarts 文档](wasm-echarts-rs/site/echarts/docs/index.html)。
+- **已实现（部分生效）**：line / bar / pie / scatter；多 cartesian（grid / 轴 / time / log）；dataset / transform / encode / stack / sampling；`getZr` 共用 Storage；`graphic`/`util`/`time` 等命名空间；`registerTransform`；`showLoading` 静态遮罩；`getDataURL`/`renderToCanvas`；`connect`/`registerTheme`/`registerMap`（表结构）；`appendData`/`containPixel`；`axisLabel.formatter`；pie `center`/`radius`/`startAngle`/`clockwise`；`symbol`/`symbolSize`；series label；CallbackDataParams；`convertToPixel` cartesian finder；inside dataZoom 滚轮；`on`/`off` 指针事件；内建 string tooltip；`showTip`/`hideTip`；hover / toggleSelect；竖线 axisPointer。
+- **未实现（按 canvas 全量对齐计划补齐，不是永久例外）**：已导出只 `console.warn` 的有 `registerPreprocessor` / `registerLocale` / `setPlatformAPI`。其余 chart、polar、`option.graphic` 组件、line `smooth`/`areaStyle` 等见 [AGENT.md](AGENT.md) 与 [echarts 文档](wasm-echarts-rs/site/echarts/docs/index.html)。
 
 native `EChartsInstance`（`wasm_echarts.d.ts`）是内部 handle，不要从 site 直接 `new`。
 

@@ -37,17 +37,30 @@ pub fn render_components(
     option: &OptionModel,
     interaction: &InteractionState,
 ) {
-    let coord = Cartesian2D::new(model);
     let visual = VisualContext::new(option, model);
-    let (zoom_start, zoom_end) = model.visible_category_range();
 
     if model.has_cartesian_series() {
-        render_grid_frame(zr, group, model);
-        render_split_lines(zr, group, model, &coord);
-        axis::render_axis_labels(zr, group, model, option, &coord, zoom_start, zoom_end);
+        for (i, _) in model.grids.iter().enumerate() {
+            render_grid_frame(zr, group, model.grid_at(i));
+            let x_idx = model
+                .x_axes
+                .iter()
+                .position(|a| a.grid_index == i)
+                .unwrap_or(0);
+            let y_idx = model
+                .y_axes
+                .iter()
+                .position(|a| a.grid_index == i)
+                .unwrap_or(0);
+            let coord = Cartesian2D::for_axes(model, x_idx, y_idx);
+            render_split_lines(zr, group, model, &coord);
+        }
+        axis::render_axis_labels(zr, group, model, option);
     }
 
     for series in &model.series {
+        let coord = Cartesian2D::for_series(model, series);
+        let (zoom_start, zoom_end) = model.visible_category_range_of(series.x_axis_index);
         match series.series_type {
             #[cfg(feature = "chart-line")]
             SeriesType::Line => {
@@ -70,6 +83,7 @@ pub fn render_components(
     }
 
     if model.has_cartesian_series() {
+        let coord = Cartesian2D::new(model);
         render_axis_pointer(zr, group, model, &coord, interaction);
     }
 
@@ -77,12 +91,10 @@ pub fn render_components(
     legend::render_legend(zr, group, model, option);
 }
 
-fn render_grid_frame(zr: &mut ZRenderer, group: usize, model: &GlobalModel) {
+fn render_grid_frame(zr: &mut ZRenderer, group: usize, g: crate::model::GridRect) {
     use rust_zrender::{
         FillStrokeStyle, LineShape, Path, PathStyle, Shape,
     };
-
-    let g = model.grid;
     let y_axis = zr.storage.create_path(Path::new(
         Shape::Line(LineShape {
             x1: g.x,
@@ -120,22 +132,22 @@ fn render_grid_frame(zr: &mut ZRenderer, group: usize, model: &GlobalModel) {
 fn render_split_lines(
     zr: &mut ZRenderer,
     group: usize,
-    model: &GlobalModel,
+    _model: &GlobalModel,
     coord: &Cartesian2D,
 ) {
     use rust_zrender::{
         FillStrokeStyle, LineShape, Path, PathStyle, Shape,
     };
 
-    let g = model.grid;
+    let g = coord.grid();
     let split_count = 5;
-    let ymin = model.y_axis.value_min();
-    let ymax = model.y_axis.value_max();
+    let ymin = coord.y_axis().value_min();
+    let ymax = coord.y_axis().value_max();
     let span = ymax - ymin;
 
     for i in 0..=split_count {
         let value = ymin + span * i as f64 / split_count as f64;
-        let (_, y) = coord.data_to_point(0, value);
+        let (_, y) = coord.value_to_point(coord.x_axis().value_min(), value);
         let line = zr.storage.create_path(Path::new(
             Shape::Line(LineShape {
                 x1: g.x,
@@ -166,7 +178,7 @@ fn render_axis_pointer(
         return;
     }
     let (px, py) = match (interaction.pointer_x, interaction.pointer_y) {
-        (Some(x), Some(y)) if model.grid.contains(x, y) => (x, y),
+        (Some(x), Some(y)) if model.grid().contains(x, y) => (x, y),
         _ => return,
     };
 
@@ -175,7 +187,7 @@ fn render_axis_pointer(
         .map(|(_, _, x)| x)
         .unwrap_or(px);
 
-    let g = model.grid;
+    let g = model.grid();
     let line = zr.storage.create_path(Path::new(
         Shape::Line(LineShape {
             x1: snap_x,
@@ -307,16 +319,7 @@ mod tests {
         let group = zr.storage.create_group();
         title::render_title(&mut zr, group, &model, &option);
         legend::render_legend(&mut zr, group, &model, &option);
-        let coord = crate::coord::Cartesian2D::new(&model);
-        axis::render_axis_labels(
-            &mut zr,
-            group,
-            &model,
-            &option,
-            &coord,
-            0,
-            model.category_count(),
-        );
+        axis::render_axis_labels(&mut zr, group, &model, &option);
         let texts: Vec<(String, String)> = zr
             .storage
             .texts()

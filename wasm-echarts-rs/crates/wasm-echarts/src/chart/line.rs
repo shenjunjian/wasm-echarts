@@ -30,7 +30,7 @@ pub fn render_line_series(
         .iter()
         .enumerate()
         .filter(|(i, _)| *i >= zoom_start && *i < zoom_end)
-        .map(|(i, p)| coord.data_to_point(i, p.value))
+        .map(|(i, p)| coord.point_for(i, p.x_value, p.stacked_value))
         .collect();
 
     if points.is_empty() {

@@ -10,7 +10,7 @@ todos:
     status: completed
   - id: wave2-data-coord
     content: 第 2 波：dataset/transform/encode/stack/sampling；多 grid/轴；time/log 轴
-    status: pending
+    status: completed
   - id: wave3-four-charts
     content: 第 3 波：line/bar/pie/scatter canvas option 族画全；折线 40 例 probe
     status: pending

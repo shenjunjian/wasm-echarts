@@ -28,13 +28,18 @@ pub fn render_bar_series(
 
     let band = coord.category_band_width();
     let bar_w = band * BAR_WIDTH_RATIO;
-    let base_y = coord.base_y().min(coord.grid().y + coord.grid().height);
+    let zero_y = coord.base_y().min(coord.grid().y + coord.grid().height);
 
     for (i, point) in series.data.iter().enumerate() {
         if i < zoom_start || i >= zoom_end {
             continue;
         }
-        let (cx, top_y) = coord.data_to_point(i, point.value);
+        let (cx, top_y) = coord.point_for(i, point.x_value, point.stacked_value);
+        let base_y = if point.stack_base.abs() > f64::EPSILON {
+            coord.point_for(i, point.x_value, point.stack_base).1
+        } else {
+            zero_y
+        };
         let x = cx - bar_w / 2.0;
         let y = top_y.min(base_y);
         let h = (base_y - top_y).abs().max(1.0);

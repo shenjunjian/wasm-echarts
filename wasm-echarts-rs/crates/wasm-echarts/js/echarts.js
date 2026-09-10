@@ -240,3 +240,67 @@ export function getMap(mapName) {
 export const registerLocale = unimplemented('registerLocale');
 export const setPlatformAPI = unimplemented('setPlatformAPI');
 export const registerPreprocessor = unimplemented('registerPreprocessor');
+
+const TRANSFORM_REGISTRY = new Map();
+
+function wrapTransformFn(fn) {
+  return function wrappedTransform(params) {
+    const upstreamIn = params && params.upstream ? params.upstream : {};
+    const data = upstreamIn.data || upstreamIn.source || [];
+    const dimensions = upstreamIn.dimensions || [];
+    const wrapped = {
+      data,
+      source: data,
+      dimensions,
+      count() {
+        return data.length;
+      },
+      getRawDataItem(i) {
+        return data[i];
+      },
+      retrieveValueFromItem(item, dimIdx) {
+        if (Array.isArray(item)) {
+          return item[dimIdx];
+        }
+        if (item && typeof item === 'object') {
+          const name = dimensions[dimIdx];
+          return name != null ? item[name] : undefined;
+        }
+        return item;
+      },
+      getDimensionInfo(dim) {
+        if (typeof dim === 'number') {
+          return { index: dim, name: dimensions[dim] };
+        }
+        const index = dimensions.indexOf(dim);
+        return index >= 0 ? { index, name: dim } : null;
+      },
+      cloneRawData() {
+        return data.slice();
+      },
+      cloneAllDimensionInfo() {
+        return dimensions.slice();
+      },
+    };
+    return fn({
+      upstream: wrapped,
+      config: params && params.config,
+    });
+  };
+}
+
+/**
+ * @param {{ type: string, transform: Function }} transform
+ */
+export function registerTransform(transform) {
+  const type = transform && transform.type;
+  const fn = transform && transform.transform;
+  if (!type || typeof fn !== 'function') {
+    console.warn('[wasm-echarts] registerTransform 需要 { type, transform }');
+    return;
+  }
+  TRANSFORM_REGISTRY.set(String(type), transform);
+  if (typeof native.registerTransform === 'function') {
+    native.registerTransform(String(type), wrapTransformFn(fn));
+  }
+}

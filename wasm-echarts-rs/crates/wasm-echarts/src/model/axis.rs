@@ -2,6 +2,28 @@
 pub enum AxisType {
     Category,
     Value,
+    Time,
+    Log,
+}
+
+impl AxisType {
+    pub fn from_str(s: &str, fallback: AxisType) -> Self {
+        match s {
+            "category" => AxisType::Category,
+            "value" => AxisType::Value,
+            "time" => AxisType::Time,
+            "log" => AxisType::Log,
+            _ => fallback,
+        }
+    }
+
+    pub fn is_category(self) -> bool {
+        self == AxisType::Category
+    }
+
+    pub fn is_continuous(self) -> bool {
+        matches!(self, AxisType::Value | AxisType::Time | AxisType::Log)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -10,6 +32,8 @@ pub struct AxisModel {
     pub category_data: Vec<String>,
     pub min: Option<f64>,
     pub max: Option<f64>,
+    pub grid_index: usize,
+    pub log_base: f64,
 }
 
 impl AxisModel {

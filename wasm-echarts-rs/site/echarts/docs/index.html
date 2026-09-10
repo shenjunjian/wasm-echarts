@@ -137,8 +137,8 @@ chart.on('click', (params) => {
             <td>grid 包含判断；追加 series.data；应用已注册主题</td>
           </tr>
           <tr>
-            <td><code>connect</code> / <code>registerTheme</code> / <code>registerMap</code> / <code>getMap</code></td>
-            <td>按 group 转发 action；主题表；地图表结构（本波不画 map）</td>
+            <td><code>connect</code> / <code>registerTheme</code> / <code>registerMap</code> / <code>getMap</code> / <code>registerTransform</code></td>
+            <td>按 group 转发 action；主题表；地图表结构（本波不画 map）；dataset 外部 transform</td>
           </tr>
           <tr>
             <td><code>graphic</code> / <code>util</code> / <code>time</code> / <code>format</code> / <code>number</code> / <code>helper</code> / <code>matrix</code> / <code>vector</code> / <code>color</code> / <code>env</code></td>
@@ -273,7 +273,15 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td>cartesian</td>
-            <td>单 x/y 轴；category / value；grid 边距；<code>convertToPixel</code> / <code>convertFromPixel</code> 最小集</td>
+            <td>多 <code>grid</code> / <code>xAxis[]</code> / <code>yAxis[]</code>（<code>gridIndex</code> / <code>xAxisIndex</code> / <code>yAxisIndex</code>）；<code>type: category | value | time | log</code>；<code>convertToPixel</code> / <code>convertFromPixel</code> / <code>containPixel</code> 按 finder 取轴</td>
+          </tr>
+          <tr>
+            <td>dataset / transform</td>
+            <td><code>source</code>（二维数组 / 对象行 / 列对象）/<code>dimensions</code> / <code>seriesLayoutBy</code> / <code>datasetIndex</code> / <code>datasetId</code> / <code>encode</code>；内置 <code>filter</code> / <code>sort</code>；<code>registerTransform</code> 接外部</td>
+          </tr>
+          <tr>
+            <td>stack / sampling</td>
+            <td><code>stack</code> + <code>stackStrategy</code>（samesign / all / positive / negative）line 与 bar 共用偏移；<code>sampling: lttb | average</code></td>
           </tr>
           <tr>
             <td>line / scatter</td>
@@ -281,7 +289,7 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td>bar</td>
-            <td>Rect，带宽 0.6；<code>label.show</code></td>
+            <td>Rect，带宽 0.6；<code>label.show</code>；<code>stack</code> 从基线画到叠加值</td>
           </tr>
           <tr>
             <td>pie</td>
@@ -313,7 +321,7 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td>实例 API</td>
-            <td><code>showLoading</code>（静态遮罩）/<code>getDataURL</code>/<code>renderToCanvas</code>/<code>appendData</code>/<code>setTheme</code>/<code>containPixel</code>；全局 <code>connect</code>/<code>registerTheme</code>/<code>registerMap</code></td>
+            <td><code>showLoading</code>（静态遮罩）/<code>getDataURL</code>/<code>renderToCanvas</code>/<code>appendData</code>/<code>setTheme</code>/<code>containPixel</code>；全局 <code>connect</code>/<code>registerTheme</code>/<code>registerMap</code>/<code>registerTransform</code></td>
           </tr>
         </tbody>
       </table>
@@ -323,10 +331,10 @@ chart.on('click', (params) => {
       <p>实例上尚未做完：<code>convertToLayout</code> / <code>getVisual</code>。</p>
       <ul>
         <li>Charts：Radar、Map、Gauge、Funnel、Heatmap、Custom <code>renderItem</code> 等其余类型。未接线的 <code>series.type</code> 不得静默忽略后永远不管。</li>
-        <li>Components：legend 点击筛选与复杂布局、title 复杂布局、toolbox（canvas 按钮要做；DataView DOM 明确不做）、visualMap、geo、polar、graphic 组件、<code>option.graphic</code>、brush、timeline、dataset</li>
+        <li>Components：legend 点击筛选与复杂布局、title 复杂布局、toolbox（canvas 按钮要做；DataView DOM 明确不做）、visualMap、geo、polar、graphic 组件、<code>option.graphic</code>、brush、timeline</li>
         <li>Actions：legend*、restore、brush、timeline、geo roam 等</li>
-        <li>media query / <code>convertToPixel</code> 完整 finder</li>
-        <li>option 名字在但未按官方做：line <code>smooth</code>/<code>areaStyle</code>/<code>stack</code>/<code>step</code>、pie <code>roseType</code>、多 grid / 双 y 轴、<code>symbol</code> 仅 circle/rect/emptyCircle、色板不是官方 palette 全套</li>
+        <li>media query / 非 cartesian 的 <code>convertToPixel</code> finder</li>
+        <li>option 名字在但未按官方做：line <code>smooth</code>/<code>areaStyle</code>/<code>step</code>/<code>endLabel</code>、pie <code>roseType</code>、<code>symbol</code> 仅 circle/rect/emptyCircle、色板不是官方 palette 全套</li>
         <li>tooltip HTMLElement formatter / <code>confine</code> / <code>trigger: 'axis'</code></li>
       </ul>
     </div>

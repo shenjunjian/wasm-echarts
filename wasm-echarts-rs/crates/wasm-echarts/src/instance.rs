@@ -82,7 +82,7 @@ impl EChartsInstance {
         option_contains_function(self.option.root())
     }
 
-    /// `convertToPixel(finder, value)`：cartesian `xAxis` / `yAxis` / `grid` / `seriesIndex` 最小集。
+    /// `convertToPixel(finder, value)`：cartesian `xAxis` / `yAxis` / `grid` / `seriesIndex`，含 time / log。
     pub fn convert_to_pixel(&self, finder: JsValue, value: JsValue) -> JsValue {
         convert_pixel_js(&self.option, self.width, self.height, self.interaction.data_zoom, finder, value, true)
     }
@@ -210,7 +210,7 @@ impl EChartsInstance {
             return Ok(());
         }
         let model = GlobalModel::from_option(&self.option, self.width, self.height);
-        let grid = model.grid;
+        let grid = model.grid();
         let anchor = if grid.width > 0.0 {
             ((x - grid.x) / grid.width).clamp(0.0, 1.0)
         } else {
@@ -348,14 +348,16 @@ impl EChartsInstance {
             ),
             _ => return false,
         };
+        let Ok(finder) = parse_option_value(&finder) else {
+            return false;
+        };
         let model = GlobalModel::from_option_with_zoom(
             &self.option,
             self.width,
             self.height,
             self.interaction.data_zoom,
         );
-        let _ = finder;
-        model.grid.contains(x, y)
+        crate::coord::contain_pixel(&model, &finder, x, y)
     }
 
     /// 阶段 7：基准测试 setOption 管线 + refresh 平均耗时（毫秒）

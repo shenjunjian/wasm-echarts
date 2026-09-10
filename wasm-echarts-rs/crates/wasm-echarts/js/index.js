@@ -19,6 +19,7 @@ export {
   registerLocale,
   setPlatformAPI,
   registerPreprocessor,
+  registerTransform,
   registerFont,
   clearFonts,
   ECharts,

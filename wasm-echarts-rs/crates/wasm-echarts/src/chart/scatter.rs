@@ -18,8 +18,7 @@ pub fn render_scatter_series(
 ) {
     let kind = visual.resolve_symbol(series.index);
     for (i, point) in series.data.iter().enumerate() {
-        let x_val = point.x_value.unwrap_or(i as f64);
-        let (cx, cy) = coord.value_to_point(x_val, point.value);
+        let (cx, cy) = coord.point_for(i, point.x_value, point.value);
         let color = visual.resolve_item_color(series.index, i);
         let size = visual.resolve_symbol_size_of(series.index, i);
         add_symbol(

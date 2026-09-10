@@ -127,7 +127,7 @@ impl InteractionState {
 
     /// 根据指针位置计算 axisPointer 对应的 category 索引与标签
     pub fn axis_pointer_label(&self, model: &GlobalModel, x: f64, y: f64) -> Option<(usize, String, f64)> {
-        if !self.axis_pointer_enabled || !model.grid.contains(x, y) {
+        if !self.axis_pointer_enabled || !model.grid().contains(x, y) {
             return None;
         }
         let total = model.category_count();
@@ -139,12 +139,12 @@ impl InteractionState {
         if visible == 0 {
             return None;
         }
-        let grid = model.grid;
+        let grid = model.grid();
         let rel = ((x - grid.x) / grid.width).clamp(0.0, 0.999_999);
         let local = (rel * visible as f64).floor() as usize;
         let global = (start + local).min(total.saturating_sub(1));
         let label = model
-            .x_categories
+            .x_categories()
             .get(global)
             .cloned()
             .unwrap_or_else(|| global.to_string());
