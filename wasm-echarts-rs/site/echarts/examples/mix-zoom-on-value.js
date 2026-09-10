@@ -3,117 +3,130 @@
  * https://echarts.apache.org/examples/zh/editor.html?c=mix-zoom-on-value
  * 未实现的官方 API 保持报错，不在本文件里补齐。
  */
-import { runOfficialExample } from '../../src/echarts/official-runtime.js';
+import initWasm, * as echarts from '@wasm-echarts';
+import { ROOT_PATH, CDN_PATH, $, app, sizeCanvas, showPreviewError } from '../../src/echarts/official-env.js';
+import { ensureDefaultFont } from '../../src/echarts/fonts.js';
 
-runOfficialExample(async ({ echarts, myChart, ROOT_PATH, CDN_PATH, $, app }) => {
-  let option;
-  try {
-    /*
-    title: Mix Zoom On Value
-    category: bar
-    titleCN: 多数值轴轴缩放
-    difficulty: 4
-    */
-    myChart.showLoading();
-    $.get(
-      ROOT_PATH + '/data/asset/data/obama_budget_proposal_2012.list.json',
-      function (obama_budget_2012) {
-        myChart.hideLoading();
-        option = {
-          tooltip: {
-            trigger: 'axis',
-            axisPointer: {
-              type: 'shadow',
-              label: {
-                show: true
-              }
-            }
-          },
-          toolbox: {
-            show: true,
-            feature: {
-              mark: { show: true },
-              dataView: { show: true, readOnly: false },
-              magicType: { show: true, type: ['line', 'bar'] },
-              restore: { show: true },
-              saveAsImage: { show: true }
-            }
-          },
-          calculable: true,
-          legend: {
-            data: ['Growth', 'Budget 2011', 'Budget 2012'],
-            itemGap: 5
-          },
-          grid: {
-            top: '12%',
-            left: '1%',
-            right: '10%',
-            containLabel: true
-          },
-          xAxis: [
-            {
-              type: 'category',
-              data: obama_budget_2012.names
-            }
-          ],
-          yAxis: [
-            {
-              type: 'value',
-              name: 'Budget (million USD)',
-              axisLabel: {
-                formatter: function (a) {
-                  a = +a;
-                  return isFinite(a) ? echarts.format.addCommas(+a / 1000) : '';
-                }
-              }
-            }
-          ],
-          dataZoom: [
-            {
-              show: true,
-              start: 94,
-              end: 100
-            },
-            {
-              type: 'inside',
-              start: 94,
-              end: 100
-            },
-            {
-              show: true,
-              yAxisIndex: 0,
-              filterMode: 'empty',
-              width: 30,
-              height: '80%',
-              showDataShadow: false,
-              left: '93%'
-            }
-          ],
-          series: [
-            {
-              name: 'Budget 2011',
-              type: 'bar',
-              data: obama_budget_2012.budget2011List
-            },
-            {
-              name: 'Budget 2012',
-              type: 'bar',
-              data: obama_budget_2012.budget2012List
-            }
-          ]
-        };
-        myChart.setOption(option);
-      }
-    );
-    return option;
-  } catch (error) {
-    if (option) {
-      try {
-        myChart.setOption(option);
-      } catch {
-        // 保留原始错误
-      }
-    }
-    throw error;
+async function main() {
+  await initWasm();
+  await ensureDefaultFont();
+
+  const canvas = document.getElementById('canvas');
+  if (!canvas) {
+    throw new Error('缺少 #canvas');
   }
+  sizeCanvas(canvas);
+  const myChart = echarts.init(canvas);
+  window.addEventListener('resize', () => {
+    if (myChart.isDisposed()) return;
+    sizeCanvas(canvas);
+    myChart.resize();
+  });
+
+  let option;
+  /*
+  title: Mix Zoom On Value
+  category: bar
+  titleCN: 多数值轴轴缩放
+  difficulty: 4
+  */
+  myChart.showLoading();
+  $.get(
+    ROOT_PATH + '/data/asset/data/obama_budget_proposal_2012.list.json',
+    function (obama_budget_2012) {
+      myChart.hideLoading();
+      option = {
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: {
+            type: 'shadow',
+            label: {
+              show: true
+            }
+          }
+        },
+        toolbox: {
+          show: true,
+          feature: {
+            mark: { show: true },
+            dataView: { show: true, readOnly: false },
+            magicType: { show: true, type: ['line', 'bar'] },
+            restore: { show: true },
+            saveAsImage: { show: true }
+          }
+        },
+        calculable: true,
+        legend: {
+          data: ['Growth', 'Budget 2011', 'Budget 2012'],
+          itemGap: 5
+        },
+        grid: {
+          top: '12%',
+          left: '1%',
+          right: '10%',
+          containLabel: true
+        },
+        xAxis: [
+          {
+            type: 'category',
+            data: obama_budget_2012.names
+          }
+        ],
+        yAxis: [
+          {
+            type: 'value',
+            name: 'Budget (million USD)',
+            axisLabel: {
+              formatter: function (a) {
+                a = +a;
+                return isFinite(a) ? echarts.format.addCommas(+a / 1000) : '';
+              }
+            }
+          }
+        ],
+        dataZoom: [
+          {
+            show: true,
+            start: 94,
+            end: 100
+          },
+          {
+            type: 'inside',
+            start: 94,
+            end: 100
+          },
+          {
+            show: true,
+            yAxisIndex: 0,
+            filterMode: 'empty',
+            width: 30,
+            height: '80%',
+            showDataShadow: false,
+            left: '93%'
+          }
+        ],
+        series: [
+          {
+            name: 'Budget 2011',
+            type: 'bar',
+            data: obama_budget_2012.budget2011List
+          },
+          {
+            name: 'Budget 2012',
+            type: 'bar',
+            data: obama_budget_2012.budget2012List
+          }
+        ]
+      };
+      myChart.setOption(option);
+    }
+  );
+  if (option) {
+    myChart.setOption(option);
+  }
+}
+
+main().catch((error) => {
+  showPreviewError(error);
+  console.error(error);
 });

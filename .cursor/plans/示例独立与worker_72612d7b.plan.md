@@ -4,7 +4,7 @@ overview: 去掉 official-runtime 代管，让每个 echarts 示例自己 init/s
 todos:
   - id: flatten-examples
     content: 去掉 runOfficialExample 代管：sync 模板改为每页自己 init/setOption；只保留 ROOT_PATH/$ 薄 env；改 probe
-    status: pending
+    status: completed
   - id: worker-facade
     content: facade 增加 opts.useWorker：Worker 持 WASM，主线程 blit/事件/tooltip；option 一律 postMessage，仅回传图像可用 SAB
     status: pending

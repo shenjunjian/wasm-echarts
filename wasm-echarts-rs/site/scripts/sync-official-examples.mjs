@@ -1,18 +1,21 @@
 /**
  * 从 Apache ECharts 官网按图类拉取示例，包装成 wasm-echarts 画廊条目。
- * 不补齐未实现特性；运行时报错由 official-runtime 展示。
+ * 生成脚本自己 init/setOption；official-env 只提供 ROOT_PATH / $ / app。
+ * 不补齐未实现特性；运行时报错由 showPreviewError 展示。
  *
  * 用法：
  *   node scripts/sync-official-examples.mjs --category bar
  *   node scripts/sync-official-examples.mjs --category bar --category pie
  *   node scripts/sync-official-examples.mjs --list
+ *   node scripts/sync-official-examples.mjs --rewrite-existing
  *   node scripts/sync-official-examples.mjs --category scatter --local-dir C:\\Users\\shen\\Desktop\\echarts-examples-gh-pages
  *
  * `--local-dir` / 环境变量 ECHARTS_EXAMPLES_DIR：apache/echarts-examples 克隆根目录。
+ * `--rewrite-existing`：按当前模板重包已同步示例（不重新下载官网源码）。
  * 静态资源优先读 localDir/public；网络请求带超时，避免大文件卡住。
  */
 
-import { mkdir, readFile, writeFile, stat } from 'node:fs/promises';
+import { mkdir, readdir, readFile, writeFile, stat } from 'node:fs/promises';
 import { dirname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OFFICIAL_CATEGORY_GROUPS } from '../src/echarts/official-gallery-meta.js';
@@ -34,11 +37,16 @@ const KNOWN_CATEGORIES = new Set(OFFICIAL_CATEGORY_GROUPS.map((g) => g.category)
 export function parseArgs(argv) {
   const categories = [];
   let listOnly = false;
+  let rewriteExisting = false;
   let localDir = process.env.ECHARTS_EXAMPLES_DIR || '';
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--list') {
       listOnly = true;
+      continue;
+    }
+    if (arg === '--rewrite-existing') {
+      rewriteExisting = true;
       continue;
     }
     if (arg === '--category' || arg === '-c') {
@@ -67,7 +75,12 @@ export function parseArgs(argv) {
     }
     throw new Error(`未知参数: ${arg}`);
   }
-  return { categories, listOnly, localDir: localDir ? resolve(localDir) : '' };
+  return {
+    categories,
+    listOnly,
+    rewriteExisting,
+    localDir: localDir ? resolve(localDir) : '',
+  };
 }
 
 const htmlTemplate = (id, title) => `<!DOCTYPE html>
@@ -166,32 +179,82 @@ function filterExamples(all, category) {
   );
 }
 
-function wrapOfficialSource(id, title, officialSource) {
+export function wrapOfficialSource(id, title, officialSource) {
   const body = normalizeOptionBinding(officialSource.trim());
   return `/**
  * 官网示例：${title}
  * https://echarts.apache.org/examples/zh/editor.html?c=${id}
  * 未实现的官方 API 保持报错，不在本文件里补齐。
  */
-import { runOfficialExample } from '../../src/echarts/official-runtime.js';
+import initWasm, * as echarts from '@wasm-echarts';
+import { ROOT_PATH, CDN_PATH, $, app, sizeCanvas, showPreviewError } from '../../src/echarts/official-env.js';
+import { ensureDefaultFont } from '../../src/echarts/fonts.js';
 
-runOfficialExample(async ({ echarts, myChart, ROOT_PATH, CDN_PATH, $, app }) => {
-  let option;
-  try {
-${indent(body, 4)}
-    return option;
-  } catch (error) {
-    if (option) {
-      try {
-        myChart.setOption(option);
-      } catch {
-        // 保留原始错误
-      }
-    }
-    throw error;
+async function main() {
+  await initWasm();
+  await ensureDefaultFont();
+
+  const canvas = document.getElementById('canvas');
+  if (!canvas) {
+    throw new Error('缺少 #canvas');
   }
+  sizeCanvas(canvas);
+  const myChart = echarts.init(canvas);
+  window.addEventListener('resize', () => {
+    if (myChart.isDisposed()) return;
+    sizeCanvas(canvas);
+    myChart.resize();
+  });
+
+  let option;
+${indent(body, 2)}
+  if (option) {
+    myChart.setOption(option);
+  }
+}
+
+main().catch((error) => {
+  showPreviewError(error);
+  console.error(error);
 });
 `;
+}
+
+const WRAPPED_TRY_START = '  try {\n';
+const WRAPPED_RETURN = '\n    return option;';
+
+export function extractWrappedOfficial(source, fileName = '') {
+  const text = source.replace(/\r\n/g, '\n');
+  const idFromFile = fileName.replace(/\.js$/i, '');
+  const idMatch = text.match(/editor\.html\?c=([^\s*]+)/);
+  const titleMatch = text.match(/官网[^\n：]*：([^\n*]+)/);
+  const start = text.indexOf(WRAPPED_TRY_START);
+  const end = text.lastIndexOf(WRAPPED_RETURN);
+  if (start < 0 || end < 0 || end <= start) {
+    throw new Error(`无法从 ${fileName || 'source'} 抽出官网正文`);
+  }
+  const body = text.slice(start + WRAPPED_TRY_START.length, end).replace(/^ {4}/gm, '');
+  return {
+    id: (idMatch && idMatch[1]) || idFromFile,
+    title: ((titleMatch && titleMatch[1]) || idFromFile).trim(),
+    body,
+  };
+}
+
+async function rewriteExistingExamples() {
+  const names = await readdir(examplesDir);
+  let count = 0;
+  for (const name of names.sort()) {
+    if (!name.endsWith('.js') || name.startsWith('official-')) continue;
+    const filePath = join(examplesDir, name);
+    const source = await readFile(filePath, 'utf8');
+    if (!source.includes('runOfficialExample')) continue;
+    const { id, title, body } = extractWrappedOfficial(source, name);
+    await writeFile(filePath, wrapOfficialSource(id, title, body), 'utf8');
+    count += 1;
+    console.log(`  ${name}`);
+  }
+  console.log(`rewrote ${count} examples`);
 }
 
 function catalogSource(category, catalog) {
@@ -206,6 +269,7 @@ function printUsage() {
   console.error(`用法:
   node scripts/sync-official-examples.mjs --category <name> [--category <name> ...]
   node scripts/sync-official-examples.mjs --list
+  node scripts/sync-official-examples.mjs --rewrite-existing
   node scripts/sync-official-examples.mjs --category scatter --local-dir <echarts-examples 根目录>
 
 已知类别: ${known}`);
@@ -343,7 +407,11 @@ export async function syncCategories(categories, { listOnly = false, localDir = 
 }
 
 export async function main(argv = process.argv.slice(2)) {
-  const { categories, listOnly, localDir } = parseArgs(argv);
+  const { categories, listOnly, rewriteExisting, localDir } = parseArgs(argv);
+  if (rewriteExisting) {
+    await rewriteExistingExamples();
+    return;
+  }
   if (!listOnly && categories.length === 0) {
     printUsage();
     process.exitCode = 1;

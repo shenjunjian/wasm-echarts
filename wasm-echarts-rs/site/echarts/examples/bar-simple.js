@@ -3,41 +3,54 @@
  * https://echarts.apache.org/examples/zh/editor.html?c=bar-simple
  * 未实现的官方 API 保持报错，不在本文件里补齐。
  */
-import { runOfficialExample } from '../../src/echarts/official-runtime.js';
+import initWasm, * as echarts from '@wasm-echarts';
+import { ROOT_PATH, CDN_PATH, $, app, sizeCanvas, showPreviewError } from '../../src/echarts/official-env.js';
+import { ensureDefaultFont } from '../../src/echarts/fonts.js';
 
-runOfficialExample(async ({ echarts, myChart, ROOT_PATH, CDN_PATH, $, app }) => {
-  let option;
-  try {
-    /*
-    title: Basic Bar
-    category: bar
-    titleCN: 基础柱状图
-    difficulty: 0
-    */
-    option = {
-      xAxis: {
-        type: 'category',
-        data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-      },
-      yAxis: {
-        type: 'value'
-      },
-      series: [
-        {
-          data: [120, 200, 150, 80, 70, 110, 130],
-          type: 'bar'
-        }
-      ]
-    };
-    return option;
-  } catch (error) {
-    if (option) {
-      try {
-        myChart.setOption(option);
-      } catch {
-        // 保留原始错误
-      }
-    }
-    throw error;
+async function main() {
+  await initWasm();
+  await ensureDefaultFont();
+
+  const canvas = document.getElementById('canvas');
+  if (!canvas) {
+    throw new Error('缺少 #canvas');
   }
+  sizeCanvas(canvas);
+  const myChart = echarts.init(canvas);
+  window.addEventListener('resize', () => {
+    if (myChart.isDisposed()) return;
+    sizeCanvas(canvas);
+    myChart.resize();
+  });
+
+  let option;
+  /*
+  title: Basic Bar
+  category: bar
+  titleCN: 基础柱状图
+  difficulty: 0
+  */
+  option = {
+    xAxis: {
+      type: 'category',
+      data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    },
+    yAxis: {
+      type: 'value'
+    },
+    series: [
+      {
+        data: [120, 200, 150, 80, 70, 110, 130],
+        type: 'bar'
+      }
+    ]
+  };
+  if (option) {
+    myChart.setOption(option);
+  }
+}
+
+main().catch((error) => {
+  showPreviewError(error);
+  console.error(error);
 });

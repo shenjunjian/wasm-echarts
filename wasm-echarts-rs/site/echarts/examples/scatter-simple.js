@@ -3,60 +3,73 @@
  * https://echarts.apache.org/examples/zh/editor.html?c=scatter-simple
  * 未实现的官方 API 保持报错，不在本文件里补齐。
  */
-import { runOfficialExample } from '../../src/echarts/official-runtime.js';
+import initWasm, * as echarts from '@wasm-echarts';
+import { ROOT_PATH, CDN_PATH, $, app, sizeCanvas, showPreviewError } from '../../src/echarts/official-env.js';
+import { ensureDefaultFont } from '../../src/echarts/fonts.js';
 
-runOfficialExample(async ({ echarts, myChart, ROOT_PATH, CDN_PATH, $, app }) => {
-  let option;
-  try {
-    /*
-    title: Basic Scatter Chart
-    category: scatter
-    titleCN: 基础散点图
-    difficulty: 0
-    */
-    option = {
-      xAxis: {},
-      yAxis: {},
-      series: [
-        {
-          symbolSize: 20,
-          data: [
-            [10.0, 8.04],
-            [8.07, 6.95],
-            [13.0, 7.58],
-            [9.05, 8.81],
-            [11.0, 8.33],
-            [14.0, 7.66],
-            [13.4, 6.81],
-            [10.0, 6.33],
-            [14.0, 8.96],
-            [12.5, 6.82],
-            [9.15, 7.2],
-            [11.5, 7.2],
-            [3.03, 4.23],
-            [12.2, 7.83],
-            [2.02, 4.47],
-            [1.05, 3.33],
-            [4.05, 4.96],
-            [6.03, 7.24],
-            [12.0, 6.26],
-            [12.0, 8.84],
-            [7.08, 5.82],
-            [5.02, 5.68]
-          ],
-          type: 'scatter'
-        }
-      ]
-    };
-    return option;
-  } catch (error) {
-    if (option) {
-      try {
-        myChart.setOption(option);
-      } catch {
-        // 保留原始错误
-      }
-    }
-    throw error;
+async function main() {
+  await initWasm();
+  await ensureDefaultFont();
+
+  const canvas = document.getElementById('canvas');
+  if (!canvas) {
+    throw new Error('缺少 #canvas');
   }
+  sizeCanvas(canvas);
+  const myChart = echarts.init(canvas);
+  window.addEventListener('resize', () => {
+    if (myChart.isDisposed()) return;
+    sizeCanvas(canvas);
+    myChart.resize();
+  });
+
+  let option;
+  /*
+  title: Basic Scatter Chart
+  category: scatter
+  titleCN: 基础散点图
+  difficulty: 0
+  */
+  option = {
+    xAxis: {},
+    yAxis: {},
+    series: [
+      {
+        symbolSize: 20,
+        data: [
+          [10.0, 8.04],
+          [8.07, 6.95],
+          [13.0, 7.58],
+          [9.05, 8.81],
+          [11.0, 8.33],
+          [14.0, 7.66],
+          [13.4, 6.81],
+          [10.0, 6.33],
+          [14.0, 8.96],
+          [12.5, 6.82],
+          [9.15, 7.2],
+          [11.5, 7.2],
+          [3.03, 4.23],
+          [12.2, 7.83],
+          [2.02, 4.47],
+          [1.05, 3.33],
+          [4.05, 4.96],
+          [6.03, 7.24],
+          [12.0, 6.26],
+          [12.0, 8.84],
+          [7.08, 5.82],
+          [5.02, 5.68]
+        ],
+        type: 'scatter'
+      }
+    ]
+  };
+  if (option) {
+    myChart.setOption(option);
+  }
+}
+
+main().catch((error) => {
+  showPreviewError(error);
+  console.error(error);
 });

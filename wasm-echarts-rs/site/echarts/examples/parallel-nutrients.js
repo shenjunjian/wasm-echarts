@@ -3,193 +3,206 @@
  * https://echarts.apache.org/examples/zh/editor.html?c=parallel-nutrients
  * 未实现的官方 API 保持报错，不在本文件里补齐。
  */
-import { runOfficialExample } from '../../src/echarts/official-runtime.js';
+import initWasm, * as echarts from '@wasm-echarts';
+import { ROOT_PATH, CDN_PATH, $, app, sizeCanvas, showPreviewError } from '../../src/echarts/official-env.js';
+import { ensureDefaultFont } from '../../src/echarts/fonts.js';
 
-runOfficialExample(async ({ echarts, myChart, ROOT_PATH, CDN_PATH, $, app }) => {
+async function main() {
+  await initWasm();
+  await ensureDefaultFont();
+
+  const canvas = document.getElementById('canvas');
+  if (!canvas) {
+    throw new Error('缺少 #canvas');
+  }
+  sizeCanvas(canvas);
+  const myChart = echarts.init(canvas);
+  window.addEventListener('resize', () => {
+    if (myChart.isDisposed()) return;
+    sizeCanvas(canvas);
+    myChart.resize();
+  });
+
   let option;
-  try {
-    /*
-    title: Parallel Nutrients
-    category: parallel
-    titleCN: 营养结构（平行坐标）
-    difficulty: 4
-    */
-    const indices = {
-      name: 0,
-      group: 1,
-      id: 16
-    };
-    const schema = [
-      { name: 'name', index: 0 },
-      { name: 'group', index: 1 },
-      { name: 'protein', index: 2 },
-      { name: 'calcium', index: 3 },
-      { name: 'sodium', index: 4 },
-      { name: 'fiber', index: 5 },
-      { name: 'vitaminc', index: 6 },
-      { name: 'potassium', index: 7 },
-      { name: 'carbohydrate', index: 8 },
-      { name: 'sugars', index: 9 },
-      { name: 'fat', index: 10 },
-      { name: 'water', index: 11 },
-      { name: 'calories', index: 12 },
-      { name: 'saturated', index: 13 },
-      { name: 'monounsat', index: 14 },
-      { name: 'polyunsat', index: 15 },
-      { name: 'id', index: 16 }
-    ];
-    const groupCategories = [];
-    const groupColors = [];
-    $.get(ROOT_PATH + '/data/asset/data/nutrients.json', function (data) {
-      normalizeData(data);
-      myChart.setOption((option = getOption(data)));
-    });
-    function normalizeData(originData) {
-      const groupMap = {};
-      originData.forEach(function (row) {
-        const groupName = row[indices.group];
-        if (!groupMap.hasOwnProperty(groupName)) {
-          groupMap[groupName] = 1;
-        }
-      });
-      originData.forEach(function (row) {
-        row.forEach(function (item, index) {
-          if (
-            index !== indices.name &&
-            index !== indices.group &&
-            index !== indices.id
-          ) {
-            // Convert null to zero, as all of them under unit "g".
-            row[index] = parseFloat(item) || 0;
-          }
-        });
-      });
-      for (const groupName in groupMap) {
-        if (groupMap.hasOwnProperty(groupName)) {
-          groupCategories.push(groupName);
-        }
+  /*
+  title: Parallel Nutrients
+  category: parallel
+  titleCN: 营养结构（平行坐标）
+  difficulty: 4
+  */
+  const indices = {
+    name: 0,
+    group: 1,
+    id: 16
+  };
+  const schema = [
+    { name: 'name', index: 0 },
+    { name: 'group', index: 1 },
+    { name: 'protein', index: 2 },
+    { name: 'calcium', index: 3 },
+    { name: 'sodium', index: 4 },
+    { name: 'fiber', index: 5 },
+    { name: 'vitaminc', index: 6 },
+    { name: 'potassium', index: 7 },
+    { name: 'carbohydrate', index: 8 },
+    { name: 'sugars', index: 9 },
+    { name: 'fat', index: 10 },
+    { name: 'water', index: 11 },
+    { name: 'calories', index: 12 },
+    { name: 'saturated', index: 13 },
+    { name: 'monounsat', index: 14 },
+    { name: 'polyunsat', index: 15 },
+    { name: 'id', index: 16 }
+  ];
+  const groupCategories = [];
+  const groupColors = [];
+  $.get(ROOT_PATH + '/data/asset/data/nutrients.json', function (data) {
+    normalizeData(data);
+    myChart.setOption((option = getOption(data)));
+  });
+  function normalizeData(originData) {
+    const groupMap = {};
+    originData.forEach(function (row) {
+      const groupName = row[indices.group];
+      if (!groupMap.hasOwnProperty(groupName)) {
+        groupMap[groupName] = 1;
       }
-      const hStep = Math.round(300 / (groupCategories.length - 1));
-      for (var i = 0; i < groupCategories.length; i++) {
-        groupColors.push(echarts.color.modifyHSL('#5A94DF', hStep * i));
+    });
+    originData.forEach(function (row) {
+      row.forEach(function (item, index) {
+        if (
+          index !== indices.name &&
+          index !== indices.group &&
+          index !== indices.id
+        ) {
+          // Convert null to zero, as all of them under unit "g".
+          row[index] = parseFloat(item) || 0;
+        }
+      });
+    });
+    for (const groupName in groupMap) {
+      if (groupMap.hasOwnProperty(groupName)) {
+        groupCategories.push(groupName);
       }
     }
-    function getOption(data) {
-      const lineStyle = {
-        width: 0.5,
-        opacity: 0.05
-      };
-      return {
-        backgroundColor: '#333',
-        tooltip: {
-          padding: 10,
-          backgroundColor: '#222',
-          borderColor: '#777',
-          borderWidth: 1
-        },
-        title: [
-          {
-            text: 'Groups',
-            top: 0,
-            left: 0,
-            textStyle: {
-              color: '#fff'
-            }
-          }
-        ],
-        visualMap: {
-          show: true,
-          type: 'piecewise',
-          categories: groupCategories,
-          dimension: indices.group,
-          inRange: {
-            color: groupColors //['#d94e5d','#eac736','#50a3ba']
-          },
-          outOfRange: {
-            color: ['#ccc'] //['#d94e5d','#eac736','#50a3ba']
-          },
-          top: 20,
+    const hStep = Math.round(300 / (groupCategories.length - 1));
+    for (var i = 0; i < groupCategories.length; i++) {
+      groupColors.push(echarts.color.modifyHSL('#5A94DF', hStep * i));
+    }
+  }
+  function getOption(data) {
+    const lineStyle = {
+      width: 0.5,
+      opacity: 0.05
+    };
+    return {
+      backgroundColor: '#333',
+      tooltip: {
+        padding: 10,
+        backgroundColor: '#222',
+        borderColor: '#777',
+        borderWidth: 1
+      },
+      title: [
+        {
+          text: 'Groups',
+          top: 0,
+          left: 0,
           textStyle: {
+            color: '#fff'
+          }
+        }
+      ],
+      visualMap: {
+        show: true,
+        type: 'piecewise',
+        categories: groupCategories,
+        dimension: indices.group,
+        inRange: {
+          color: groupColors //['#d94e5d','#eac736','#50a3ba']
+        },
+        outOfRange: {
+          color: ['#ccc'] //['#d94e5d','#eac736','#50a3ba']
+        },
+        top: 20,
+        textStyle: {
+          color: '#fff'
+        },
+        realtime: false
+      },
+      parallelAxis: [
+        { dim: 16, name: schema[16].name, scale: true, nameLocation: 'end' },
+        { dim: 2, name: schema[2].name, nameLocation: 'end' },
+        { dim: 4, name: schema[4].name, nameLocation: 'end' },
+        { dim: 3, name: schema[3].name, nameLocation: 'end' },
+        { dim: 5, name: schema[5].name, nameLocation: 'end' },
+        { dim: 6, name: schema[6].name, nameLocation: 'end' },
+        { dim: 7, name: schema[7].name, nameLocation: 'end' },
+        { dim: 8, name: schema[8].name, nameLocation: 'end' },
+        { dim: 9, name: schema[9].name, nameLocation: 'end' },
+        { dim: 10, name: schema[10].name, nameLocation: 'end' },
+        { dim: 11, name: schema[11].name, nameLocation: 'end' },
+        { dim: 12, name: schema[12].name, nameLocation: 'end' },
+        { dim: 13, name: schema[13].name, nameLocation: 'end' },
+        { dim: 14, name: schema[14].name, nameLocation: 'end' },
+        { dim: 15, name: schema[15].name, nameLocation: 'end' }
+      ],
+      parallel: {
+        left: 280,
+        top: 20,
+        // top: 150,
+        // height: 300,
+        width: 400,
+        layout: 'vertical',
+        parallelAxisDefault: {
+          type: 'value',
+          name: 'nutrients',
+          nameLocation: 'end',
+          nameGap: 20,
+          nameTextStyle: {
+            color: '#fff',
+            fontSize: 14
+          },
+          axisLine: {
+            lineStyle: {
+              color: '#aaa'
+            }
+          },
+          axisTick: {
+            lineStyle: {
+              color: '#777'
+            }
+          },
+          splitLine: {
+            show: false
+          },
+          axisLabel: {
             color: '#fff'
           },
           realtime: false
-        },
-        parallelAxis: [
-          { dim: 16, name: schema[16].name, scale: true, nameLocation: 'end' },
-          { dim: 2, name: schema[2].name, nameLocation: 'end' },
-          { dim: 4, name: schema[4].name, nameLocation: 'end' },
-          { dim: 3, name: schema[3].name, nameLocation: 'end' },
-          { dim: 5, name: schema[5].name, nameLocation: 'end' },
-          { dim: 6, name: schema[6].name, nameLocation: 'end' },
-          { dim: 7, name: schema[7].name, nameLocation: 'end' },
-          { dim: 8, name: schema[8].name, nameLocation: 'end' },
-          { dim: 9, name: schema[9].name, nameLocation: 'end' },
-          { dim: 10, name: schema[10].name, nameLocation: 'end' },
-          { dim: 11, name: schema[11].name, nameLocation: 'end' },
-          { dim: 12, name: schema[12].name, nameLocation: 'end' },
-          { dim: 13, name: schema[13].name, nameLocation: 'end' },
-          { dim: 14, name: schema[14].name, nameLocation: 'end' },
-          { dim: 15, name: schema[15].name, nameLocation: 'end' }
-        ],
-        parallel: {
-          left: 280,
-          top: 20,
-          // top: 150,
-          // height: 300,
-          width: 400,
-          layout: 'vertical',
-          parallelAxisDefault: {
-            type: 'value',
-            name: 'nutrients',
-            nameLocation: 'end',
-            nameGap: 20,
-            nameTextStyle: {
-              color: '#fff',
-              fontSize: 14
-            },
-            axisLine: {
-              lineStyle: {
-                color: '#aaa'
-              }
-            },
-            axisTick: {
-              lineStyle: {
-                color: '#777'
-              }
-            },
-            splitLine: {
-              show: false
-            },
-            axisLabel: {
-              color: '#fff'
-            },
-            realtime: false
-          }
-        },
-        animation: false,
-        series: [
-          {
-            name: 'nutrients',
-            type: 'parallel',
-            lineStyle: lineStyle,
-            inactiveOpacity: 0,
-            activeOpacity: 0.01,
-            progressive: 500,
-            smooth: true,
-            data: data
-          }
-        ]
-      };
-    }
-    return option;
-  } catch (error) {
-    if (option) {
-      try {
-        myChart.setOption(option);
-      } catch {
-        // 保留原始错误
-      }
-    }
-    throw error;
+        }
+      },
+      animation: false,
+      series: [
+        {
+          name: 'nutrients',
+          type: 'parallel',
+          lineStyle: lineStyle,
+          inactiveOpacity: 0,
+          activeOpacity: 0.01,
+          progressive: 500,
+          smooth: true,
+          data: data
+        }
+      ]
+    };
   }
+  if (option) {
+    myChart.setOption(option);
+  }
+}
+
+main().catch((error) => {
+  showPreviewError(error);
+  console.error(error);
 });

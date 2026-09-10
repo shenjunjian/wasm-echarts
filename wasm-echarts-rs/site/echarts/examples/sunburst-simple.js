@@ -3,102 +3,115 @@
  * https://echarts.apache.org/examples/zh/editor.html?c=sunburst-simple
  * 未实现的官方 API 保持报错，不在本文件里补齐。
  */
-import { runOfficialExample } from '../../src/echarts/official-runtime.js';
+import initWasm, * as echarts from '@wasm-echarts';
+import { ROOT_PATH, CDN_PATH, $, app, sizeCanvas, showPreviewError } from '../../src/echarts/official-env.js';
+import { ensureDefaultFont } from '../../src/echarts/fonts.js';
 
-runOfficialExample(async ({ echarts, myChart, ROOT_PATH, CDN_PATH, $, app }) => {
+async function main() {
+  await initWasm();
+  await ensureDefaultFont();
+
+  const canvas = document.getElementById('canvas');
+  if (!canvas) {
+    throw new Error('缺少 #canvas');
+  }
+  sizeCanvas(canvas);
+  const myChart = echarts.init(canvas);
+  window.addEventListener('resize', () => {
+    if (myChart.isDisposed()) return;
+    sizeCanvas(canvas);
+    myChart.resize();
+  });
+
   let option;
-  try {
-    /*
-    title: Basic Sunburst
-    category: sunburst
-    titleCN: 基础旭日图
-    difficulty: 1
-    */
-    var data = [
-      {
-        name: 'Grandpa',
-        children: [
-          {
-            name: 'Uncle Leo',
-            value: 15,
-            children: [
-              {
-                name: 'Cousin Jack',
-                value: 2
-              },
-              {
-                name: 'Cousin Mary',
-                value: 5,
-                children: [
-                  {
-                    name: 'Jackson',
-                    value: 2
-                  }
-                ]
-              },
-              {
-                name: 'Cousin Ben',
-                value: 4
-              }
-            ]
-          },
-          {
-            name: 'Father',
-            value: 10,
-            children: [
-              {
-                name: 'Me',
-                value: 5
-              },
-              {
-                name: 'Brother Peter',
-                value: 1
-              }
-            ]
-          }
-        ]
-      },
-      {
-        name: 'Nancy',
-        children: [
-          {
-            name: 'Uncle Nike',
-            children: [
-              {
-                name: 'Cousin Betty',
-                value: 1
-              },
-              {
-                name: 'Cousin Jenny',
-                value: 2
-              }
-            ]
-          }
-        ]
-      }
-    ];
-    option = {
-      series: {
-        type: 'sunburst',
-        // emphasis: {
-        //     focus: 'ancestor'
-        // },
-        data: data,
-        radius: [0, '90%'],
-        label: {
-          rotate: 'radial'
+  /*
+  title: Basic Sunburst
+  category: sunburst
+  titleCN: 基础旭日图
+  difficulty: 1
+  */
+  var data = [
+    {
+      name: 'Grandpa',
+      children: [
+        {
+          name: 'Uncle Leo',
+          value: 15,
+          children: [
+            {
+              name: 'Cousin Jack',
+              value: 2
+            },
+            {
+              name: 'Cousin Mary',
+              value: 5,
+              children: [
+                {
+                  name: 'Jackson',
+                  value: 2
+                }
+              ]
+            },
+            {
+              name: 'Cousin Ben',
+              value: 4
+            }
+          ]
+        },
+        {
+          name: 'Father',
+          value: 10,
+          children: [
+            {
+              name: 'Me',
+              value: 5
+            },
+            {
+              name: 'Brother Peter',
+              value: 1
+            }
+          ]
         }
-      }
-    };
-    return option;
-  } catch (error) {
-    if (option) {
-      try {
-        myChart.setOption(option);
-      } catch {
-        // 保留原始错误
+      ]
+    },
+    {
+      name: 'Nancy',
+      children: [
+        {
+          name: 'Uncle Nike',
+          children: [
+            {
+              name: 'Cousin Betty',
+              value: 1
+            },
+            {
+              name: 'Cousin Jenny',
+              value: 2
+            }
+          ]
+        }
+      ]
+    }
+  ];
+  option = {
+    series: {
+      type: 'sunburst',
+      // emphasis: {
+      //     focus: 'ancestor'
+      // },
+      data: data,
+      radius: [0, '90%'],
+      label: {
+        rotate: 'radial'
       }
     }
-    throw error;
+  };
+  if (option) {
+    myChart.setOption(option);
   }
+}
+
+main().catch((error) => {
+  showPreviewError(error);
+  console.error(error);
 });

@@ -722,7 +722,7 @@ Actions：geo roam 等。
 
 **名字在 option 里出现但未按官方做：** `smoothMonotone`；色板不是官方 palette 全套；pie 完整标签避让 / `padAngle` / `alignTo`；bar `showBackground`、polar `roundCap`、`realtimeSort` 动画（只终态）；parallel `progressive`；rich text 标签当普通 Text。
 
-**官网全量 probe（第 8.9 波）**：27 类 `official-*-catalog.js` 去重 296 条，281 `ok`，3 timeout，12 error。失败（不改官方 option、不在 `official-runtime.js` 假实现）：
+**官网全量 probe（第 8.9 波）**：27 类 `official-*-catalog.js` 去重 296 条，281 `ok`，3 timeout，12 error。失败（不改官方 option、不在 `official-env.js` 假实现）：
 
 | 示例 | 原因 |
 |------|------|
@@ -736,11 +736,11 @@ Actions：geo roam 等。
 | `treemap-disk` / `treemap-show-parent` | 官网 `disk.tree.json` 大树；递归 parse / squarify 触发 WASM panic（`unreachable`） |
 | `treemap-visual` | `series.levels.color` + `visualDimension` 渐变映射未按官方做，渲染时 WASM panic（`unreachable`） |
 
-本轮相对此前分波记录的变化：`scatter-weibo` 与 `map-usa-projection` 现为 `ok`（后者在 CDN `d3-geo` 可加载时 `d3.geoAlbersUsa` 可用；不在 runtime 里假实现 d3）。gauge 12 + radar 5 全部 `ok`。
+本轮相对此前分波记录的变化：`scatter-weibo` 与 `map-usa-projection` 现为 `ok`（后者在 CDN `d3-geo` 可加载时 `d3.geoAlbersUsa` 可用；不在 env 里假实现 d3）。gauge 12 + radar 5 全部 `ok`。
 
 SVG 地图源仍未实现（`geo-svg-*` / `geo-beef-cuts` 等 probe 判 `ok` 因 `setOption` 不抛，底图为空）。`map: 'china'` / `'world'` 未预注册（`geo-lines` / `lines-airline` 等同样 `ok`、底图空）。graphic 描边/波浪/loading 因动画终态会跳到最后一帧。
 
-`$` 宿主有 `get` / `getJSON` / `getScript` / `when`。不在 runtime 里假实现 `bmap` / `ecStat`。缺官方实例方法改为同名导出 + `console.warn`，避免 `xxx is not a function`。
+`$` 宿主有 `get` / `getJSON` / `getScript` / `when`。不在 `official-env.js` 里假实现 `bmap` / `ecStat`。缺官方实例方法改为同名导出 + `console.warn`，避免 `xxx is not a function`。
 
 画廊 catalog 条数（含跨组重复，gallery 按先声明组去重）：折线 40、柱状 46、饼图 19、散点 36、K 线 10、盒须 4、热力 7、象形柱 8、仪表盘 12、雷达 5、漏斗 4、和弦 4、旭日 7、树图 7、矩形树 7、关系图 13、桑基 7、主题河流 2、日历 9、矩阵 14、平行坐标 4、地图 25、地理 1、路径图 5、自定义系列 20、数据集 9、图形组件 5。
 
@@ -937,7 +937,7 @@ import initWasm, { init, registerFont } from '@wasm-echarts';
 
 再 `await initWasm()` → `registerFont` → `init(canvas)` + `setOption`。native `EChartsInstance` 仍从 facade 再导出，仅兼容旧路径，不要当公开 API。
 3. 每个实例是独立完整脚本：`site/echarts/examples/line.js` 等同名 HTML 成对出现（`<canvas id="canvas">`）；自写示例内联 `fetch` + `registerFont`（与 zrender `text.js` 相同）
-4. 画廊 `gallery.js` 用 Vite `?raw` / `import.meta.glob` 读这些 `.js` 作为左侧源码，iframe 加载同目录 HTML 预览。echarts 画廊是二级菜单：第一层为图形类别，第二层为该类别下的示例。分组顺序与自写条目在 [`official-gallery-meta.js`](wasm-echarts-rs/site/src/echarts/official-gallery-meta.js)；官网同步条目来自 `official-{category}-catalog.js`（无 catalog 且无自写示例的类不出现空菜单）。已同步：折线 40、柱状 46、饼图 19、散点 36、K 线 10、盒须 4、热力 7、象形柱 8、仪表盘 12、雷达 5、漏斗 4、和弦 4、旭日 7、树图 7、矩形树 7、关系图 13、桑基 7、主题河流 2、日历 9、矩阵 14、平行坐标 4、地图 25、地理 1、路径图 5、自定义系列 20、数据集 9、图形组件 5。官网脚本经 `src/echarts/official-runtime.js` 注入 `myChart` / `option` / `ROOT_PATH` / `CDN_PATH` / `$`（含 `get` / `getJSON` / `getScript` / `when`），**不补齐未实现 echarts API**，报错显示在预览层。数据文件在 `public/echarts-official/`。按类拉取：`node scripts/sync-official-examples.mjs --category scatter --local-dir <echarts-examples 根目录>`（`--local-dir` / `ECHARTS_EXAMPLES_DIR` 优先读本地 `public/`，避免官网大文件超时）；探测：`node scripts/probe-official-examples.mjs`（省略 `--category` 即全量；`--out file.json` 写报告；需已启动 Vite；单例超过 40s 判 timeout 并换浏览器进程）。旧文件名 `sync-official-line-examples.mjs` / `probe-official-line.mjs` 转发到 `--category line`。交互合集下挂 interactive / merge / bench。zrender 画廊仍用扁平 `examples`。
+4. 画廊 `gallery.js` 用 Vite `?raw` / `import.meta.glob` 读这些 `.js` 作为左侧源码，iframe 加载同目录 HTML 预览。echarts 画廊是二级菜单：第一层为图形类别，第二层为该类别下的示例。分组顺序与自写条目在 [`official-gallery-meta.js`](wasm-echarts-rs/site/src/echarts/official-gallery-meta.js)；官网同步条目来自 `official-{category}-catalog.js`（无 catalog 且无自写示例的类不出现空菜单）。已同步：折线 40、柱状 46、饼图 19、散点 36、K 线 10、盒须 4、热力 7、象形柱 8、仪表盘 12、雷达 5、漏斗 4、和弦 4、旭日 7、树图 7、矩形树 7、关系图 13、桑基 7、主题河流 2、日历 9、矩阵 14、平行坐标 4、地图 25、地理 1、路径图 5、自定义系列 20、数据集 9、图形组件 5。官网同步脚本自己 `initWasm` → `ensureDefaultFont` → `echarts.init(canvas)` → `setOption`；[`official-env.js`](wasm-echarts-rs/site/src/echarts/official-env.js) 只提供 `ROOT_PATH` / `CDN_PATH` / `$`（含 `get` / `getJSON` / `getScript` / `when`）与 `app` / `sizeCanvas` / `showPreviewError`，**不创建图表、不补齐未实现 echarts API**，报错显示在预览层。数据文件在 `public/echarts-official/`。按类拉取：`node scripts/sync-official-examples.mjs --category scatter --local-dir <echarts-examples 根目录>`（`--local-dir` / `ECHARTS_EXAMPLES_DIR` 优先读本地 `public/`，避免官网大文件超时；已同步条目改模板用 `--rewrite-existing`）；探测：`node scripts/probe-official-examples.mjs`（看 canvas 是否画出像素与 `.preview-error`；省略 `--category` 即全量；`--out file.json` 写报告；需已启动 Vite；单例超过 40s 判 timeout 并换浏览器进程）。旧文件名 `sync-official-line-examples.mjs` / `probe-official-line.mjs` 转发到 `--category line`。交互合集下挂 interactive / merge / bench。zrender 画廊仍用扁平 `examples`。
 5. 页面：自写 line / fonts / bar / pie / scatter / interactive / merge / bench，外加已同步的官网 catalog（折线 40 + 柱状 46 + 饼图 19 + 散点 36 + K 线 10 + 盒须 4 + 热力 7 + 象形柱 8 + 仪表盘 12 + 雷达 5 + 漏斗 4 + 和弦 4 + 旭日 7 + 树图 7 + 矩形树 7 + 关系图 13 + 桑基 7 + 主题河流 2 + 日历 9 + 矩阵 14 + 平行坐标 4 + 地图 25 + 地理 1 + 路径图 5 + 自定义系列 20 + 数据集 9 + 图形组件 5）。第 8.9 波去重全量 probe 281/296 `ok`。
 
 ---
@@ -959,7 +959,7 @@ site/
 ├── src/
 │   ├── shared/                # 布局 CSS、画廊 UI、源码高亮
 │   ├── zrender/fonts.js       # 可选：字体加载辅助
-│   └── echarts/               # ensureDefaultFont、官网示例宿主 official-runtime.js、official-gallery-meta.js
+│   └── echarts/               # ensureDefaultFont、官网薄环境 official-env.js、official-gallery-meta.js
 ├── zrender/
 │   ├── index.html
 │   ├── docs/index.html

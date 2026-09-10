@@ -1,5 +1,5 @@
 /**
- * 在已启动的 Vite 上逐个打开官网同步示例，采集 window.__OFFICIAL_EXAMPLE_RESULT__。
+ * 在已启动的 Vite 上逐个打开官网同步示例，看 canvas 是否画出像素与 `.preview-error`。
  *
  * 用法：
  *   node scripts/probe-official-examples.mjs --category line
@@ -161,19 +161,68 @@ async function probeOne(page, baseUrl, item) {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.waitForFunction(
       () => {
-        const result = window.__OFFICIAL_EXAMPLE_RESULT__;
-        return result && result.status && result.status !== 'pending';
+        if (document.querySelector('.preview-error')?.textContent) return true;
+        const canvas = document.getElementById('canvas');
+        if (!canvas?.width || !canvas?.height) return false;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return false;
+        const { width, height } = canvas;
+        const data = ctx.getImageData(0, 0, width, height).data;
+        const step = Math.max(1, Math.floor(Math.min(width, height) / 64));
+        for (let y = 0; y < height; y += step) {
+          for (let x = 0; x < width; x += step) {
+            if (data[(y * width + x) * 4 + 3] > 8) return true;
+          }
+        }
+        return false;
       },
       { timeout: 20000 },
     ).catch(() => {});
     await new Promise((resolve) => setTimeout(resolve, 3500));
-    const result = await page.evaluate(() => window.__OFFICIAL_EXAMPLE_RESULT__ || null);
-    const overlay = await page.evaluate(() => document.querySelector('.preview-error')?.textContent || '');
+    const snapshot = await page.evaluate(() => {
+      const overlay = document.querySelector('.preview-error')?.textContent || '';
+      const canvas = document.getElementById('canvas');
+      if (!canvas?.width || !canvas?.height) {
+        return { overlay, painted: false };
+      }
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        return { overlay, painted: false };
+      }
+      const { width, height } = canvas;
+      const data = ctx.getImageData(0, 0, width, height).data;
+      const step = Math.max(1, Math.floor(Math.min(width, height) / 64));
+      for (let y = 0; y < height; y += step) {
+        for (let x = 0; x < width; x += step) {
+          if (data[(y * width + x) * 4 + 3] > 8) {
+            return { overlay, painted: true };
+          }
+        }
+      }
+      return { overlay, painted: false };
+    });
+    const overlay = snapshot.overlay || '';
+    if (overlay || pageErrors.length) {
+      return {
+        id: item.id,
+        title: item.title,
+        status: 'error',
+        error: overlay || pageErrors[0],
+      };
+    }
+    if (snapshot.painted) {
+      return {
+        id: item.id,
+        title: item.title,
+        status: 'ok',
+        error: '',
+      };
+    }
     return {
       id: item.id,
       title: item.title,
-      status: result?.status || (overlay || pageErrors.length ? 'error' : 'timeout'),
-      error: result?.error || overlay || pageErrors[0] || (result ? '' : '等待结果超时'),
+      status: 'timeout',
+      error: '等待结果超时',
     };
   } finally {
     page.off('pageerror', onPageError);

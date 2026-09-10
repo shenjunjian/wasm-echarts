@@ -3,66 +3,79 @@
  * https://echarts.apache.org/examples/zh/editor.html?c=tree-vertical
  * 未实现的官方 API 保持报错，不在本文件里补齐。
  */
-import { runOfficialExample } from '../../src/echarts/official-runtime.js';
+import initWasm, * as echarts from '@wasm-echarts';
+import { ROOT_PATH, CDN_PATH, $, app, sizeCanvas, showPreviewError } from '../../src/echarts/official-env.js';
+import { ensureDefaultFont } from '../../src/echarts/fonts.js';
 
-runOfficialExample(async ({ echarts, myChart, ROOT_PATH, CDN_PATH, $, app }) => {
+async function main() {
+  await initWasm();
+  await ensureDefaultFont();
+
+  const canvas = document.getElementById('canvas');
+  if (!canvas) {
+    throw new Error('缺少 #canvas');
+  }
+  sizeCanvas(canvas);
+  const myChart = echarts.init(canvas);
+  window.addEventListener('resize', () => {
+    if (myChart.isDisposed()) return;
+    sizeCanvas(canvas);
+    myChart.resize();
+  });
+
   let option;
-  try {
-    /*
-    title: From Top to Bottom Tree
-    category: tree
-    titleCN: 从上到下树状图
-    */
-    myChart.showLoading();
-    $.get(ROOT_PATH + '/data/asset/data/flare.json', function (data) {
-      myChart.hideLoading();
-      myChart.setOption(
-        (option = {
-          tooltip: {
-            trigger: 'item',
-            triggerOn: 'mousemove'
-          },
-          series: [
-            {
-              type: 'tree',
-              data: [data],
-              left: '2%',
-              right: '2%',
-              top: '8%',
-              bottom: '20%',
-              symbol: 'emptyCircle',
-              orient: 'vertical',
-              expandAndCollapse: true,
+  /*
+  title: From Top to Bottom Tree
+  category: tree
+  titleCN: 从上到下树状图
+  */
+  myChart.showLoading();
+  $.get(ROOT_PATH + '/data/asset/data/flare.json', function (data) {
+    myChart.hideLoading();
+    myChart.setOption(
+      (option = {
+        tooltip: {
+          trigger: 'item',
+          triggerOn: 'mousemove'
+        },
+        series: [
+          {
+            type: 'tree',
+            data: [data],
+            left: '2%',
+            right: '2%',
+            top: '8%',
+            bottom: '20%',
+            symbol: 'emptyCircle',
+            orient: 'vertical',
+            expandAndCollapse: true,
+            label: {
+              position: 'top',
+              rotate: -90,
+              verticalAlign: 'middle',
+              align: 'right',
+              fontSize: 9
+            },
+            leaves: {
               label: {
-                position: 'top',
+                position: 'bottom',
                 rotate: -90,
                 verticalAlign: 'middle',
-                align: 'right',
-                fontSize: 9
-              },
-              leaves: {
-                label: {
-                  position: 'bottom',
-                  rotate: -90,
-                  verticalAlign: 'middle',
-                  align: 'left'
-                }
-              },
-              animationDurationUpdate: 750
-            }
-          ]
-        })
-      );
-    });
-    return option;
-  } catch (error) {
-    if (option) {
-      try {
-        myChart.setOption(option);
-      } catch {
-        // 保留原始错误
-      }
-    }
-    throw error;
+                align: 'left'
+              }
+            },
+            animationDurationUpdate: 750
+          }
+        ]
+      })
+    );
+  });
+  if (option) {
+    myChart.setOption(option);
   }
+}
+
+main().catch((error) => {
+  showPreviewError(error);
+  console.error(error);
 });
