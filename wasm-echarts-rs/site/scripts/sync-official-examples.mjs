@@ -34,6 +34,17 @@ const FETCH_TIMEOUT_MS = 20000;
 
 const KNOWN_CATEGORIES = new Set(OFFICIAL_CATEGORY_GROUPS.map((g) => g.category));
 
+/**
+ * 主线程会卡死的大数据示例：facade `useWorker`。
+ * 仅收录 option 可结构化克隆的条目（无 formatter / renderItem 等函数）。
+ */
+export const WORKER_EXAMPLE_IDS = new Set([
+  'bar-large',
+  'scatter-large',
+  'candlestick-large',
+  'parallel-nutrients',
+]);
+
 export function parseArgs(argv) {
   const categories = [];
   let listOnly = false;
@@ -181,6 +192,13 @@ function filterExamples(all, category) {
 
 export function wrapOfficialSource(id, title, officialSource) {
   const body = normalizeOptionBinding(officialSource.trim());
+  const useWorker = WORKER_EXAMPLE_IDS.has(id);
+  const initCall = useWorker
+    ? 'echarts.init(canvas, null, { useWorker: true })'
+    : 'echarts.init(canvas)';
+  const setOptionCall = useWorker
+    ? 'await myChart.setOption(option)'
+    : 'myChart.setOption(option)';
   return `/**
  * 官网示例：${title}
  * https://echarts.apache.org/examples/zh/editor.html?c=${id}
@@ -199,7 +217,7 @@ async function main() {
     throw new Error('缺少 #canvas');
   }
   sizeCanvas(canvas);
-  const myChart = echarts.init(canvas);
+  const myChart = ${initCall};
   window.addEventListener('resize', () => {
     if (myChart.isDisposed()) return;
     sizeCanvas(canvas);
@@ -209,7 +227,7 @@ async function main() {
   let option;
 ${indent(body, 2)}
   if (option) {
-    myChart.setOption(option);
+    ${setOptionCall};
   }
 }
 

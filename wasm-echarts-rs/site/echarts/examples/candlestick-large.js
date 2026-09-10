@@ -16,7 +16,7 @@ async function main() {
     throw new Error('缺少 #canvas');
   }
   sizeCanvas(canvas);
-  const myChart = echarts.init(canvas);
+  const myChart = echarts.init(canvas, null, { useWorker: true });
   window.addEventListener('resize', () => {
     if (myChart.isDisposed()) return;
     sizeCanvas(canvas);
@@ -221,7 +221,7 @@ async function main() {
     }
   }
   if (option) {
-    myChart.setOption(option);
+    await myChart.setOption(option);
   }
 }
 

@@ -10,7 +10,7 @@ todos:
     status: completed
   - id: worker-large-examples
     content: 仅 bar-large / scatter-large 等卡死例开 useWorker，验证不再页面无响应
-    status: pending
+    status: completed
   - id: docs-agent
     content: AGENT.md 写清独立示例写法、useWorker、function option 限制、option 不用 SAB、仅回图可用 SAB
     status: pending
