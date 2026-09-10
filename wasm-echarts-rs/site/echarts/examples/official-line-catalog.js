@@ -1,5 +1,6 @@
-/** 由 scripts/sync-official-line-examples.mjs 生成，勿手改 */
-export const officialLineExamples = [
+/** 由 scripts/sync-official-examples.mjs --category line 生成，勿手改 */
+export const officialCategory = 'line';
+export const officialExamples = [
   {
     "id": "line-simple",
     "title": "基础折线图",

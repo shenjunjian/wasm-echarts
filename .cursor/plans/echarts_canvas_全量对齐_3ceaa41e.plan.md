@@ -26,8 +26,35 @@ todos:
   - id: wave7-ext
     content: 第 7 波：扩展注册真表、LabelLayout/AxisBreak/media；UniversalTransition 终态
     status: completed
-  - id: wave8-docs-probe
-    content: 第 8 波：官网画廊按类同步 + probe；文档四块与源码一致
+  - id: wave8-infra
+    content: 第 8.0 波：通用 sync/probe；gallery 按 official-*-catalog 自动挂组（本轮不同步新类）
+    status: completed
+  - id: wave8-bar-pie
+    content: 第 8.1 波：同步官网 bar + pie，probe，失败写入文档；不改官方 option
+    status: pending
+  - id: wave8-scatter
+    content: 第 8.2 波：同步官网 scatter，probe，失败写入文档
+    status: pending
+  - id: wave8-cartesian-extra
+    content: 第 8.3 波：candlestick / boxplot / heatmap / pictorialBar
+    status: pending
+  - id: wave8-gauge-radar
+    content: 第 8.4 波：gauge / radar
+    status: pending
+  - id: wave8-layout
+    content: 第 8.5 波：funnel / chord / sunburst / tree / treemap / graph / sankey / themeRiver
+    status: pending
+  - id: wave8-coords-extra
+    content: 第 8.6 波：calendar / matrix / parallel
+    status: pending
+  - id: wave8-map
+    content: 第 8.7 波：map / geo / lines
+    status: pending
+  - id: wave8-custom
+    content: 第 8.8 波：custom / dataset / graphic
+    status: pending
+  - id: wave8-docs-gate
+    content: 第 8.9 波：全量 probe 表、getZr 说明、文档四块与源码一致
     status: pending
 isProject: false
 ---
@@ -118,7 +145,7 @@ zrender 文档站与 echarts 文档站可以同时存在两份 WASM；**同一�
 - **pie**：`roseType`、label 避让最小集、`selectedMode`
 - **scatter**：`large`（终态一次性画完）、其余 symbol
 
-验收：重跑 [`probe-official-line.mjs`](wasm-echarts-rs/site/scripts/probe-official-line.mjs) 对 40 例；视觉缺口写入文档而不是在示例里 workaround。
+验收：重跑 [`probe-official-examples.mjs --category line`](wasm-echarts-rs/site/scripts/probe-official-examples.mjs) 对 40 例；视觉缺口写入文档而不是在示例里 workaround。
 
 ### 第 4 波：canvas 组件
 
@@ -152,11 +179,22 @@ zrender 文档站与 echarts 文档站可以同时存在两份 WASM；**同一�
 
 `registerPreprocessor` / `Processor` / `Layout` / `Visual` / `Action` / `CoordinateSystem` / `CustomSeries` 做成真表，不再只 `console.warn`。`LabelLayout`、`AxisBreak`、`ScatterJitter` 按 canvas 终态做。`UniversalTransition` 只跳终态并文档标明。`media` 按宽度切 option。
 
-### 第 8 波：文档与验收门禁
+### 第 8 波：官网画廊按类同步（拆成 8.0–8.9）
 
-- 官网画廊按图类同步（折线已有 [`official-line-catalog.js`](wasm-echarts-rs/site/echarts/examples/official-line-catalog.js)，其它类复用同一套 runtime + probe）。
-- 验收：**脚本不因缺 API 抛错** + **iframe 出图** + 文档表与源码一致。不在示例里补齐未实现 API。
-- `getZr` 文档写清：返回 wasm-zrender 实例、无 SVG painter / hover layer、动画终态。
+官网 `chart-list-data.js` 去掉 `doc-example/` 后约 297 条（折线已同步 40 条）。**不要一轮拉完全部。** 每轮可独立合并。能力补在库里，不改官方 option、不在 `official-runtime.js` 里假实现。
+
+每类轮次的完成标准：该类 catalog 进画廊 + probe 跑完 + 失败原因写入文档四块。不要求该类 100% 出图才能合并。共享缺 API 可顺手补；单例视觉缺口留到文档。
+
+- **8.0 基建（本轮不同步新类）**：[`sync-official-examples.mjs`](wasm-echarts-rs/site/scripts/sync-official-examples.mjs) `--category`；[`probe-official-examples.mjs`](wasm-echarts-rs/site/scripts/probe-official-examples.mjs)；[`gallery.js`](wasm-echarts-rs/site/echarts/examples/gallery.js) 按 `official-*-catalog.js` 自动挂组，空 catalog 不出现空菜单。多类交叉的示例只出现在先声明的那一组。
+- **8.1** bar + pie
+- **8.2** scatter
+- **8.3** candlestick / boxplot / heatmap / pictorialBar
+- **8.4** gauge / radar
+- **8.5** funnel / chord / sunburst / tree / treemap / graph / sankey / themeRiver
+- **8.6** calendar / matrix / parallel
+- **8.7** map / geo / lines（静态资源多，放后面）
+- **8.8** custom / dataset / graphic
+- **8.9 收口**：全量 probe 表；`getZr` 文档写清返回 wasm-zrender 实例、无 SVG painter / hover layer、动画终态；文档四块与源码一致。这里才处理「尽量不因缺 API 抛错」的总账。
 
 ## 刻意不进「已对齐」的条目（须出现在未实现/例外表）
 

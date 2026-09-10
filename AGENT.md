@@ -916,8 +916,8 @@ import initWasm, { init, registerFont } from '@wasm-echarts';
 
 再 `await initWasm()` → `registerFont` → `init(canvas)` + `setOption`。native `EChartsInstance` 仍从 facade 再导出，仅兼容旧路径，不要当公开 API。
 3. 每个实例是独立完整脚本：`site/echarts/examples/line.js` 等同名 HTML 成对出现（`<canvas id="canvas">`）；自写示例内联 `fetch` + `registerFont`（与 zrender `text.js` 相同）
-4. 画廊 `gallery.js` 用 Vite `?raw` / `import.meta.glob` 读这些 `.js` 作为左侧源码，iframe 加载同目录 HTML 预览。echarts 画廊是二级菜单：`groups` 第一层为图形类别（折线 / 柱状 / 饼图 / 散点 / 交互合集），第二层为该类别下的示例。折线图除自写 `line` / `fonts` 外，同步官网 `#chart-type-line` 全部 40 条（`official-line-catalog.js`）；官网脚本经 `src/echarts/official-runtime.js` 注入 `myChart` / `option` / `ROOT_PATH` / `$`，**不补齐未实现 API**，报错显示在预览层。数据文件在 `public/echarts-official/`。可用 `site/scripts/sync-official-line-examples.mjs` 重新拉取。交互合集下挂 interactive / merge / bench。zrender 画廊仍用扁平 `examples`。
-5. 页面：line / fonts / 官网折线 40 条 / bar / pie / scatter / interactive / merge / bench
+4. 画廊 `gallery.js` 用 Vite `?raw` / `import.meta.glob` 读这些 `.js` 作为左侧源码，iframe 加载同目录 HTML 预览。echarts 画廊是二级菜单：第一层为图形类别，第二层为该类别下的示例。分组顺序与自写条目在 [`official-gallery-meta.js`](wasm-echarts-rs/site/src/echarts/official-gallery-meta.js)；官网同步条目来自 `official-{category}-catalog.js`（无 catalog 且无自写示例的类不出现空菜单）。折线图除自写 `line` / `fonts` 外，已同步官网 `#chart-type-line` 全部 40 条。官网脚本经 `src/echarts/official-runtime.js` 注入 `myChart` / `option` / `ROOT_PATH` / `$`，**不补齐未实现 API**，报错显示在预览层。数据文件在 `public/echarts-official/`。按类拉取：`node scripts/sync-official-examples.mjs --category bar`；探测：`node scripts/probe-official-examples.mjs --category bar`（需已启动 Vite）。旧文件名 `sync-official-line-examples.mjs` / `probe-official-line.mjs` 转发到 `--category line`。交互合集下挂 interactive / merge / bench。zrender 画廊仍用扁平 `examples`。
+5. 页面：自写 line / fonts / bar / pie / scatter / interactive / merge / bench，外加已同步的官网 catalog（目前折线 40 条；第 8.1 波起按类增加）
 
 ---
 
@@ -938,7 +938,7 @@ site/
 ├── src/
 │   ├── shared/                # 布局 CSS、画廊 UI、源码高亮
 │   ├── zrender/fonts.js       # 可选：字体加载辅助
-│   └── echarts/               # ensureDefaultFont、官网示例宿主 official-runtime.js
+│   └── echarts/               # ensureDefaultFont、官网示例宿主 official-runtime.js、official-gallery-meta.js
 ├── zrender/
 │   ├── index.html
 │   ├── docs/index.html
@@ -952,7 +952,7 @@ site/
     ├── docs/index.html
     └── examples/              # 每个示例 = html + 完整 js
         ├── gallery.js
-        ├── official-line-catalog.js
+        ├── official-line-catalog.js   # 第 8.0 起：official-{category}-catalog.js
         ├── line.html / line.js
         ├── line-simple.html / line-simple.js  # 官网折线…
         └── …
@@ -986,7 +986,7 @@ site/
 |------|----|--------|
 | 折线图 | line | ChartView line |
 | 折线图 | fonts | 多 `registerFont` + title / legend / 轴名称 `fontFamily` |
-| 折线图 | 官网 40 条 | 同步 [echarts 折线示例](https://echarts.apache.org/examples/zh/index.html#chart-type-line)；缺能力则预览报错，不在示例里补实现 |
+| 折线图 | 官网 40 条 | 同步 [echarts 折线示例](https://echarts.apache.org/examples/zh/index.html#chart-type-line)；缺能力则预览报错，不在示例里补实现。其它图类按 canvas 全量对齐计划 8.1–8.8 同步，catalog 一经生成即自动进画廊 |
 | 柱状图 | bar | ChartView bar |
 | 饼图 | pie | ChartView pie |
 | 散点图 | scatter | ChartView scatter |
@@ -1170,7 +1170,7 @@ npm run dev
 - 第 5 波（已落地）：polar / radar / singleAxis / parallel / calendar / matrix / geo
 - 第 6 波（已落地）：其余官方图表 + `custom` `renderItem`/`api`；feature 默认全开
 - 第 7 波（已落地）：扩展注册真表、`labelLayout`、`axis.breaks`、`axis.jitter`、`option.media`；UniversalTransition 终态
-- 第 8 波：官网画廊按类同步 + probe
+- 第 8 波（拆成 8.0–8.9，见 canvas 全量对齐计划）：官网画廊按类同步 + probe。8.0 基建已落地（通用 sync/probe、gallery 按 catalog 自动挂组）；8.1 起按 bar/pie → scatter → … → custom/dataset/graphic；8.9 全量 probe 与文档收口。每类不要求 100% 出图才合并，失败写入文档四块。
 - 视觉回归（echarts `test/*.html` → golden PNG）；JS vs WASM 基准报告
 
 ### 明确不做
