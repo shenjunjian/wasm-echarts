@@ -7,6 +7,25 @@ pub enum SeriesType {
     Bar,
     Pie,
     Scatter,
+    Radar,
+    Map,
+    Tree,
+    Treemap,
+    Graph,
+    Chord,
+    Gauge,
+    Funnel,
+    Parallel,
+    Sankey,
+    Boxplot,
+    Candlestick,
+    EffectScatter,
+    Lines,
+    Heatmap,
+    PictorialBar,
+    ThemeRiver,
+    Sunburst,
+    Custom,
     Other,
 }
 
@@ -51,6 +70,25 @@ impl SeriesType {
             "bar" => SeriesType::Bar,
             "pie" => SeriesType::Pie,
             "scatter" => SeriesType::Scatter,
+            "radar" => SeriesType::Radar,
+            "map" => SeriesType::Map,
+            "tree" => SeriesType::Tree,
+            "treemap" => SeriesType::Treemap,
+            "graph" => SeriesType::Graph,
+            "chord" => SeriesType::Chord,
+            "gauge" => SeriesType::Gauge,
+            "funnel" => SeriesType::Funnel,
+            "parallel" => SeriesType::Parallel,
+            "sankey" => SeriesType::Sankey,
+            "boxplot" => SeriesType::Boxplot,
+            "candlestick" => SeriesType::Candlestick,
+            "effectScatter" => SeriesType::EffectScatter,
+            "lines" => SeriesType::Lines,
+            "heatmap" => SeriesType::Heatmap,
+            "pictorialBar" => SeriesType::PictorialBar,
+            "themeRiver" => SeriesType::ThemeRiver,
+            "sunburst" => SeriesType::Sunburst,
+            "custom" => SeriesType::Custom,
             _ => SeriesType::Other,
         }
     }
@@ -61,8 +99,54 @@ impl SeriesType {
             SeriesType::Bar => "bar",
             SeriesType::Pie => "pie",
             SeriesType::Scatter => "scatter",
+            SeriesType::Radar => "radar",
+            SeriesType::Map => "map",
+            SeriesType::Tree => "tree",
+            SeriesType::Treemap => "treemap",
+            SeriesType::Graph => "graph",
+            SeriesType::Chord => "chord",
+            SeriesType::Gauge => "gauge",
+            SeriesType::Funnel => "funnel",
+            SeriesType::Parallel => "parallel",
+            SeriesType::Sankey => "sankey",
+            SeriesType::Boxplot => "boxplot",
+            SeriesType::Candlestick => "candlestick",
+            SeriesType::EffectScatter => "effectScatter",
+            SeriesType::Lines => "lines",
+            SeriesType::Heatmap => "heatmap",
+            SeriesType::PictorialBar => "pictorialBar",
+            SeriesType::ThemeRiver => "themeRiver",
+            SeriesType::Sunburst => "sunburst",
+            SeriesType::Custom => "custom",
             SeriesType::Other => "other",
         }
+    }
+
+    pub fn is_cartesian_plot(self) -> bool {
+        matches!(
+            self,
+            SeriesType::Line
+                | SeriesType::Bar
+                | SeriesType::Scatter
+                | SeriesType::Candlestick
+                | SeriesType::Boxplot
+                | SeriesType::Heatmap
+                | SeriesType::PictorialBar
+                | SeriesType::EffectScatter
+                | SeriesType::Custom
+        )
+    }
+
+    pub fn uses_category_x_default(self) -> bool {
+        matches!(
+            self,
+            SeriesType::Line
+                | SeriesType::Bar
+                | SeriesType::Candlestick
+                | SeriesType::Boxplot
+                | SeriesType::PictorialBar
+                | SeriesType::ThemeRiver
+        )
     }
 }
 

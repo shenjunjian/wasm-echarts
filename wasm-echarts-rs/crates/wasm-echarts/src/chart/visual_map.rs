@@ -205,6 +205,45 @@ pub fn piecewise_hit(option: &OptionModel, data_index: i32) -> Option<(usize, us
     Some((vi, piece))
 }
 
+pub fn color_for_value(option: &OptionModel, series_index: usize, value: f64) -> Option<String> {
+    let vms = as_components(option.root().get("visualMap"));
+    if vms.is_empty() {
+        return None;
+    }
+    for vm in vms {
+        if !applies_to_series(vm, series_index) {
+            continue;
+        }
+        let ty = vm.get("type").and_then(|v| v.as_str()).unwrap_or("continuous");
+        let (min, max) = match (vm.get("min").and_then(|v| v.as_f64()), vm.get("max").and_then(|v| v.as_f64())) {
+            (Some(a), Some(b)) => (a, b),
+            _ => (0.0, 1.0),
+        };
+        if ty == "piecewise" {
+            for (i, p) in pieces_of(vm, min, max).into_iter().enumerate() {
+                if p.matches(value) {
+                    if piece_selected(vm, i) {
+                        return Some(p.color);
+                    }
+                    return Some("#ccc".into());
+                }
+            }
+        } else {
+            let colors = in_range_colors(vm);
+            if colors.is_empty() {
+                continue;
+            }
+            let t = if (max - min).abs() < 1e-12 {
+                0.0
+            } else {
+                ((value - min) / (max - min)).clamp(0.0, 1.0)
+            };
+            return Some(lerp_colors(&colors, t));
+        }
+    }
+    None
+}
+
 pub fn map_color(
     option: &OptionModel,
     series_index: usize,
@@ -226,6 +265,8 @@ pub fn map_color(
             .unwrap_or(1.0) as usize;
         let value = if dim == 0 {
             point.x_value.unwrap_or(data_index as f64)
+        } else if series.series_type == crate::model::SeriesType::Heatmap {
+            raw_heatmap_value(&point.raw).unwrap_or(point.value)
         } else {
             point.value
         };
@@ -255,6 +296,22 @@ pub fn map_color(
         }
     }
     None
+}
+
+fn raw_heatmap_value(raw: &OptionValue) -> Option<f64> {
+    match raw {
+        OptionValue::Array(arr) if arr.len() >= 3 => {
+            crate::data::numeric_or_time(&arr[2]).or_else(|| arr[2].as_f64())
+        }
+        OptionValue::Object(obj) => obj.get("value").and_then(|v| match v {
+            OptionValue::Array(arr) if arr.len() >= 3 => {
+                crate::data::numeric_or_time(&arr[2]).or_else(|| arr[2].as_f64())
+            }
+            OptionValue::Number(n) => Some(*n),
+            _ => None,
+        }),
+        _ => None,
+    }
 }
 
 fn piece_selected(vm: &OptionValue, index: usize) -> bool {

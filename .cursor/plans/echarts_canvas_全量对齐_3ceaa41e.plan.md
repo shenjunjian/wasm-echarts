@@ -22,7 +22,7 @@ todos:
     status: completed
   - id: wave6-charts
     content: 第 6 波：其余 18 类图 + custom renderItem；默认 feature 全开
-    status: pending
+    status: completed
   - id: wave7-ext
     content: 第 7 波：扩展注册真表、LabelLayout/AxisBreak/media；UniversalTransition 终态
     status: pending

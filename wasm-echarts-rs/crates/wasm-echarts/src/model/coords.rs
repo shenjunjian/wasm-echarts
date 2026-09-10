@@ -102,10 +102,18 @@ pub fn option_index(comp: &OptionValue, key: &str) -> usize {
 }
 
 pub fn parse_coord_kind(series: &OptionValue, series_type: &str) -> CoordSysKind {
-    if series_type == "pie" {
-        return CoordSysKind::None;
+    if let Some(cs) = series.get("coordinateSystem").and_then(|v| v.as_str()) {
+        return CoordSysKind::from_option(Some(cs));
     }
-    CoordSysKind::from_option(series.get("coordinateSystem").and_then(|v| v.as_str()))
+    match series_type {
+        "pie" | "gauge" | "funnel" | "sunburst" | "tree" | "treemap" | "sankey" | "chord"
+        | "graph" => CoordSysKind::None,
+        "radar" => CoordSysKind::Radar,
+        "map" | "lines" => CoordSysKind::Geo,
+        "parallel" => CoordSysKind::Parallel,
+        "themeRiver" => CoordSysKind::Single,
+        _ => CoordSysKind::Cartesian,
+    }
 }
 
 pub fn parse_layout_rect(

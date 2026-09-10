@@ -21,6 +21,10 @@ impl<'a> VisualContext<'a> {
         Self { option, model }
     }
 
+    pub fn option(&self) -> &'a OptionModel {
+        self.option
+    }
+
     pub fn series_option(&self, series_index: usize) -> Option<&OptionValue> {
         self.option
             .root()

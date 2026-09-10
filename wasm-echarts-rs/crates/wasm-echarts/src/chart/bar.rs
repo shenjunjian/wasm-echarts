@@ -28,7 +28,9 @@ pub fn bar_column_layout(
         .series
         .iter()
         .filter(|s| {
-            s.series_type == SeriesType::Bar
+            (s.series_type == series.series_type
+                || (s.series_type == SeriesType::Bar && series.series_type == SeriesType::PictorialBar)
+                || (s.series_type == SeriesType::PictorialBar && series.series_type == SeriesType::Bar))
                 && s.x_axis_index == series.x_axis_index
                 && s.y_axis_index == series.y_axis_index
         })

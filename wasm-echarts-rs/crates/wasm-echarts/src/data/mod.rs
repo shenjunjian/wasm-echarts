@@ -38,7 +38,15 @@ pub fn build_series(
         .iter()
         .enumerate()
         .map(|(i, s)| {
-            let st = SeriesType::from_str(series_type_of(s));
+            let type_name = series_type_of(s);
+            let st = SeriesType::from_str(type_name);
+            if st == SeriesType::Other {
+                #[cfg(target_arch = "wasm32")]
+                web_sys::console::warn_1(&wasm_bindgen::JsValue::from_str(&format!(
+                    "[wasm-echarts] unrecognized series.type '{type_name}'"
+                )));
+                let _ = type_name;
+            }
             let x_axis_index = s
                 .get("xAxisIndex")
                 .and_then(|v| v.as_f64())
@@ -73,8 +81,7 @@ pub fn build_series(
                     .get(x_axis_index)
                     .map(|a| a.axis_type.is_category())
                     .unwrap_or(true)
-                    && st != SeriesType::Scatter
-                    && st != SeriesType::Pie;
+                    && st.uses_category_x_default();
                 let cursor = cursors.entry((table_index(&datasets, s), layout)).or_default();
                 let encode = if s.get("encode").is_some() {
                     parse_encode(table, s.get("encode"))

@@ -13,6 +13,8 @@ mod utils;
 mod visual;
 
 use wasm_bindgen::prelude::*;
+#[cfg(feature = "chart-custom")]
+pub use chart::CustomSeriesApi;
 pub use instance::EChartsInstance;
 pub use wasm_zrender::{
     clear_fonts, register_font, Animation, Animator, Arc, BezierCurve, BoundingRect, Circle,

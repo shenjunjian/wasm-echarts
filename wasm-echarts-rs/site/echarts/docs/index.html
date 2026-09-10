@@ -269,7 +269,7 @@ chart.on('click', (params) => {
         <tbody>
           <tr>
             <td>图表</td>
-            <td>line / bar / pie / scatter（feature flag 写死在 rust，不是 <code>echarts.use(BarChart)</code>）</td>
+            <td>官方 <code>export/charts.ts</code> 23 种（含 chord）均已接线 canvas 终态；feature 默认全开，不是 <code>echarts.use(BarChart)</code></td>
           </tr>
           <tr>
             <td>cartesian</td>
@@ -300,6 +300,10 @@ chart.on('click', (params) => {
             <td>双 value 轴；也可挂 polar / geo / calendar / single / matrix；<code>symbol</code> 与 <code>symbolSize</code>；<code>large</code> 且点数 ≥ <code>largeThreshold</code> 时终态一次画完、不挂 emphasis、不画 label</td>
           </tr>
           <tr>
+            <td>第 6 波图表</td>
+            <td><code>radar</code>（蛛网 Polygon）/ <code>gauge</code>（轴环+指针终态）/ <code>candlestick</code> / <code>boxplot</code> / <code>heatmap</code>（cartesian/calendar/matrix/geo 上色）/ <code>pictorialBar</code> / <code>effectScatter</code>（ripple 同心圆终态）/ <code>funnel</code> / <code>tree</code> / <code>treemap</code> / <code>sunburst</code> / <code>graph</code> / <code>chord</code> / <code>sankey</code> / <code>themeRiver</code> / <code>map</code> / <code>lines</code> / <code>parallel</code> / <code>custom</code>（<code>renderItem</code> + <code>api.coord</code>/<code>size</code>/<code>style</code>/<code>value</code>）</td>
+          </tr>
+          <tr>
             <td>轴</td>
             <td>轴标签 Text；<code>axisLabel.formatter</code>（函数或 <code>{value}</code> 模板）；<code>xAxis.name</code> / <code>yAxis.name</code>；polar / radar / singleAxis / parallel / calendar / matrix / geo 底图</td>
           </tr>
@@ -317,7 +321,7 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td>CallbackDataParams</td>
-            <td><code>componentType</code> / <code>seriesType</code> / <code>percent</code>（pie）/ <code>data</code></td>
+            <td><code>componentType</code> / <code>seriesType</code> / <code>percent</code>（pie）/ <code>data</code>；custom <code>renderItem</code> 另收 <code>api.coord</code>/<code>size</code>/<code>style</code>/<code>value</code></td>
           </tr>
           <tr>
             <td>交互</td>
@@ -342,14 +346,14 @@ chart.on('click', (params) => {
       <p>下列官方入口已导出同名，内部只 <code>console.warn</code>：<code>registerLocale</code> / <code>setPlatformAPI</code> / <code>registerPreprocessor</code>。</p>
       <p>实例上尚未做完：<code>convertToLayout</code> / <code>getVisual</code>。</p>
       <ul>
-        <li>Charts：Radar、Map、Gauge、Funnel、Heatmap、Custom <code>renderItem</code> 等其余类型。坐标系已画，对应 series 归第 6 波。未接线的 <code>series.type</code> 不得静默忽略后永远不管。</li>
+        <li>Charts：未识别的 <code>series.type</code> 会 <code>console.warn</code>（不再静默当 Other）。已接线图表相对官方仍有简化（force 不迭代、桑基非完整节点平衡、tree 非 tidy、chord 用贝塞尔而非丝带、pictorialBar 非全部 symbolClip）。</li>
         <li>Components：geo roam / SVG 地图源。toolbox DataView DOM / SaveAsImage 下载条明确不做。</li>
         <li>Actions：geo roam 等</li>
         <li>media query</li>
         <li>option 名字在但未按官方做：<code>smoothMonotone</code>、pie 完整 <code>avoidLabelOverlap</code>、色板不是官方 palette 全套</li>
         <li>tooltip HTMLElement formatter / <code>confine</code> / <code>renderMode: 'richText'</code></li>
       </ul>
-      <p>官网折线 40 例：第 5 波已接 polar 与 y 类目轴对调。仍可能有视觉缺口（不在示例里 workaround）：<code>smoothMonotone</code>。</p>
+      <p>官网折线 40 例：第 5 波已接 polar 与 y 类目轴对调。第 6 波已接线其余官方图表与 custom <code>renderItem</code>。仍可能有视觉缺口（不在示例里 workaround）：<code>smoothMonotone</code>、force 布局不迭代等。</p>
     </div>
 
     <div class="doc-section">

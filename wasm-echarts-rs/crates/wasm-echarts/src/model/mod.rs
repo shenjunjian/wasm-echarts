@@ -165,11 +165,7 @@ impl GlobalModel {
 
     pub fn has_cartesian_series(&self) -> bool {
         self.series.iter().any(|s| {
-            s.coord_sys.is_cartesian()
-                && matches!(
-                    s.series_type,
-                    SeriesType::Line | SeriesType::Bar | SeriesType::Scatter
-                )
+            s.coord_sys.is_cartesian() && s.series_type.is_cartesian_plot()
         })
     }
 
@@ -477,9 +473,7 @@ fn compute_y_extent_for(series: &[SeriesModel], axis_index: usize, axis_type: Ax
     let mut max = f64::NEG_INFINITY;
     for s in series.iter().filter(|s| s.y_axis_index == axis_index) {
         for p in &s.data {
-            let lo = p.stack_base.min(p.stacked_value);
-            let hi = p.stack_base.max(p.stacked_value);
-            for v in [lo, hi, p.value] {
+            for v in point_y_values(s, p) {
                 if !v.is_finite() {
                     continue;
                 }
@@ -492,6 +486,43 @@ fn compute_y_extent_for(series: &[SeriesModel], axis_index: usize, axis_type: Ax
         }
     }
     pad_extent(min, max, axis_type)
+}
+
+fn point_y_values(series: &SeriesModel, p: &DataPoint) -> Vec<f64> {
+    match series.series_type {
+        SeriesType::Candlestick | SeriesType::Boxplot => {
+            let nums = raw_finite_numbers(&p.raw);
+            if nums.len() >= 4 {
+                nums
+            } else {
+                vec![p.stack_base, p.stacked_value, p.value]
+            }
+        }
+        SeriesType::Heatmap => {
+            if let Some(arr) = p.raw.as_array() {
+                if let Some(v) = arr.get(1).and_then(|v| crate::data::numeric_or_time(v).or_else(|| v.as_f64())) {
+                    return vec![v];
+                }
+            }
+            vec![p.value]
+        }
+        _ => vec![p.stack_base, p.stacked_value, p.value],
+    }
+}
+
+fn raw_finite_numbers(raw: &OptionValue) -> Vec<f64> {
+    let arr = match raw {
+        OptionValue::Array(a) => a.as_slice(),
+        OptionValue::Object(obj) => match obj.get("value") {
+            Some(OptionValue::Array(a)) => a.as_slice(),
+            _ => return Vec::new(),
+        },
+        _ => return Vec::new(),
+    };
+    arr.iter()
+        .filter_map(|v| crate::data::numeric_or_time(v).or_else(|| v.as_f64()))
+        .filter(|n| n.is_finite())
+        .collect()
 }
 
 fn pad_extent(min: f64, max: f64, axis_type: AxisType) -> (f64, f64) {

@@ -14,11 +14,49 @@ default = [
     "chart-bar",
     "chart-pie",
     "chart-scatter",
+    "chart-radar",
+    "chart-gauge",
+    "chart-candlestick",
+    "chart-boxplot",
+    "chart-heatmap",
+    "chart-pictorial",
+    "chart-effect-scatter",
+    "chart-funnel",
+    "chart-chord",
+    "chart-sunburst",
+    "chart-tree",
+    "chart-treemap",
+    "chart-graph",
+    "chart-sankey",
+    "chart-theme-river",
+    "chart-map",
+    "chart-lines",
+    "chart-parallel",
+    "chart-custom",
 ]
 chart-line = []
 chart-bar = []
 chart-pie = []
 chart-scatter = []
+chart-radar = []
+chart-gauge = []
+chart-candlestick = []
+chart-boxplot = []
+chart-heatmap = []
+chart-pictorial = []
+chart-effect-scatter = []
+chart-funnel = []
+chart-chord = []
+chart-sunburst = []
+chart-tree = []
+chart-treemap = []
+chart-graph = []
+chart-sankey = []
+chart-theme-river = []
+chart-map = []
+chart-lines = []
+chart-parallel = []
+chart-custom = []
 
 [dependencies]
 rust-zrender = { path = "../rust-zrender" }

@@ -197,10 +197,10 @@ site 示例 JS（创建 canvas；`echarts.init` / `setOption`）
 | **2 后端补齐** | shadow、isPointInPath、r0、渐变/虚线/Image | **主体完成**。conic gradient、CSS filter **未做**（刻意忽略或待办） |
 | **3 交互基础** | Handler.findHover、ECData、emphasis/select | **已完成**。Path/Image/Text 均可命中 |
 | **4 JS 薄壳 + API 骨架** | init/setOption/resize/事件、`OptionValue` | **部分完成**。`js/` facade 已有 `init`/`setOption(option, notMerge\|opts)`/`getOption`/`resize`/`clear`/`dispose`/`use`/`on`/`off`；`init(canvas)` 绑指针并内建 string tooltip |
-| **4b 回调桥** | CallbackDataParams、call0/1/2 | **部分完成**。`formatter` / `itemStyle.color` / `axisLabel.formatter` / `symbolSize` 回调可用；params 含 `componentType`/`seriesType`/`percent`/`data`。`renderItem`/`api`、per-series 缓存 **未完成** |
+| **4b 回调桥** | CallbackDataParams、call0/1/2 | **部分完成**。`formatter` / `itemStyle.color` / `axisLabel.formatter` / `symbolSize` 回调可用；params 含 `componentType`/`seriesType`/`percent`/`data`。`renderItem` + `api.coord`/`size`/`style`/`value` 已接线（第 6 波）；per-series 缓存 **未完成** |
 | **5 echarts MVP** | GlobalModel、cartesian、line/bar、Scheduler | **部分完成**。line/bar 可渲染；`axisLabel.formatter`、`symbol`/`symbolSize`、`label.show`；`convertToPixel` 最小集。`replaceMerge` 仅为顶层 key；SeriesData/Source、media query **未完成** |
 | **6 交互完善** | hover/tooltip/dataZoom/axisPointer | **部分完成**。`init(canvas)` 绑指针；hover 高亮、`on('click')`、string tooltip DOM、`showTip`/`hideTip`、inside 滚轮 + slider 拖动手柄、十字 axisPointer、`tooltip.trigger: 'axis'`。pinch、HTMLElement tooltip **未完成** |
-| **7 扩展与优化** | pie/scatter、RichText、脏矩形、视觉回归 | **部分完成**。pie / scatter canvas option 族、轴标签 Text、title/legend（含点击筛选）、`fontFamily`、`benchmark_render`、feature flags；polar 等坐标系已接线（第 5 波）。gauge 等其余图表、RichText、脏矩形、golden PNG **未完成** |
+| **7 扩展与优化** | pie/scatter、RichText、脏矩形、视觉回归 | **部分完成**。官方 `export/charts.ts` 23 种图（含 chord）canvas 终态已接线（第 6 波）；RichText、脏矩形、golden PNG **未完成** |
 
 ### wasm-zrender API 规范对齐（波次 0–6 + 文档验收已完成）
 
@@ -244,9 +244,9 @@ dispose(zr);
 
 规范已写入上文「目标与约束」；逐项清单以 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](../.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md) 为权威。JS facade 骨架在 `crates/wasm-echarts/js/`：`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version` / `use`（只 `console.info`）。site / README 从 `@wasm-echarts`（`js/index.js`）导入，`pkg/` 只作内部 handle。示例走官方 `init(canvas)` + `setOption`；`init(canvas)` 后自动 `putImageData` 并绑定指针。波次 2：`setOption(option, notMerge | opts)`、`getOption`、`resize()` / `resize({ width, height, devicePixelRatio })`、`clear` = `setOption({ series: [] }, true)`；`notMerge` 只作第二参数，不再从 option 根读取。波次 3：`on`/`off` 发出 `click` / `mouseover` / `mouseout` / `globalout`；内建 string tooltip DOM；`dispatchAction` 接 `showTip` / `hideTip`。波次 4：`axisLabel.formatter` 进轴 Text；pie `center`/`radius`/`startAngle`/`clockwise`；line/scatter `symbol`/`symbolSize`；`label.show` 画 Text；CallbackDataParams 补 `componentType`/`seriesType`/`percent`/`data`；`convertToPixel`/`convertFromPixel` cartesian 最小集。波次 5：文档四块（一致 / 不一致 / 非官方 API / 已实现与未实现）已写入 `site/echarts/docs/index.html`、根 README、本文件；示例 line/bar/pie/scatter/interactive/merge/bench 全部走 `init`；interactive 用 `on('click')` + `use()` 提示，不必 `handlePointer*`；merge 覆盖深合并、`notMerge: true`、dispose 后再 init。公开用法是官方 `init` / `setOption` / `on`，不要把 native `EChartsInstance` / `set_option` / `handlePointerMove` 当公开 API。
 
-### wasm-echarts Canvas 全量对齐（第 0–5 波已落地）
+### wasm-echarts Canvas 全量对齐（第 0–6 波已落地）
 
-权威计划：[`.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md`](../.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md)。废止「不是一次移植完官方全量 API」以及把 `graphic`/`util`/面积/`getZr` 当永久后置的写法。[折线缺口补齐](../.cursor/plans/折线缺口补齐_96423c21.plan.md) 已废弃并入本计划。第 0 波改文档口径；第 1 波已落地单 WASM、`getZr`、公开命名空间与挡脚本的实例 API。第 2 波已落地 dataset / transform / encode / stack / sampling、多 grid / 轴、`time` / `log`。第 3 波已接线 line/bar/pie/scatter 的 canvas option 族。第 4 波已接线 legend 筛选、mark*、graphic、visualMap、slider、axisPointer、brush、timeline、toolbox。第 5 波已接线 polar / radar / singleAxis / parallel / calendar / matrix / geo 坐标系，line/bar/scatter 可挂 polar，y 类目轴横画，`registerMap` + `parseGeoJSON` 供 geo 出图。后续波次见该计划 YAML。
+权威计划：[`.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md`](../.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md)。废止「不是一次移植完官方全量 API」以及把 `graphic`/`util`/面积/`getZr` 当永久后置的写法。[折线缺口补齐](../.cursor/plans/折线缺口补齐_96423c21.plan.md) 已废弃并入本计划。第 0 波改文档口径；第 1 波已落地单 WASM、`getZr`、公开命名空间与挡脚本的实例 API。第 2 波已落地 dataset / transform / encode / stack / sampling、多 grid / 轴、`time` / `log`。第 3 波已接线 line/bar/pie/scatter 的 canvas option 族。第 4 波已接线 legend 筛选、mark*、graphic、visualMap、slider、axisPointer、brush、timeline、toolbox。第 5 波已接线 polar / radar / singleAxis / parallel / calendar / matrix / geo 坐标系。第 6 波已接线其余官方图表（radar/gauge/candlestick/boxplot/heatmap/pictorialBar/effectScatter/funnel/chord/sunburst/tree/treemap/graph/sankey/themeRiver/map/lines/parallel/custom）及 `renderItem` + `api`；Cargo feature **默认全开**。未识别的 `series.type` 会 `console.warn`，不再静默当 `Other` 后永远不管。后续波次见该计划 YAML。
 
 ---
 
@@ -572,7 +572,11 @@ crates/wasm-zrender/pkg/
 Cargo features（默认全开）：
 
 ```
-chart-line, chart-bar, chart-pie, chart-scatter
+chart-line, chart-bar, chart-pie, chart-scatter,
+chart-radar, chart-gauge, chart-candlestick, chart-boxplot, chart-heatmap,
+chart-pictorial, chart-effect-scatter, chart-funnel, chart-chord, chart-sunburst,
+chart-tree, chart-treemap, chart-graph, chart-sankey, chart-theme-river,
+chart-map, chart-lines, chart-parallel, chart-custom
 ```
 
 可按需裁剪以减小 WASM 体积。`echarts.use` **不为体积做动态加载**（见硬规则）。
@@ -648,7 +652,7 @@ chart-line, chart-bar, chart-pie, chart-scatter
 
 | 范围 | 现状 |
 |------|------|
-| 图表 | `line` / `bar` / `pie` / `scatter`（feature flag 写死在 rust，不是 `echarts.use(BarChart)`） |
+| 图表 | 官方 `export/charts.ts` 23 种（含 chord）均已接线 canvas 终态（feature flag 写死在 rust，不是 `echarts.use(BarChart)`）；默认全开 |
 | cartesian | 多 `grid` / `xAxis[]` / `yAxis[]`（`gridIndex` / `xAxisIndex` / `yAxisIndex`）；`type: category \| value \| time \| log`；y 类目 + x 数值时横画（bar 水平柱、line 对调）；`convertToPixel`/`convertFromPixel`/`containPixel` 按 finder 取轴 |
 | dataset | `source`（二维数组 / 对象行 / 列对象）/`dimensions` / `seriesLayoutBy` / `datasetIndex` / `datasetId` / `encode`；无 `series.data` 时从 dataset 取数 |
 | transform | 内置 `filter` / `sort`（`fromDatasetIndex` / `fromDatasetId`）；`registerTransform` 接外部 JS |
@@ -657,6 +661,19 @@ chart-line, chart-bar, chart-pie, chart-scatter
 | bar | Rect（cartesian，含 y 类目水平柱）；polar 下为 Sector；同轴多系列并排（同 `stack` 共用列）；`barWidth`/`barGap`（默认 10%）/`barCategoryGap`/`barMinHeight`；`itemStyle.borderRadius`；`stack` 从 `stack_base` 画到 `stacked_value` |
 | pie | Sector；`center`/`radius`/`startAngle`/`clockwise`；`roseType: radius\|area`；`selectedMode` + `selectedOffset`（含 data.`selected`）；`minShowLabelAngle`；label 同侧 y 间距跳过（不是官方完整避让）+ `labelLine` |
 | scatter | 双 value 轴；也可挂 polar / geo / calendar / single / matrix；`symbol`（circle/rect/roundRect/triangle/diamond/pin/arrow/star/line 及 empty*）；`symbolSize`（默认 10）；`large` 且点数 ≥ `largeThreshold`（默认 2000）时终态一次画完、不挂 emphasis 状态、不画 label |
+| radar | 按 `radar.indicator` 把 `data[].value[]` 投到蛛网，画 Polygon；可读 `areaStyle` / `lineStyle` |
+| gauge | 轴环 Sector + 指针终态 + detail/label；`min`/`max`/`startAngle`/`endAngle`/`center`/`radius` |
+| candlestick / boxplot | cartesian；K 线 `[open,close,low,high]`（或带 x 的 5 项）；箱线 `[min,Q1,median,Q3,max]`；涨跌色 `itemStyle.color`/`color0` |
+| heatmap | cartesian / calendar / matrix / geo 格子按值上色（visualMap `inRange.color` / pieces） |
+| pictorialBar | 按柱高重复或缩放 `symbol`（终态） |
+| effectScatter | scatter + `rippleEffect.scale`/`number` 同心圆终态（不播扩散动画） |
+| funnel | 梯形；`sort` / `minSize`/`maxSize` / `gap` |
+| tree / treemap / sunburst | 从 `data`/`children` 递归；树分层、矩形树切分、旭日多层 Sector |
+| graph / chord / sankey | `data`/`nodes` + `links`/`edges`；circular/坐标点、和弦贝塞尔、桑基分层贝塞尔 |
+| themeRiver | `singleAxis` 上按名称堆叠面积带 |
+| map / lines | 按已注册 GeoJSON 填色；`coords` 折线（geo 或 cartesian） |
+| parallel | 平行坐标每条数据一条 Polyline |
+| custom | `renderItem(params, api)`；`api.coord`/`size`/`style`/`value`；产出 graphic 进同一 Zr |
 | tooltip.formatter | 返回 string 时可用；CallbackDataParams 含 `componentType`/`seriesType`/`percent`（pie）/`data` |
 | series.label | `label.show` + formatter（`{a}`/`{b}`/`{c}`/`{d}` 或函数）画 Text |
 | 轴标签 | `axisLabel.formatter` 函数或 `'{value}'` 模板真正进 Text |
@@ -685,7 +702,7 @@ chart-line, chart-bar, chart-pie, chart-scatter
 
 实例上尚未做完：`convertToLayout` / `getVisual`。
 
-Charts：Radar、Map、Tree、Treemap、Graph、Chord、Gauge、Funnel、Parallel、Sankey、Boxplot、Candlestick、EffectScatter、Lines、Heatmap、PictorialBar、ThemeRiver、Sunburst、Custom（`renderItem`+`api`）。未接线的 `series.type` 不得再静默当 `Other` 后永远不管。坐标系已就绪，这些图本身归第 6 波。
+Charts：未识别的 `series.type` 会 `console.warn`（不再静默当 `Other`）。已接线图表的视觉/布局相对官方仍有简化（force 布局不迭代、桑基非完整节点平衡、tree 非 tidy、chord 用贝塞尔而非丝带、pictorialBar 非全部 symbolClip 语义）。
 
 Components：geo roam / SVG 地图源。aria 写 DOM 属性非绘制，可后置。toolbox DataView DOM / SaveAsImage 下载条明确不做。
 
@@ -755,9 +772,9 @@ Actions：geo roam 等。
 - `resolve_color` / `resolve_formatter`（`{a}{b}{c}{d}` 模板）/ `resolve_axis_formatter`（`{value}`）/ `resolve_symbol_size`
 - `try_call_formatter`：JS throw 时 `console.error` 并降级
 
-**已接线**：`itemStyle.color` / `lineStyle.color`、`tooltip.formatter`（string）、`label.formatter` + 图元、`axisLabel.formatter` 进轴 Text、`symbol` / `symbolSize`。
+**已接线**：`itemStyle.color` / `lineStyle.color`、`tooltip.formatter`（string）、`label.formatter` + 图元、`axisLabel.formatter` 进轴 Text、`symbol` / `symbolSize`、`series.renderItem` + `api.coord`/`size`/`style`/`value`。
 
-**未接线或未完成**：`series.renderItem` + `api`；tooltip 返回 HTMLElement；常量回调缓存。
+**未接线或未完成**：tooltip 返回 HTMLElement；常量回调缓存。
 
 #### `data/` — dataset 管线
 
@@ -792,6 +809,19 @@ Actions：geo roam 等。
 | bar | Rect / Sector（polar） | `barWidth`/`barGap`/`barCategoryGap`/`borderRadius`/`barMinHeight`；同轴并排或 stack；y 类目水平柱 |
 | pie | Sector | `center`/`radius`/`r0`/`startAngle`/`clockwise`/`roseType`/`selectedMode`；label 最小避让 + labelLine |
 | scatter | symbol | 双 value 轴；也可挂 polar/geo/calendar/single/matrix；其余常用 symbol；`large` 终态一次画完 |
+| radar | Polygon | `indicator` 维；`areaStyle` / `lineStyle` |
+| gauge | Sector + 指针 | `min`/`max`/`startAngle`/`endAngle`；指针终态 |
+| candlestick / boxplot | Rect + Line | OHLC / 五数概括；涨跌色 |
+| heatmap | Rect | cartesian / calendar / matrix / geo 格子上色 |
+| pictorialBar | symbol | 按柱高重复或缩放 |
+| effectScatter | symbol + Circle | ripple 同心圆终态 |
+| funnel | Polygon | 梯形；`sort`/`gap`/`minSize` |
+| tree / treemap / sunburst | Line+symbol / Rect / Sector | `children` 递归 |
+| graph / chord / sankey | Line / Bezier / Rect | nodes + links |
+| themeRiver | Polygon | singleAxis 堆叠带 |
+| map / lines | Polygon / Polyline | 已注册地图填色；`coords` |
+| parallel | Polyline | 每条数据一条折线 |
+| custom | `option.graphic` 同类图元 | `renderItem` + `api.coord`/`size`/`style` |
 | 坐标系底图 | polar 圆环与辐线、radar 蛛网、single/parallel 轴、calendar 格子、matrix 格子、geo 多边形 | 有对应 option 组件即画 |
 | 组件 | 网格框、splitLine、轴标签/名称、title（padding/align）、legend（orient/selected/点击筛选）、markPoint/Line/Area、`option.graphic`、visualMap、dataZoom slider、十字 axisPointer、toolbox 按钮、timeline、brush 选区、thumbnail | `axisLabel.formatter` 已进 Text；`fontFamily` / `fontSize` / `color` 从 textStyle 读入 |
 
@@ -1125,7 +1155,9 @@ npm run dev
 - 第 2 波（已落地）：dataset / transform / encode / stack / sampling；多 grid / 轴；time / log
 - 第 3 波（已落地）：line/bar/pie/scatter canvas option 族（`smooth`/`areaStyle`/`step`/`connectNulls`/`endLabel`、bar 宽距圆角、`roseType`/`selectedMode`、scatter `large` 与其余 symbol）
 - 第 4 波（已落地）：legend 点击筛选、title 布局、mark*、`option.graphic`、visualMap、dataZoom slider、axisPointer 十字 + `tooltip.trigger: 'axis'`、brush、timeline、toolbox canvas 按钮、thumbnail
-- 第 5–7 波：其余坐标系与图表、扩展注册
+- 第 5 波（已落地）：polar / radar / singleAxis / parallel / calendar / matrix / geo
+- 第 6 波（已落地）：其余官方图表 + `custom` `renderItem`/`api`；feature 默认全开
+- 第 7 波：扩展注册与 LabelLayout / AxisBreak / media；UniversalTransition 终态
 - 第 8 波：官网画廊按类同步 + probe
 - 视觉回归（echarts `test/*.html` → golden PNG）；JS vs WASM 基准报告
 

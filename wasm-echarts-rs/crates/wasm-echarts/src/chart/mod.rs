@@ -2,26 +2,40 @@ mod axis;
 pub(crate) mod axis_pointer;
 mod bar;
 pub(crate) mod brush;
+mod candlestick;
 mod coords;
+#[cfg(feature = "chart-custom")]
+mod custom;
 pub(crate) mod data_zoom;
+mod effect_scatter;
+mod funnel;
+mod geo_charts;
+mod gauge;
 mod graphic;
+mod heatmap;
+mod hierarchy;
 mod label;
 pub(crate) mod layout;
 pub(crate) mod legend;
 mod line;
 mod mark;
-pub(crate) mod text_opt;
+mod network;
+mod parallel_series;
+mod path_util;
+mod pictorial;
+mod radar;
+#[cfg(feature = "chart-pie")]
+mod pie;
+mod scatter;
+mod style;
+mod symbol;
+mod theme_river;
 mod title;
+pub(crate) mod text_opt;
 pub(crate) mod thumbnail;
 pub(crate) mod timeline;
 pub(crate) mod toolbox;
 pub(crate) mod visual_map;
-mod style;
-mod symbol;
-#[cfg(feature = "chart-pie")]
-mod pie;
-#[cfg(feature = "chart-scatter")]
-mod scatter;
 
 #[cfg(feature = "chart-bar")]
 pub use bar::render_bar_series;
@@ -31,6 +45,8 @@ pub use line::render_line_series;
 pub use pie::render_pie_series;
 #[cfg(feature = "chart-scatter")]
 pub use scatter::render_scatter_series;
+#[cfg(feature = "chart-custom")]
+pub use custom::CustomSeriesApi;
 
 pub use layout::{
     HIT_DATA_ZOOM, HIT_LEGEND, HIT_THUMBNAIL, HIT_TIMELINE, HIT_TOOLBOX, HIT_VISUAL_MAP,
@@ -103,6 +119,82 @@ pub fn render_components(
             #[cfg(feature = "chart-scatter")]
             SeriesType::Scatter => {
                 render_scatter_series(zr, group, model, &coord, &visual, series);
+            }
+            #[cfg(feature = "chart-radar")]
+            SeriesType::Radar => {
+                radar::render_radar_series(zr, group, model, &visual, series);
+            }
+            #[cfg(feature = "chart-gauge")]
+            SeriesType::Gauge => {
+                gauge::render_gauge_series(zr, group, model, &visual, series);
+            }
+            #[cfg(feature = "chart-candlestick")]
+            SeriesType::Candlestick => {
+                candlestick::render_candlestick_series(zr, group, model, &coord, &visual, series);
+            }
+            #[cfg(feature = "chart-boxplot")]
+            SeriesType::Boxplot => {
+                candlestick::render_boxplot_series(zr, group, model, &coord, &visual, series);
+            }
+            #[cfg(feature = "chart-heatmap")]
+            SeriesType::Heatmap => {
+                heatmap::render_heatmap_series(zr, group, model, &coord, &visual, series);
+            }
+            #[cfg(feature = "chart-pictorial")]
+            SeriesType::PictorialBar => {
+                pictorial::render_pictorial_bar_series(zr, group, model, &coord, &visual, series);
+            }
+            #[cfg(feature = "chart-effect-scatter")]
+            SeriesType::EffectScatter => {
+                effect_scatter::render_effect_scatter_series(zr, group, model, &coord, &visual, series);
+            }
+            #[cfg(feature = "chart-funnel")]
+            SeriesType::Funnel => {
+                funnel::render_funnel_series(zr, group, model, &visual, series);
+            }
+            #[cfg(feature = "chart-tree")]
+            SeriesType::Tree => {
+                hierarchy::render_tree_series(zr, group, model, &visual, series);
+            }
+            #[cfg(feature = "chart-treemap")]
+            SeriesType::Treemap => {
+                hierarchy::render_treemap_series(zr, group, model, &visual, series);
+            }
+            #[cfg(feature = "chart-sunburst")]
+            SeriesType::Sunburst => {
+                hierarchy::render_sunburst_series(zr, group, model, &visual, series);
+            }
+            #[cfg(feature = "chart-graph")]
+            SeriesType::Graph => {
+                network::render_graph_series(zr, group, model, &visual, series);
+            }
+            #[cfg(feature = "chart-chord")]
+            SeriesType::Chord => {
+                network::render_chord_series(zr, group, model, &visual, series);
+            }
+            #[cfg(feature = "chart-sankey")]
+            SeriesType::Sankey => {
+                network::render_sankey_series(zr, group, model, &visual, series);
+            }
+            #[cfg(feature = "chart-theme-river")]
+            SeriesType::ThemeRiver => {
+                theme_river::render_theme_river_series(zr, group, model, &visual, series);
+            }
+            #[cfg(feature = "chart-map")]
+            SeriesType::Map => {
+                geo_charts::render_map_series(zr, group, model, &visual, series);
+            }
+            #[cfg(feature = "chart-lines")]
+            SeriesType::Lines => {
+                geo_charts::render_lines_series(zr, group, model, &coord, &visual, series);
+            }
+            #[cfg(feature = "chart-parallel")]
+            SeriesType::Parallel => {
+                parallel_series::render_parallel_series(zr, group, model, &visual, series);
+            }
+            #[cfg(feature = "chart-custom")]
+            SeriesType::Custom => {
+                custom::render_custom_series(zr, group, model, &coord, &visual, series);
             }
             _ => {}
         }
@@ -347,5 +439,284 @@ mod tests {
             "y axisLabel font: {:?}",
             texts
         );
+    }
+
+    fn render_root(root: OptionValue) -> (crate::model::GlobalModel, ZRenderer) {
+        let mut option = OptionModel::new();
+        option.apply(
+            root,
+            SetOptionFlags {
+                not_merge: true,
+                replace_merge: vec![],
+            },
+        );
+        let model = crate::model::GlobalModel::from_option(&option, 400, 300);
+        let mut zr = ZRenderer::new(400, 300).unwrap();
+        let group = zr.storage.create_group();
+        render_components(&mut zr, group, &model, &option, &InteractionState::default());
+        (model, zr)
+    }
+
+    #[test]
+    fn wave6_series_types_are_not_other() {
+        for ty in [
+            "radar",
+            "gauge",
+            "candlestick",
+            "boxplot",
+            "heatmap",
+            "pictorialBar",
+            "effectScatter",
+            "funnel",
+            "chord",
+            "sunburst",
+            "tree",
+            "treemap",
+            "graph",
+            "sankey",
+            "themeRiver",
+            "map",
+            "lines",
+            "parallel",
+            "custom",
+        ] {
+            assert_ne!(
+                SeriesType::from_str(ty),
+                SeriesType::Other,
+                "{ty} must not collapse to Other"
+            );
+        }
+        assert_eq!(SeriesType::from_str("not-a-chart"), SeriesType::Other);
+    }
+
+    #[test]
+    fn wave6_radar_gauge_funnel_draw_paths() {
+        let (_, zr) = render_root(obj(vec![
+            (
+                "radar",
+                obj(vec![(
+                    "indicator",
+                    OptionValue::Array(vec![
+                        obj(vec![
+                            ("name", OptionValue::String("A".into())),
+                            ("max", OptionValue::Number(100.0)),
+                        ]),
+                        obj(vec![
+                            ("name", OptionValue::String("B".into())),
+                            ("max", OptionValue::Number(100.0)),
+                        ]),
+                        obj(vec![
+                            ("name", OptionValue::String("C".into())),
+                            ("max", OptionValue::Number(100.0)),
+                        ]),
+                    ]),
+                )]),
+            ),
+            (
+                "series",
+                OptionValue::Array(vec![obj(vec![
+                    ("type", OptionValue::String("radar".into())),
+                    (
+                        "data",
+                        OptionValue::Array(vec![obj(vec![(
+                            "value",
+                            OptionValue::Array(vec![
+                                OptionValue::Number(60.0),
+                                OptionValue::Number(80.0),
+                                OptionValue::Number(40.0),
+                            ]),
+                        )])]),
+                    ),
+                ])]),
+            ),
+        ]));
+        assert!(zr.storage.paths().iter().any(|p| matches!(p.shape, rust_zrender::Shape::Polygon(_))));
+
+        let (_, zr) = render_root(obj(vec![(
+            "series",
+            OptionValue::Array(vec![obj(vec![
+                ("type", OptionValue::String("gauge".into())),
+                (
+                    "data",
+                    OptionValue::Array(vec![obj(vec![("value", OptionValue::Number(42.0))])]),
+                ),
+            ])]),
+        )]));
+        assert!(zr.storage.paths().iter().any(|p| matches!(p.shape, rust_zrender::Shape::Sector(_))));
+
+        let (_, zr) = render_root(obj(vec![(
+            "series",
+            OptionValue::Array(vec![obj(vec![
+                ("type", OptionValue::String("funnel".into())),
+                (
+                    "data",
+                    OptionValue::Array(vec![
+                        obj(vec![
+                            ("name", OptionValue::String("A".into())),
+                            ("value", OptionValue::Number(80.0)),
+                        ]),
+                        obj(vec![
+                            ("name", OptionValue::String("B".into())),
+                            ("value", OptionValue::Number(40.0)),
+                        ]),
+                    ]),
+                ),
+            ])]),
+        )]));
+        assert!(zr.storage.paths().iter().any(|p| matches!(p.shape, rust_zrender::Shape::Polygon(_))));
+    }
+
+    #[test]
+    fn wave6_cartesian_extras_draw() {
+        let cats = OptionValue::Array(vec![
+            OptionValue::String("a".into()),
+            OptionValue::String("b".into()),
+        ]);
+        let (_, zr) = render_root(obj(vec![
+            (
+                "xAxis",
+                obj(vec![
+                    ("type", OptionValue::String("category".into())),
+                    ("data", cats.clone()),
+                ]),
+            ),
+            ("yAxis", obj(vec![("type", OptionValue::String("value".into()))])),
+            (
+                "series",
+                OptionValue::Array(vec![obj(vec![
+                    ("type", OptionValue::String("candlestick".into())),
+                    (
+                        "data",
+                        OptionValue::Array(vec![
+                            OptionValue::Array(vec![
+                                OptionValue::Number(20.0),
+                                OptionValue::Number(34.0),
+                                OptionValue::Number(10.0),
+                                OptionValue::Number(38.0),
+                            ]),
+                            OptionValue::Array(vec![
+                                OptionValue::Number(40.0),
+                                OptionValue::Number(35.0),
+                                OptionValue::Number(30.0),
+                                OptionValue::Number(50.0),
+                            ]),
+                        ]),
+                    ),
+                ])]),
+            ),
+        ]));
+        assert!(zr.storage.paths().iter().any(|p| matches!(p.shape, rust_zrender::Shape::Rect(_))));
+
+        let (_, zr) = render_root(obj(vec![
+            (
+                "xAxis",
+                obj(vec![
+                    ("type", OptionValue::String("category".into())),
+                    ("data", cats),
+                ]),
+            ),
+            ("yAxis", obj(vec![("type", OptionValue::String("value".into()))])),
+            (
+                "series",
+                OptionValue::Array(vec![obj(vec![
+                    ("type", OptionValue::String("heatmap".into())),
+                    (
+                        "data",
+                        OptionValue::Array(vec![OptionValue::Array(vec![
+                            OptionValue::Number(0.0),
+                            OptionValue::Number(0.0),
+                            OptionValue::Number(5.0),
+                        ])]),
+                    ),
+                ])]),
+            ),
+        ]));
+        assert!(zr.storage.paths().iter().any(|p| matches!(p.shape, rust_zrender::Shape::Rect(_))));
+    }
+
+    #[test]
+    fn wave6_layout_and_network_draw() {
+        let tree = obj(vec![
+            ("name", OptionValue::String("root".into())),
+            (
+                "children",
+                OptionValue::Array(vec![
+                    obj(vec![
+                        ("name", OptionValue::String("L".into())),
+                        ("value", OptionValue::Number(1.0)),
+                    ]),
+                    obj(vec![
+                        ("name", OptionValue::String("R".into())),
+                        ("value", OptionValue::Number(2.0)),
+                    ]),
+                ]),
+            ),
+        ]);
+        let (_, zr) = render_root(obj(vec![(
+            "series",
+            OptionValue::Array(vec![obj(vec![
+                ("type", OptionValue::String("treemap".into())),
+                ("data", OptionValue::Array(vec![tree.clone()])),
+            ])]),
+        )]));
+        assert!(zr.storage.paths().iter().any(|p| matches!(p.shape, rust_zrender::Shape::Rect(_))));
+
+        let (_, zr) = render_root(obj(vec![(
+            "series",
+            OptionValue::Array(vec![obj(vec![
+                ("type", OptionValue::String("sunburst".into())),
+                ("data", OptionValue::Array(vec![tree])),
+            ])]),
+        )]));
+        assert!(zr.storage.paths().iter().any(|p| matches!(p.shape, rust_zrender::Shape::Sector(_))));
+
+        let (_, zr) = render_root(obj(vec![(
+            "series",
+            OptionValue::Array(vec![obj(vec![
+                ("type", OptionValue::String("graph".into())),
+                (
+                    "data",
+                    OptionValue::Array(vec![
+                        obj(vec![("name", OptionValue::String("A".into()))]),
+                        obj(vec![("name", OptionValue::String("B".into()))]),
+                    ]),
+                ),
+                (
+                    "links",
+                    OptionValue::Array(vec![obj(vec![
+                        ("source", OptionValue::String("A".into())),
+                        ("target", OptionValue::String("B".into())),
+                    ])]),
+                ),
+            ])]),
+        )]));
+        assert!(!zr.storage.paths().is_empty());
+
+        let (_, zr) = render_root(obj(vec![
+            (
+                "parallelAxis",
+                OptionValue::Array(vec![
+                    obj(vec![("dim", OptionValue::Number(0.0))]),
+                    obj(vec![("dim", OptionValue::Number(1.0))]),
+                ]),
+            ),
+            (
+                "series",
+                OptionValue::Array(vec![obj(vec![
+                    ("type", OptionValue::String("parallel".into())),
+                    (
+                        "data",
+                        OptionValue::Array(vec![OptionValue::Array(vec![
+                            OptionValue::Number(1.0),
+                            OptionValue::Number(2.0),
+                        ])]),
+                    ),
+                ])]),
+            ),
+        ]));
+        assert!(zr.storage.paths().iter().any(|p| matches!(
+            p.shape,
+            rust_zrender::Shape::Polyline(_)
+        )));
     }
 }

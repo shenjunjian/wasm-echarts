@@ -12,6 +12,16 @@ use crate::model::GlobalModel;
 use crate::option::{OptionModel, OptionValue};
 use crate::utils::as_components;
 
+pub(crate) fn add_graphic_element(
+    zr: &mut ZRenderer,
+    parent: usize,
+    el: &OptionValue,
+    parent_w: f64,
+    parent_h: f64,
+) {
+    add_element(zr, parent, el, parent_w, parent_h, 0.0, 0.0);
+}
+
 pub fn render_graphic(
     zr: &mut ZRenderer,
     group: usize,
