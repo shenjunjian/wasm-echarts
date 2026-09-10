@@ -25,3 +25,16 @@ export {
 } from './echarts.js';
 
 export { EChartsInstance } from './native.js';
+
+export {
+  graphic,
+  util,
+  number,
+  time,
+  format,
+  helper,
+  matrix,
+  vector,
+  color,
+  env,
+} from './echarts.js';

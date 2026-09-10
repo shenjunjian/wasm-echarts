@@ -32,11 +32,11 @@ use crate::visual::VisualContext;
 
 pub fn render_components(
     zr: &mut ZRenderer,
+    group: usize,
     model: &GlobalModel,
     option: &OptionModel,
     interaction: &InteractionState,
 ) {
-    let group = zr.storage.create_group();
     let coord = Cartesian2D::new(model);
     let visual = VisualContext::new(option, model);
     let (zoom_start, zoom_end) = model.visible_category_range();
@@ -75,8 +75,6 @@ pub fn render_components(
 
     title::render_title(zr, group, model, option);
     legend::render_legend(zr, group, model, option);
-
-    zr.storage.add_root(ChildRef::Group(group));
 }
 
 fn render_grid_frame(zr: &mut ZRenderer, group: usize, model: &GlobalModel) {

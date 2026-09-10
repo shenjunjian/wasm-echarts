@@ -68,9 +68,7 @@ wasm-echarts  ──path──►  wasm-zrender   （第 1 波落地；rlib，ge
 wasm-zrender  ✗ 不依赖  wasm-echarts
 ```
 
-**第 0 波（当前源码）**：Cargo 上 wasm-echarts 仍只 path 依赖 `rust-zrender`。图表图元仍是 Rust 里 `storage.create_path`。
-
-**第 1 波目标**：wasm-echarts path 依赖 wasm-zrender（rlib），把 zrender 的 `#[wasm_bindgen]` 编进 **同一份** `wasm-echarts/pkg`。`getZr()` 返回与 ChartView 共用 Storage 的 wasm-zrender 实例。echarts 页面不得再加载第二份 zrender wasm。zrender 文档站可继续单独用 `wasm-zrender/pkg`。
+**第 1 波（当前源码）**：wasm-echarts path 依赖 wasm-zrender（rlib）。`wasm-echarts/pkg` 带上 `ZRender` / `LinearGradient` 等绑定。`getZr()` 与 ChartView 共用 `ZR_REGISTRY` 里同一份 Storage。echarts 页在 `js/native.js` 里 `setNative(echartsPkg)`，不得再加载 `wasm-zrender/pkg`。zrender 文档站继续用自己的 pkg。ChartView 每次 `Storage::new()` 后 `rematerialize_mounted_roots`，保留 `getZr().add` 的用户图元。
 
 ---
 
@@ -246,9 +244,9 @@ dispose(zr);
 
 规范已写入上文「目标与约束」；逐项清单以 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](../.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md) 为权威。JS facade 骨架在 `crates/wasm-echarts/js/`：`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version` / `use`（只 `console.info`）。site / README 从 `@wasm-echarts`（`js/index.js`）导入，`pkg/` 只作内部 handle。示例走官方 `init(canvas)` + `setOption`；`init(canvas)` 后自动 `putImageData` 并绑定指针。波次 2：`setOption(option, notMerge | opts)`、`getOption`、`resize()` / `resize({ width, height, devicePixelRatio })`、`clear` = `setOption({ series: [] }, true)`；`notMerge` 只作第二参数，不再从 option 根读取。波次 3：`on`/`off` 发出 `click` / `mouseover` / `mouseout` / `globalout`；内建 string tooltip DOM；`dispatchAction` 接 `showTip` / `hideTip`。波次 4：`axisLabel.formatter` 进轴 Text；pie `center`/`radius`/`startAngle`/`clockwise`；line/scatter `symbol`/`symbolSize`；`label.show` 画 Text；CallbackDataParams 补 `componentType`/`seriesType`/`percent`/`data`；`convertToPixel`/`convertFromPixel` cartesian 最小集。波次 5：文档四块（一致 / 不一致 / 非官方 API / 已实现与未实现）已写入 `site/echarts/docs/index.html`、根 README、本文件；示例 line/bar/pie/scatter/interactive/merge/bench 全部走 `init`；interactive 用 `on('click')` + `use()` 提示，不必 `handlePointer*`；merge 覆盖深合并、`notMerge: true`、dispose 后再 init。公开用法是官方 `init` / `setOption` / `on`，不要把 native `EChartsInstance` / `set_option` / `handlePointerMove` 当公开 API。
 
-### wasm-echarts Canvas 全量对齐（第 0 波已落口径）
+### wasm-echarts Canvas 全量对齐（第 0–1 波已落地）
 
-权威计划：[`.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md`](../.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md)。废止「不是一次移植完官方全量 API」以及把 `graphic`/`util`/面积/`getZr` 当永久后置的写法。[折线缺口补齐](../.cursor/plans/折线缺口补齐_96423c21.plan.md) 已废弃并入本计划。第 0 波只改文档口径；Cargo 依赖、`getZr`、命名空间从第 1 波开始改源码。
+权威计划：[`.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md`](../.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md)。废止「不是一次移植完官方全量 API」以及把 `graphic`/`util`/面积/`getZr` 当永久后置的写法。[折线缺口补齐](../.cursor/plans/折线缺口补齐_96423c21.plan.md) 已废弃并入本计划。第 0 波改文档口径；第 1 波已落地单 WASM、`getZr`、公开命名空间与挡脚本的实例 API。后续波次见该计划 YAML。
 
 ---
 
@@ -269,7 +267,7 @@ Release 配置在 workspace `Cargo.toml`：`[profile.release] opt-level = "s"`�
 
 ### 目的
 
-纯 Rust 的 zrender 渲染库。**没有** `wasm-bindgen`，可在原生 `cargo test`、未来 Wasmer / 服务端离屏场景直接使用。wasm-zrender 只依赖本层。wasm-echarts 当前也只依赖本层；第 1 波起额外 path 依赖 wasm-zrender rlib，但绘制内核仍是 `rust_zrender::ZRenderer`。
+纯 Rust 的 zrender 渲染库。**没有** `wasm-bindgen`，可在原生 `cargo test`、未来 Wasmer / 服务端离屏场景直接使用。wasm-zrender 只依赖本层。wasm-echarts 额外 path 依赖 wasm-zrender rlib（getZr / graphic），绘制内核仍是 `rust_zrender::ZRenderer`。
 
 Cargo 包名 `rust-zrender`，库名 `rust_zrender`。代码里写 `use rust_zrender::...`。
 
@@ -569,7 +567,7 @@ crates/wasm-zrender/pkg/
 
 浏览器侧的 ECharts **canvas 管线**：接收官方形态的 `option`（含 JS 函数字段），在 Rust 里做 merge → GlobalModel → ChartView → `rust_zrender::ZRenderer`，再把 RGBA 交还给 JS。公开 JS 表面对齐官方 `init` / `setOption` / `on` / `dispatchAction`（见上文硬规则）。canvas 能力按 [全量对齐计划](../.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md) 补齐。
 
-**当前源码**仍直接 `use rust_zrender::ZRenderer` 画图元。**第 1 波**起 wasm-echarts 依赖 wasm-zrender，`getZr()` 与 ChartView 共用同一份 Storage；echarts 运行时只加载一份 WASM。native wasm-bindgen 类 `EChartsInstance` 是内部 handle，不是公开 API；由 `js/` facade 包装。site 从 `@wasm-echarts`（`js/index.js`）导入，写法为官方 `init` / `setOption`。
+**当前源码**：wasm-echarts path 依赖 wasm-zrender（rlib），`getZr()` 与 ChartView 共用同一份 Storage；echarts 运行时只加载一份 WASM。native wasm-bindgen 类 `EChartsInstance` 是内部 handle，不是公开 API；由 `js/` facade 包装。site 从 `@wasm-echarts`（`js/index.js`）导入，写法为官方 `init` / `setOption`。
 
 Cargo features（默认全开）：
 
@@ -599,8 +597,15 @@ chart-line, chart-bar, chart-pie, chart-scatter
 | `getWidth` / `getHeight` / `getDevicePixelRatio` / `isDisposed` / `dispose` | 实例方法 |
 | `dispatchAction` | 已接线 type：`highlight` / `downplay` / `select` / `unselect` / `toggleSelect` / `dataZoom` / `showTip` / `hideTip` |
 | `getDom` / `getId` | `init` 后可取 |
-| `on` / `off` | `click` / `mouseover` / `mouseout` / `globalout`；payload 含 `event`、`seriesIndex`、`dataIndex`。`on(event, handler)` 或 `on(event, query, handler)` |
-| `convertToPixel` / `convertFromPixel` | cartesian 最小集：finder `{ xAxisIndex }` / `{ yAxisIndex }` / `{ gridIndex }` / `{ seriesIndex }` 或 `'xAxis'` / `'yAxis'` / `'grid'` |
+| `getZr` | `getZr()` 返回与 ChartView 共用 Storage 的 wasm-zrender 实例；无 SVG painter / hover layer；动画终态 |
+| `showLoading` / `hideLoading` | 静态半透明遮罩 + 文案；不播旋转动画 |
+| `getDataURL` / `renderToCanvas` | 离屏 RGBA → PNG/JPEG 数据 URL / 画到 canvas；`type: 'svg'` 不支持 |
+| `containPixel` | cartesian `grid.contains` 最小集 |
+| `appendData` | `{ seriesIndex, data }` 追加到 `series.data` 后重绘 |
+| `connect` / `disconnect` | 按 `chart.group` 转发 `dispatchAction` |
+| `registerTheme` / `setTheme` | 主题表；`init(dom, theme)` 与首次 `setOption` 把主题当默认项合并 |
+| `registerMap` / `getMap` | 只存表结构（geoJSON / svg / specialAreas）；本波不画 map |
+| `graphic` / `util` / `number` / `time` / `format` / `helper` / `matrix` / `vector` / `color` / `env` | 命名空间已导出 |
 
 #### 2. 与官方不一致 / 例外
 
@@ -610,12 +615,12 @@ chart-line, chart-bar, chart-pie, chart-scatter
 | `init(null)` | 允许离屏（官方客户端无 dom 会抛错） |
 | 动画 | 不播中间帧；`lazyUpdate` 同步执行 |
 | 渲染 | 仅 canvas；无 SVG / `renderToSVGString` / `getSvgDataURL` |
-| 字体 | 须从 `@wasm-echarts` 调 `registerFont`；WASM 不读系统字体。与 wasm-zrender 的 fontdb **不共享** |
+| 字体 | 须从 `@wasm-echarts` 调 `registerFont`；WASM 不读系统字体。echarts 页只一份 WASM，与 `getZr` 共用 fontdb。zrender 文档站的 `wasm-zrender/pkg` 仍是另一份内存 |
 | `notMerge` | 只作 `setOption` 第二参数；写在 option 根上不会当合并开关 |
 | `replaceMerge` | 只按**顶层 key**整段替换，不按 component `id`（比官方弱） |
 | `lazyUpdate` / `silent` | 同步 flush，忽略排队与静默 |
-| `getZr()` | 目标：返回与 ChartView 共用 Storage 的 wasm-zrender 实例（第 1 波）。当前源码尚未导出。无 SVG painter / hover layer；动画终态 |
-| `showLoading` / `hideLoading` | 目标：导出；不播旋转动画（静态遮罩或空操作）。当前源码尚未导出 |
+| `getZr()` | 返回与 ChartView 共用 Storage 的 wasm-zrender 实例。不是第二份 zrender wasm；无 SVG painter / hover layer；动画终态 |
+| `showLoading` / `hideLoading` | 导出；静态半透明遮罩 + 文案，不播旋转动画 |
 | default export | wasm-bindgen `initWasm`，不是 echarts 命名空间对象 |
 | tooltip DOM | facade 内建简单 string HTML；不是官方 TooltipView；HTMLElement formatter 未实现 |
 | DataView / SaveAsImage | toolbox DataView 浮层与 SaveAsImage 的 DOM 下载条明确不做 |
@@ -656,12 +661,16 @@ chart-line, chart-bar, chart-pie, chart-scatter
 | axisPointer | option 开启时画竖线；无十字、无 `trigger: 'axis'` tooltip |
 | 指针 / tooltip | `init(canvas)` 绑 mousemove/click/leave/wheel；内建 string tooltip DOM；`on`/`off` 发出 `click`/`mouseover`/`mouseout`/`globalout` |
 | showTip / hideTip | `dispatchAction({ type: 'showTip', seriesIndex, dataIndex })` 或 `{ x, y }`；`hideTip` 关 DOM，不改 hover |
+| `getZr` / 命名空间 | `getZr()` 共用 Storage；`graphic`（含 `LinearGradient`/`Rect`）/`util`/`time`/`format`/`number`/`helper`/`matrix`/`vector`/`color`/`env` |
+| Loading / 导出图 | `showLoading` 静态遮罩；`getDataURL` / `renderToCanvas`（canvas PNG/JPEG） |
+| 主题 / 地图表 / connect | `registerTheme`/`setTheme`；`registerMap`/`getMap` 存表不画；`connect` 转发 action |
+| `appendData` / `containPixel` | 追加 series.data；grid 是否包含像素点 |
 
 **未实现（按 canvas 全量对齐计划补齐，不是永久例外）**
 
-已导出同名、内部只 `console.warn`：`connect` / `disconnect` / `registerTheme` / `registerMap` / `getMap` / `registerLocale` / `setPlatformAPI` / `registerPreprocessor`。
+已导出同名、内部只 `console.warn`：`registerLocale` / `setPlatformAPI` / `registerPreprocessor`。
 
-实例上尚未导出：`getZr` / `setTheme` / `appendData` / `getDataURL` / `renderToCanvas` / `showLoading` / `hideLoading` / `containPixel` / `convertToLayout` / `getVisual`。
+实例上尚未做完：`convertToLayout` / `getVisual`。
 
 Charts：Radar、Map、Tree、Treemap、Graph、Chord、Gauge、Funnel、Parallel、Sankey、Boxplot、Candlestick、EffectScatter、Lines、Heatmap、PictorialBar、ThemeRiver、Sunburst、Custom（`renderItem`+`api`）。未接线的 `series.type` 不得再静默当 `Other` 后永远不管。
 
@@ -669,7 +678,7 @@ Components：legend 点击筛选与复杂布局、title 复杂布局、toolbox�
 
 Actions：legend\*、restore、brush、timeline、geo roam 等。
 
-其它：主题、`convertToPixel` 完整 finder、`graphic`/`util`/`number`/`format` 命名空间、media query、完整 SeriesData。line 的 `smooth`/`areaStyle`/`stack`/`step`/`sampling`/`endLabel` 等 canvas option 仍未接线。
+其它：`convertToPixel` 完整 finder、media query、完整 SeriesData。line 的 `smooth`/`areaStyle`/`stack`/`step`/`sampling`/`endLabel` 等 canvas option 仍未接线。`option.graphic` 组件（与 getZr 图元不同）在第 4 波。
 
 **名字在 option 里出现但未按官方做：** line `smooth` / `areaStyle` / `stack` / `step` / `sampling` / `endLabel`；pie `roseType`；`tooltip.trigger: 'axis'`；色板不是官方 palette 全套；多 grid / 双 y 轴；`symbol` 仅 circle/rect/emptyCircle。
 
@@ -681,21 +690,23 @@ Actions：legend\*、restore、brush、timeline、geo roam 等。
 
 | 文件 | 职责 |
 |------|------|
-| `index.js` | 官方命名导出；`default` 仍是 `initWasm`；`version = '6.1.0'`；另导出 `registerFont` / `clearFonts` |
-| `echarts.js` | `init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `use`（只提示）；`registerFont` / `clearFonts`；实例表 |
-| `instance.js` | 包装 native `EChartsInstance`；camelCase；`setOption` 第二参数 / `getOption` / `clear` / `resize`；`on`/`off`；`convertToPixel` / `convertFromPixel` 最小集；`init(canvas)` 后自动 `putImageData` 并绑指针；内建 string tooltip DOM |
-| `native.js` | 加载 `pkg/wasm_echarts.js` |
+| `index.js` | 官方命名导出；`default` 仍是 `initWasm`；`version = '6.1.0'`；另导出 `registerFont` / 命名空间 |
+| `echarts.js` | `init` / `dispose` / `use`；`connect` / `registerTheme` / `registerMap`；命名空间再导出 |
+| `instance.js` | camelCase 实例；`getZr` / `showLoading` / `getDataURL` / `appendData` / `setTheme` / `containPixel`；指针与 tooltip |
+| `graphic.js` / `util.js` / `number.js` / `time.js` / `format.js` / `helper.js` / `env.js` | `export/api.ts` 命名空间 |
+| `native.js` | 加载 `pkg/wasm_echarts.js` 并 `setNative` 注入 wasm-zrender |
 | `wasm_echarts.js` | 兼容旧路径 `@wasm-echarts/wasm_echarts.js` |
 
-#### `font.rs`
+#### 字体（复用 wasm-zrender 绑定）
 
-`registerFont` / `clearFonts`：把宿主传入的 TTF/OTF/WOFF bytes 写入 `rust_zrender` 全局 fontdb。当前与 wasm-zrender **不共享**同一份 WASM 内存（第 1 波单 WASM 后，echarts 页只走 wasm-echarts 这份 fontdb）。facade 在注册后遍历实例表调用 `update_font_database`。
+`registerFont` / `clearFonts` 来自编入同一份 WASM 的 wasm-zrender 绑定：写入 `rust_zrender` 全局 fontdb，并刷新 `ZR_REGISTRY` 里所有实例。echarts 页与 `getZr` 共用这一份 fontdb；不要从 `@wasm-zrender` 入口再加载第二份 wasm。facade 在注册后仍遍历实例表调用 `update_font_database`。
 
 #### `instance.rs` — `EChartsInstance`（wasm-bindgen 内部 handle）
 
 | 方法 | 说明 |
 |------|------|
-| `new(width, height, dpr)` | 内部创建 `ZRenderer` |
+| `new(width, height, dpr)` | 创建 `ZRenderer` 并登记进 `ZR_REGISTRY` |
+| `get_zr()` / `attach_host(dom)` | 同一 id 的 `ZRender`；canvas 绑到 zrender Handler |
 | `set_option(option, opts?)` | 解析 + merge（`notMerge` / `replaceMerge` 来自第二参数），全量 render |
 | `get_option()` | 已合并 option 转回 JsValue（函数保留） |
 | `refresh()` | RGBA |
@@ -707,8 +718,9 @@ Actions：legend\*、restore、brush、timeline、geo roam 等。
 | `get_tooltip_content(si, di)` | 调 `tooltip.formatter`，string 或 null |
 | `apply_data_zoom_wheel(x, deltaY)` | option 含 inside dataZoom 时缩放 category 窗口 |
 | `dispatch_action(action)` | 见下表 |
+| `append_data` / `contain_pixel` | 追加 series.data；grid 是否包含像素 |
 | `benchmark_render(n)` | 全量 render+refresh 平均毫秒 |
-| `has_option()` / `option_has_functions()` / `dispose()` | 状态与释放 |
+| `has_option()` / `option_has_functions()` / `dispose()` | 状态与释放（dispose 从 registry 卸 Zr） |
 | `width()` / `height()` / `dpr()` | 尺寸 |
 | `convert_to_pixel` / `convert_from_pixel` | cartesian `xAxis`/`yAxis`/`grid` finder 最小集 |
 
@@ -717,7 +729,7 @@ Actions：legend\*、restore、brush、timeline、geo roam 等。
 #### `option/` — 解析与合并
 
 - `OptionValue`：Null / Bool / Number / String / Array / Object / **Function**
-- `parse_option_value`：递归走 `JsValue`，不能用 serde 整包反序列化
+- `parse_option_value`：递归走 `JsValue`；`LinearGradient` 等 wasm-bindgen 实例按 getter 收成 `type` / `colorStops` 等字段
 - `merge_option`：深合并；函数字段用新值覆盖；数组按 index 合并对象
 - `setOption` 第二参数：`notMerge` 替换整棵树；`replaceMerge` 顶层 key 整段替换；不再从 option 根读取这些字段
 
@@ -736,7 +748,7 @@ Actions：legend\*、restore、brush、timeline、geo roam 等。
 
 - `GlobalModel`：grid 矩形、单 x/y 轴、category 或 value、`Vec<SeriesModel>`、dataZoom 窗口
 - `DataPoint` 为简化 vec（value / 可选 x_value / name / raw），不是完整 SeriesData/Source
-- Scheduler：单次全量 `run_update` → `render_chart`（当前先 `Storage::new()` 再重建整棵树；第 1 波改为只重建 ChartView 自己的 root Group，保留 `getZr().add` 的用户图元）
+- Scheduler：单次全量 `run_update` → `render_chart`（`Storage::new()` 后 `rematerialize_mounted_roots`，再重建 `__ec_chart_root`，保留 `getZr().add` 的用户图元）
 
 #### `coord/` — `Cartesian2D`
 
@@ -1083,7 +1095,7 @@ npm run dev
 
 对照 [`.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md`](../.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md)。入口对齐（`init`/`setOption`/`on`）已落地。未完成项按该计划波次做，出现在上文「未实现」表：
 
-- 第 1 波：单 WASM、`getZr` 共享 Storage、`graphic`/`util`/`time` 等命名空间、挡脚本的实例 API
+- 第 1 波（已落地）：单 WASM、`getZr` 共享 Storage、`graphic`/`util`/`time` 等命名空间、挡脚本的实例 API
 - 第 2 波：dataset / transform / encode / stack / sampling；多 grid / 轴；time / log
 - 第 3 波：已有 4 类图的 canvas option 族（含 line `smooth`/`areaStyle`/`stack`）
 - 第 4–7 波：canvas 组件、其余坐标系与图表、扩展注册

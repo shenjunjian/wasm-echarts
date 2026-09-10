@@ -13,7 +13,7 @@ use crate::visual::VisualContext;
 
 #[wasm_bindgen]
 pub struct EChartsInstance {
-    zr: ZRenderer,
+    zr_id: u32,
     option: OptionModel,
     width: u32,
     height: u32,
@@ -28,14 +28,25 @@ impl EChartsInstance {
         crate::utils::set_panic_hook();
         let zr = ZRenderer::new_with_dpr(width, height, dpr)
             .map_err(|e| JsValue::from_str(&e.to_string()))?;
+        let zr_id = wasm_zrender::insert_renderer(zr);
         Ok(EChartsInstance {
-            zr,
+            zr_id,
             option: OptionModel::new(),
             width,
             height,
             dpr,
             interaction: InteractionState::default(),
         })
+    }
+
+    #[wasm_bindgen(js_name = getZr)]
+    pub fn get_zr(&self) -> wasm_zrender::ZRender {
+        wasm_zrender::ZRender::from_id(self.zr_id)
+    }
+
+    #[wasm_bindgen(js_name = attachHost)]
+    pub fn attach_host(&self, dom: JsValue) -> Result<(), JsValue> {
+        wasm_zrender::attach_host(self.zr_id, &dom)
     }
 
     pub fn width(&self) -> u32 {
@@ -85,9 +96,10 @@ impl EChartsInstance {
         self.width = width;
         self.height = height;
         self.dpr = dpr;
-        self.zr
-            .resize_with_dpr(width, height, dpr)
-            .map_err(|e| JsValue::from_str(&e.to_string()))?;
+        wasm_zrender::with_zr(self.zr_id, |zr| {
+            zr.resize_with_dpr(width, height, dpr)
+                .map_err(|e| JsValue::from_str(&e.to_string()))
+        })?;
         if !self.option.is_empty() {
             self.render_and_apply_states();
         }
@@ -95,30 +107,38 @@ impl EChartsInstance {
     }
 
     pub fn refresh(&mut self) -> Result<Vec<u8>, JsValue> {
-        self.zr
-            .refresh()
-            .map_err(|e| JsValue::from_str(&e.to_string()))
+        wasm_zrender::with_zr(self.zr_id, |zr| {
+            zr.refresh()
+                .map_err(|e| JsValue::from_str(&e.to_string()))
+        })
     }
 
     /// 把全局 fontdb 同步到本实例（`registerFont` 之后由 facade 调用）。
     pub fn update_font_database(&mut self) -> Result<(), JsValue> {
-        rust_zrender::with_resolved_font_config(|resolved| {
-            self.zr.update_font_database(resolved);
+        wasm_zrender::with_zr(self.zr_id, |zr| {
+            rust_zrender::with_resolved_font_config(|resolved| {
+                zr.update_font_database(resolved);
+            })
+            .map_err(|e| JsValue::from_str(&e.to_string()))
         })
-        .map_err(|e| JsValue::from_str(&e.to_string()))
     }
 
     pub fn find_hover(&mut self, x: f64, y: f64) -> JsValue {
-        match self.zr.find_hover(x, y) {
-            Some(hit) => hit_to_js(&hit),
-            None => JsValue::NULL,
-        }
+        wasm_zrender::with_zr(self.zr_id, |zr| {
+            Ok(match zr.find_hover(x, y) {
+                Some(hit) => hit_to_js(&hit),
+                None => JsValue::NULL,
+            })
+        })
+        .unwrap_or(JsValue::NULL)
     }
 
     /// 阶段 6：pointer move 统一处理 hover 高亮、axisPointer、tooltip
     pub fn handle_pointer_move(&mut self, x: f64, y: f64) -> JsValue {
         self.interaction.set_pointer(Some(x), Some(y));
-        let hit = self.zr.find_hover(x, y);
+        let hit = wasm_zrender::with_zr(self.zr_id, |zr| Ok(zr.find_hover(x, y)))
+            .ok()
+            .flatten();
         let hover_target = hit.as_ref().and_then(|h| {
             let si = h.ec_data.series_index?;
             let di = h.ec_data.data_index?;
@@ -294,6 +314,48 @@ impl EChartsInstance {
     pub fn dispose(&mut self) {
         self.option.clear();
         self.interaction = InteractionState::default();
+        wasm_zrender::dispose_renderer(self.zr_id);
+    }
+
+    #[wasm_bindgen(js_name = appendData)]
+    pub fn append_data(&mut self, params: JsValue) -> Result<(), JsValue> {
+        let parsed = parse_option_value(&params)?;
+        let series_index = parsed
+            .get("seriesIndex")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0) as usize;
+        let extra = parsed
+            .get("data")
+            .cloned()
+            .ok_or_else(|| JsValue::from_str("appendData requires data"))?;
+        self.option.append_series_data(series_index, extra)?;
+        self.render_and_apply_states();
+        Ok(())
+    }
+
+    #[wasm_bindgen(js_name = containPixel)]
+    pub fn contain_pixel(&self, finder: JsValue, value: JsValue) -> bool {
+        if self.option.is_empty() {
+            return false;
+        }
+        let Ok(value) = parse_option_value(&value) else {
+            return false;
+        };
+        let (x, y) = match value.as_array() {
+            Some(arr) if arr.len() >= 2 => (
+                arr[0].as_f64().unwrap_or(0.0),
+                arr[1].as_f64().unwrap_or(0.0),
+            ),
+            _ => return false,
+        };
+        let model = GlobalModel::from_option_with_zoom(
+            &self.option,
+            self.width,
+            self.height,
+            self.interaction.data_zoom,
+        );
+        let _ = finder;
+        model.grid.contains(x, y)
     }
 
     /// 阶段 7：基准测试 setOption 管线 + refresh 平均耗时（毫秒）
@@ -304,7 +366,10 @@ impl EChartsInstance {
         let start = js_sys::Date::now();
         for _ in 0..iterations {
             self.render_and_apply_states();
-            let _ = self.zr.refresh();
+            let _ = wasm_zrender::with_zr(self.zr_id, |zr| {
+                zr.refresh()
+                    .map_err(|e| JsValue::from_str(&e.to_string()))
+            });
         }
         (js_sys::Date::now() - start) / iterations as f64
     }
@@ -315,39 +380,41 @@ impl EChartsInstance {
         if self.option.is_empty() {
             return;
         }
-        run_update(
-            &mut self.zr,
-            &self.option,
-            self.width,
-            self.height,
-            &self.interaction,
-        );
+        let zr_id = self.zr_id;
+        let width = self.width;
+        let height = self.height;
+        let _ = wasm_zrender::with_zr(zr_id, |zr| {
+            run_update(zr, zr_id, &self.option, width, height, &self.interaction);
+            Ok(())
+        });
         self.apply_interaction_states();
     }
 
     fn apply_interaction_states(&mut self) {
-        for i in 0..self.zr.storage.paths().len() {
-            self.zr.set_path_state(i, STATE_NORMAL);
-        }
-
         let selected: Vec<DataTarget> = self.interaction.selected.iter().copied().collect();
-        for target in selected {
-            self.apply_state_to_target(target, STATE_SELECT);
-        }
-
-        if let Some(target) = self.interaction.hover {
-            self.apply_state_to_target(target, STATE_EMPHASIS);
-        }
-    }
-
-    fn apply_state_to_target(&mut self, target: DataTarget, state: &str) {
-        for i in 0..self.zr.storage.paths().len() {
-            let ec = &self.zr.storage.path(i).ec_data;
-            if ec.series_index == Some(target.series_index)
-                && ec.data_index == Some(target.data_index)
-            {
-                self.zr.set_path_state(i, state);
+        let hover = self.interaction.hover;
+        let _ = wasm_zrender::with_zr(self.zr_id, |zr| {
+            for i in 0..zr.storage.paths().len() {
+                zr.set_path_state(i, STATE_NORMAL);
             }
+            for target in &selected {
+                apply_state_to_zr(zr, *target, STATE_SELECT);
+            }
+            if let Some(target) = hover {
+                apply_state_to_zr(zr, target, STATE_EMPHASIS);
+            }
+            Ok(())
+        });
+    }
+}
+
+fn apply_state_to_zr(zr: &mut ZRenderer, target: DataTarget, state: &str) {
+    for i in 0..zr.storage.paths().len() {
+        let ec = &zr.storage.path(i).ec_data;
+        if ec.series_index == Some(target.series_index)
+            && ec.data_index == Some(target.data_index)
+        {
+            zr.set_path_state(i, state);
         }
     }
 }

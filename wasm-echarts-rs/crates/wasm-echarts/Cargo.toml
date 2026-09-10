@@ -22,6 +22,7 @@ chart-scatter = []
 
 [dependencies]
 rust-zrender = { path = "../rust-zrender" }
+wasm-zrender = { path = "../wasm-zrender", default-features = false, features = ["console_error_panic_hook"] }
 wasm-bindgen = "0.2.125"
 js-sys = "0.3.102"
 indexmap = "2"

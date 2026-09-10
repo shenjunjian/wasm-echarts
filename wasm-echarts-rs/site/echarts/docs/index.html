@@ -120,6 +120,30 @@ chart.on('click', (params) => {
             <td><code>convertToPixel</code> / <code>convertFromPixel</code></td>
             <td>cartesian 最小集：finder <code>{ xAxisIndex }</code> / <code>{ yAxisIndex }</code> / <code>{ gridIndex }</code> / <code>{ seriesIndex }</code> 或 <code>'xAxis'</code> / <code>'yAxis'</code> / <code>'grid'</code></td>
           </tr>
+          <tr>
+            <td><code>getZr</code></td>
+            <td>返回与 ChartView 共用 Storage 的 wasm-zrender 实例</td>
+          </tr>
+          <tr>
+            <td><code>showLoading</code> / <code>hideLoading</code></td>
+            <td>静态遮罩；不播旋转动画</td>
+          </tr>
+          <tr>
+            <td><code>getDataURL</code> / <code>renderToCanvas</code></td>
+            <td>离屏 RGBA → PNG/JPEG / 画到 canvas</td>
+          </tr>
+          <tr>
+            <td><code>containPixel</code> / <code>appendData</code> / <code>setTheme</code></td>
+            <td>grid 包含判断；追加 series.data；应用已注册主题</td>
+          </tr>
+          <tr>
+            <td><code>connect</code> / <code>registerTheme</code> / <code>registerMap</code> / <code>getMap</code></td>
+            <td>按 group 转发 action；主题表；地图表结构（本波不画 map）</td>
+          </tr>
+          <tr>
+            <td><code>graphic</code> / <code>util</code> / <code>time</code> / <code>format</code> / <code>number</code> / <code>helper</code> / <code>matrix</code> / <code>vector</code> / <code>color</code> / <code>env</code></td>
+            <td>已从 wasm-zrender 再导出或按官方签名重写。<code>LinearGradient</code> 可进 <code>setOption</code></td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -149,7 +173,7 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td>字体</td>
-            <td>WASM 不读系统字体。轴标签 / series label 走 rust-zrender fontdb；须从 <code>@wasm-echarts</code> 调 <code>registerFont</code>（与 wasm-zrender 的 fontdb 不共享）。未注册时 <code>refresh</code> 会报 <code>no default font found</code></td>
+            <td>WASM 不读系统字体。轴标签 / series label 渲染走 rust-zrender fontdb；须从 <code>@wasm-echarts</code> 调 <code>registerFont</code>。echarts 页与 <code>getZr</code> 共用同一份 fontdb；zrender 文档站的 pkg 仍是另一份内存。未注册时 <code>refresh</code> 会报 <code>no default font found</code></td>
           </tr>
           <tr>
             <td><code>notMerge</code></td>
@@ -161,11 +185,11 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td><code>getZr()</code></td>
-            <td>目标：返回与 ChartView 共用 Storage 的 wasm-zrender 实例（第 1 波落地）。当前尚未导出。无 SVG painter / hover layer；动画终态</td>
+            <td>返回与 ChartView 共用 Storage 的 wasm-zrender 实例。不是第二份 zrender wasm；无 SVG painter / hover layer；动画终态</td>
           </tr>
           <tr>
             <td><code>showLoading</code> / <code>hideLoading</code></td>
-            <td>目标：导出；不播官方旋转 Loading 动画（静态遮罩或空操作）。当前尚未导出</td>
+            <td>导出；静态半透明遮罩 + 文案，不播官方旋转 Loading 动画</td>
           </tr>
           <tr>
             <td>DataView / SaveAsImage</td>
@@ -283,17 +307,25 @@ chart.on('click', (params) => {
             <td><code>dispatchAction</code></td>
             <td><code>highlight</code> / <code>downplay</code> / <code>select</code> / <code>unselect</code> / <code>toggleSelect</code> / <code>dataZoom</code> / <code>showTip</code> / <code>hideTip</code></td>
           </tr>
+          <tr>
+            <td><code>getZr</code> / 命名空间</td>
+            <td>与 ChartView 共用 Storage；<code>graphic</code>（含 <code>LinearGradient</code>）/<code>util</code>/<code>time</code>/<code>format</code>/<code>number</code>/<code>helper</code>/<code>matrix</code>/<code>vector</code>/<code>color</code>/<code>env</code></td>
+          </tr>
+          <tr>
+            <td>实例 API</td>
+            <td><code>showLoading</code>（静态遮罩）/<code>getDataURL</code>/<code>renderToCanvas</code>/<code>appendData</code>/<code>setTheme</code>/<code>containPixel</code>；全局 <code>connect</code>/<code>registerTheme</code>/<code>registerMap</code></td>
+          </tr>
         </tbody>
       </table>
 
       <h4>未实现（按 canvas 全量对齐计划补齐，不是永久例外）</h4>
-      <p>下列官方入口已导出同名，内部只 <code>console.warn</code>：<code>connect</code> / <code>disconnect</code> / <code>registerTheme</code> / <code>registerMap</code> / <code>getMap</code> / <code>registerLocale</code> / <code>setPlatformAPI</code> / <code>registerPreprocessor</code>。</p>
-      <p>实例上尚未导出（不要当已实现）：<code>getZr</code> / <code>setTheme</code> / <code>appendData</code> / <code>getDataURL</code> / <code>renderToCanvas</code> / <code>showLoading</code> / <code>hideLoading</code> / <code>containPixel</code> / <code>convertToLayout</code> / <code>getVisual</code>。</p>
+      <p>下列官方入口已导出同名，内部只 <code>console.warn</code>：<code>registerLocale</code> / <code>setPlatformAPI</code> / <code>registerPreprocessor</code>。</p>
+      <p>实例上尚未做完：<code>convertToLayout</code> / <code>getVisual</code>。</p>
       <ul>
         <li>Charts：Radar、Map、Gauge、Funnel、Heatmap、Custom <code>renderItem</code> 等其余类型。未接线的 <code>series.type</code> 不得静默忽略后永远不管。</li>
-        <li>Components：legend 点击筛选与复杂布局、title 复杂布局、toolbox（canvas 按钮要做；DataView DOM 明确不做）、visualMap、geo、polar、graphic、brush、timeline、dataset</li>
+        <li>Components：legend 点击筛选与复杂布局、title 复杂布局、toolbox（canvas 按钮要做；DataView DOM 明确不做）、visualMap、geo、polar、graphic 组件、<code>option.graphic</code>、brush、timeline、dataset</li>
         <li>Actions：legend*、restore、brush、timeline、geo roam 等</li>
-        <li><code>connect</code> / 主题 / <code>registerMap</code> / <code>getZr</code> / <code>getDataURL</code> / <code>showLoading</code>（无旋转）/ media query / <code>convertToPixel</code> 完整 finder / <code>graphic</code> <code>util</code> <code>time</code> 命名空间</li>
+        <li>media query / <code>convertToPixel</code> 完整 finder</li>
         <li>option 名字在但未按官方做：line <code>smooth</code>/<code>areaStyle</code>/<code>stack</code>/<code>step</code>、pie <code>roseType</code>、多 grid / 双 y 轴、<code>symbol</code> 仅 circle/rect/emptyCircle、色板不是官方 palette 全套</li>
         <li>tooltip HTMLElement formatter / <code>confine</code> / <code>trigger: 'axis'</code></li>
       </ul>

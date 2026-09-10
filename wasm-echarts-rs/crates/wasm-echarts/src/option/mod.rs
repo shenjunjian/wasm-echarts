@@ -43,6 +43,24 @@ impl OptionValue {
         }
     }
 
+    pub fn as_object_mut(&mut self) -> Option<&mut IndexMap<String, OptionValue>> {
+        match self {
+            OptionValue::Object(map) => Some(map),
+            _ => None,
+        }
+    }
+
+    pub fn as_array_mut(&mut self) -> Option<&mut Vec<OptionValue>> {
+        match self {
+            OptionValue::Array(arr) => Some(arr),
+            _ => None,
+        }
+    }
+
+    pub fn get_mut(&mut self, key: &str) -> Option<&mut OptionValue> {
+        self.as_object_mut()?.get_mut(key)
+    }
+
     pub fn as_str(&self) -> Option<&str> {
         match self {
             OptionValue::String(s) => Some(s),
@@ -131,6 +149,55 @@ impl OptionModel {
 
     pub fn to_js(&self) -> Result<wasm_bindgen::JsValue, wasm_bindgen::JsValue> {
         option_value_to_js(&self.root)
+    }
+
+    pub fn append_series_data(
+        &mut self,
+        series_index: usize,
+        extra: OptionValue,
+    ) -> Result<(), wasm_bindgen::JsValue> {
+        let series = self
+            .root
+            .get_mut("series")
+            .and_then(|v| v.as_array_mut())
+            .and_then(|arr| arr.get_mut(series_index))
+            .ok_or_else(|| wasm_bindgen::JsValue::from_str("appendData: seriesIndex out of range"))?;
+        let data = match series.as_object_mut() {
+            Some(map) => map
+                .entry("data".to_string())
+                .or_insert_with(|| OptionValue::Array(Vec::new())),
+            None => {
+                return Err(wasm_bindgen::JsValue::from_str(
+                    "appendData: series is not an object",
+                ))
+            }
+        };
+        if data.as_array().is_none() {
+            *data = OptionValue::Array(Vec::new());
+        }
+        let arr = data
+            .as_array_mut()
+            .ok_or_else(|| wasm_bindgen::JsValue::from_str("appendData: series.data is not an array"))?;
+        match extra {
+            OptionValue::Array(items) => arr.extend(items),
+            other => arr.push(other),
+        }
+        Ok(())
+    }
+
+    pub fn apply_theme(&mut self, theme: OptionValue) {
+        match &theme {
+            OptionValue::Null => return,
+            OptionValue::Object(m) if m.is_empty() => return,
+            _ => {}
+        }
+        self.root = merge_option(
+            &theme,
+            &self.root,
+            MergeMode {
+                replace_merge: Vec::new(),
+            },
+        );
     }
 
     pub fn clear(&mut self) {
@@ -339,5 +406,57 @@ mod tests {
             Some("patched")
         );
         assert_eq!(series[1].get("name").and_then(|v| v.as_str()), Some("b"));
+    }
+
+    #[test]
+    fn append_series_data_extends_array() {
+        let mut model = OptionModel::new();
+        model.apply(
+            obj(vec![(
+                "series",
+                OptionValue::Array(vec![series("a", &[1.0])]),
+            )]),
+            SetOptionFlags::default(),
+        );
+        model
+            .append_series_data(
+                0,
+                OptionValue::Array(vec![OptionValue::Number(2.0), OptionValue::Number(3.0)]),
+            )
+            .unwrap();
+        let data = model
+            .root()
+            .get("series")
+            .and_then(|v| v.as_array())
+            .and_then(|a| a[0].get("data"))
+            .and_then(|v| v.as_array())
+            .unwrap();
+        assert_eq!(data.len(), 3);
+        assert_eq!(data[2].as_f64(), Some(3.0));
+    }
+
+    #[test]
+    fn apply_theme_fills_defaults_under_option() {
+        let mut model = OptionModel::new();
+        model.apply(
+            obj(vec![("color", OptionValue::Array(vec![OptionValue::String("#f00".into())]))]),
+            SetOptionFlags::default(),
+        );
+        model.apply_theme(obj(vec![
+            ("color", OptionValue::Array(vec![OptionValue::String("#00f".into())])),
+            ("backgroundColor", OptionValue::String("#fff".into())),
+        ]));
+        assert_eq!(
+            model
+                .root()
+                .get("color")
+                .and_then(|v| v.as_array())
+                .and_then(|a| a[0].as_str()),
+            Some("#f00")
+        );
+        assert_eq!(
+            model.root().get("backgroundColor").and_then(|v| v.as_str()),
+            Some("#fff")
+        );
     }
 }

@@ -7,7 +7,7 @@ todos:
     status: completed
   - id: wave1-shared-zr
     content: 第 1 波：wasm-echarts 依赖 wasm-zrender，单 WASM，getZr 共享 Storage；导出 graphic/util/time 等；挡脚本的实例 API
-    status: pending
+    status: completed
   - id: wave2-data-coord
     content: 第 2 波：dataset/transform/encode/stack/sampling；多 grid/轴；time/log 轴
     status: pending

@@ -16,7 +16,7 @@ pub struct ZRender {
 }
 
 impl ZRender {
-    fn from_id(id: u32) -> Self {
+    pub fn from_id(id: u32) -> Self {
         Self { id }
     }
 }
@@ -170,14 +170,8 @@ impl ZRender {
     }
 }
 
-fn dispose_zr_id(id: u32) {
-    crate::handler::detach(id);
-    ZR_REGISTRY.with(|reg| {
-        reg.borrow_mut().remove(id);
-    });
-    ELEMENT_REGISTRY.with(|reg| {
-        reg.borrow_mut().remove_by_zr(id);
-    });
+pub(crate) fn dispose_zr_id(id: u32) {
+    crate::registry::dispose_renderer(id);
 }
 
 /// 创建 ZRender 实例（dom 参数忽略，尺寸来自 opts）

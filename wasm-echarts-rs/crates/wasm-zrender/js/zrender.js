@@ -1,4 +1,4 @@
-import { native } from './native.js';
+import { native } from './native-core.js';
 
 /** @type {Map<number, ZRender>} */
 const instances = new Map();
@@ -169,6 +169,11 @@ function wrap(handle) {
     instances.set(id, zr);
   }
   return zr;
+}
+
+/** 把 wasm-bindgen `ZRender` handle 包成 JS facade（echarts `getZr()`）。 */
+export function wrapZRender(handle) {
+  return wrap(handle);
 }
 
 export function init(dom, opts) {

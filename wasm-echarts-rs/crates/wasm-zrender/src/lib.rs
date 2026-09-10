@@ -26,9 +26,18 @@ pub use graphic::{
     Trochoid, TSpan,
 };
 pub use handler::Handler;
+pub use registry::{
+    dispose_renderer, insert_renderer, rematerialize_mounted_roots, with_zr,
+};
 pub use zrender::{dispose, dispose_all, get_instance, init, ZRender};
 pub use font::{clear_fonts, register_font};
 
+/// 把 canvas 绑到已有 ZRender（echarts `init(canvas)` 后 `getZr().on` 需要）。
+pub fn attach_host(zr_id: u32, dom: &JsValue) -> Result<(), JsValue> {
+    crate::handler::attach(zr_id, dom)
+}
+
+#[cfg(feature = "standalone")]
 #[wasm_bindgen(start)]
 pub fn init_panic_hook() {
     utils::set_panic_hook();

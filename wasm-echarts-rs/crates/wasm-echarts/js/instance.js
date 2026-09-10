@@ -1,3 +1,7 @@
+import { wrapZRender } from '../../wasm-zrender/js/zrender.js';
+import { clone, merge } from './util.js';
+import { connectedGroups, themes } from './shared.js';
+
 /** @type {Map<string, ECharts>} */
 export const instances = new Map();
 
@@ -127,6 +131,19 @@ function matchQuery(query, params) {
   return true;
 }
 
+function resolveTheme(theme) {
+  if (theme == null || theme === '') {
+    return null;
+  }
+  if (typeof theme === 'string') {
+    return themes.get(theme) || null;
+  }
+  if (typeof theme === 'object') {
+    return theme;
+  }
+  return null;
+}
+
 function optionHasDataZoom(option) {
   if (!option || option.dataZoom == null) {
     return false;
@@ -178,6 +195,8 @@ export class ECharts {
     this._tooltipEl = null;
     this._tooltipOn = false;
     this._wheelZoomOn = false;
+    this._zr = null;
+    this._loadingEl = null;
     this._onMove = this._onPointerMove.bind(this);
     this._onClick = this._onPointerClick.bind(this);
     this._onLeave = this._onPointerLeave.bind(this);
@@ -226,6 +245,9 @@ export class ECharts {
     canvas.addEventListener('click', this._onClick);
     canvas.addEventListener('mouseleave', this._onLeave);
     canvas.addEventListener('wheel', this._onWheel, { passive: false });
+    if (this._native && typeof this._native.attachHost === 'function') {
+      this._native.attachHost(canvas);
+    }
   }
 
   _unbindHost() {
@@ -481,7 +503,12 @@ export class ECharts {
   setOption(option, notMerge, lazyUpdate) {
     this._assertAlive();
     const flags = parseSetOptionFlags(notMerge);
-    this._native.set_option(option, {
+    let payload = option;
+    const theme = resolveTheme(this._theme);
+    if (theme && (flags.notMerge || !this.hasOption())) {
+      payload = merge(clone(theme), option);
+    }
+    this._native.set_option(payload, {
       notMerge: flags.notMerge,
       replaceMerge: flags.replaceMerge,
     });
@@ -553,6 +580,27 @@ export class ECharts {
       this._hideTooltip();
       this._emit('hideTip', payload);
     }
+    this._forwardConnect(payload);
+  }
+
+  _forwardConnect(payload) {
+    if (!payload || payload.__fromConnect) {
+      return;
+    }
+    const group = this.group;
+    if (!group || !connectedGroups.get(group)) {
+      return;
+    }
+    for (const chart of instances.values()) {
+      if (chart === this || chart.group !== group || chart.isDisposed()) {
+        continue;
+      }
+      try {
+        chart.dispatchAction({ ...payload, __fromConnect: true });
+      } catch (err) {
+        console.error(err);
+      }
+    }
   }
 
   /**
@@ -607,6 +655,8 @@ export class ECharts {
     const id = this.id;
     this._unbindHost();
     this._disposeTooltip();
+    this.hideLoading();
+    this._zr = null;
     if (this._native && typeof this._native.dispose === 'function') {
       this._native.dispose();
     }
@@ -706,5 +756,112 @@ export class ECharts {
   convertFromPixel(finder, value) {
     this._assertAlive();
     return this._native.convert_from_pixel(finder, value);
+  }
+
+  containPixel(finder, value) {
+    this._assertAlive();
+    return !!this._native.containPixel(finder, value);
+  }
+
+  getZr() {
+    this._assertAlive();
+    if (!this._zr) {
+      this._zr = wrapZRender(this._native.getZr());
+    }
+    return this._zr;
+  }
+
+  showLoading(name, cfg) {
+    this._assertAlive();
+    if (name != null && typeof name === 'object') {
+      cfg = name;
+    }
+    this.hideLoading();
+    const host = this._dom;
+    if (!host || typeof document === 'undefined') {
+      return;
+    }
+    const text = (cfg && (cfg.text || cfg.msg)) || 'loading';
+    const parent = host.parentElement;
+    const el = document.createElement('div');
+    el.setAttribute('data-ec-loading', '1');
+    el.style.cssText =
+      'position:absolute;left:0;top:0;right:0;bottom:0;background:rgba(255,255,255,0.72);display:flex;align-items:center;justify-content:center;color:#666;font:13px/1.4 sans-serif;pointer-events:none;z-index:9;';
+    el.textContent = String(text);
+    if (parent) {
+      const pos = parent.style && parent.style.position;
+      if (!pos || pos === 'static') {
+        parent.style.position = 'relative';
+      }
+      parent.appendChild(el);
+    } else if (host.insertAdjacentElement) {
+      host.insertAdjacentElement('afterend', el);
+    }
+    this._loadingEl = el;
+  }
+
+  hideLoading() {
+    if (this._loadingEl && this._loadingEl.parentNode) {
+      this._loadingEl.parentNode.removeChild(this._loadingEl);
+    }
+    this._loadingEl = null;
+  }
+
+  renderToCanvas(opts) {
+    this._assertAlive();
+    const rgba = this.refresh();
+    const width = this.getWidth();
+    const height = this.getHeight();
+    let canvas = opts && opts.canvas;
+    if (!canvas || typeof canvas.getContext !== 'function') {
+      if (typeof document === 'undefined') {
+        throw new Error('renderToCanvas requires a canvas or document');
+      }
+      canvas = document.createElement('canvas');
+    }
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (ctx && rgba) {
+      ctx.putImageData(
+        new ImageData(new Uint8ClampedArray(rgba), width, height),
+        0,
+        0,
+      );
+    }
+    return canvas;
+  }
+
+  getDataURL(opts) {
+    this._assertAlive();
+    const o = opts && typeof opts === 'object' ? opts : {};
+    if (o.type === 'svg') {
+      console.warn('[wasm-echarts] getDataURL(type: "svg") 未实现（无 SVG painter）');
+      return '';
+    }
+    const canvas = this.renderToCanvas(o);
+    const type = o.type === 'jpeg' ? 'image/jpeg' : 'image/png';
+    return canvas.toDataURL(type, o.quality);
+  }
+
+  appendData(params) {
+    this._assertAlive();
+    this._native.appendData(params);
+    this._syncOptionFlags();
+    this._paintIfBound();
+  }
+
+  setTheme(theme) {
+    this._assertAlive();
+    this._theme = theme;
+    if (!this.hasOption()) {
+      return;
+    }
+    const current = this.getOption();
+    const themeObj = resolveTheme(theme);
+    const payload = themeObj ? merge(clone(themeObj), current) : current;
+    this._native.set_option(payload, { notMerge: true, replaceMerge: [] });
+    this._syncOptionFlags();
+    this._paintIfBound();
   }
 }

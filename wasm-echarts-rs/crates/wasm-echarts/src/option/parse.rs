@@ -51,7 +51,61 @@ fn parse_object(v: &JsValue) -> Result<OptionValue, JsValue> {
         })?;
         map.insert(key, parse_option_value(&val)?);
     }
+    enrich_style_object(v, &mut map)?;
     Ok(OptionValue::Object(map))
+}
+
+fn reflect_value(v: &JsValue, key: &str) -> Result<JsValue, JsValue> {
+    Reflect::get(v, &JsValue::from_str(key))
+}
+
+fn enrich_style_object(
+    v: &JsValue,
+    map: &mut IndexMap<String, OptionValue>,
+) -> Result<(), JsValue> {
+    let ty = reflect_value(v, "type")
+        .ok()
+        .and_then(|val| val.as_string());
+    let keys: &[&str] = match ty.as_deref() {
+        Some("linear") => &[
+            "type", "x", "y", "x2", "y2", "colorStops", "global",
+        ],
+        Some("radial") => &["type", "x", "y", "r", "r0", "colorStops", "global"],
+        Some("pattern") => &[
+            "type",
+            "image",
+            "repeat",
+            "x",
+            "y",
+            "scaleX",
+            "scaleY",
+            "rotation",
+        ],
+        _ => {
+            if map.contains_key("colorStops")
+                || reflect_value(v, "colorStops")
+                    .ok()
+                    .is_some_and(|val| !val.is_undefined() && !val.is_null())
+            {
+                &[
+                    "type", "x", "y", "x2", "y2", "r", "r0", "colorStops", "global",
+                ]
+            } else {
+                return Ok(());
+            }
+        }
+    };
+    for key in keys {
+        if map.contains_key(*key) {
+            continue;
+        }
+        let val = reflect_value(v, key)?;
+        if val.is_undefined() {
+            continue;
+        }
+        map.insert((*key).to_string(), parse_option_value(&val)?);
+    }
+    Ok(())
 }
 
 /// 把 OptionValue 转回普通 JS 值。函数字段保留为原 `Function`。

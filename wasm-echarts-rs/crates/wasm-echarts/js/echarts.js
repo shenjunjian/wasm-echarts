@@ -5,8 +5,19 @@ import {
   getDomInstanceId,
   setDomInstanceId,
 } from './instance.js';
+import { themes, maps, connectedGroups } from './shared.js';
+import * as graphic from './graphic.js';
+import * as util from './util.js';
+import * as number from './number.js';
+import * as time from './time.js';
+import * as format from './format.js';
+import * as helper from './helper.js';
+import * as matrix from '../../wasm-zrender/js/tool/matrix.js';
+import * as vector from '../../wasm-zrender/js/tool/vector.js';
+import * as color from '../../wasm-zrender/js/tool/color.js';
+import env from './env.js';
 
-export { ECharts };
+export { ECharts, graphic, util, number, time, format, helper, matrix, vector, color, env };
 export const version = '6.1.0';
 
 function refreshLiveFontDatabases() {
@@ -171,11 +182,61 @@ export function dispose(chart) {
   }
 }
 
-export const connect = unimplemented('connect');
-export const disconnect = unimplemented('disconnect');
-export const registerTheme = unimplemented('registerTheme');
-export const registerMap = unimplemented('registerMap');
-export const getMap = unimplemented('getMap');
+export function connect(groupId) {
+  if (Array.isArray(groupId)) {
+    const charts = groupId;
+    let id = null;
+    for (const chart of charts) {
+      if (chart && chart.group) {
+        id = chart.group;
+      }
+    }
+    id = id || `g_${idBase++}`;
+    for (const chart of charts) {
+      if (chart) {
+        chart.group = id;
+      }
+    }
+    groupId = id;
+  }
+  connectedGroups.set(String(groupId), true);
+  return String(groupId);
+}
+
+export function disconnect(groupId) {
+  connectedGroups.set(String(groupId), false);
+}
+
+export const disConnect = disconnect;
+
+export function registerTheme(name, theme) {
+  themes.set(String(name), theme);
+}
+
+export function registerMap(mapName, geoJson, specialAreas) {
+  if (
+    geoJson &&
+    typeof geoJson === 'object' &&
+    (geoJson.geoJSON || geoJson.geoJson || geoJson.svg)
+  ) {
+    maps.set(String(mapName), {
+      geoJSON: geoJson.geoJSON || geoJson.geoJson || null,
+      svg: geoJson.svg || null,
+      specialAreas: geoJson.specialAreas || specialAreas || null,
+    });
+    return;
+  }
+  maps.set(String(mapName), {
+    geoJSON: geoJson || null,
+    svg: null,
+    specialAreas: specialAreas || null,
+  });
+}
+
+export function getMap(mapName) {
+  return maps.get(String(mapName));
+}
+
 export const registerLocale = unimplemented('registerLocale');
 export const setPlatformAPI = unimplemented('setPlatformAPI');
 export const registerPreprocessor = unimplemented('registerPreprocessor');

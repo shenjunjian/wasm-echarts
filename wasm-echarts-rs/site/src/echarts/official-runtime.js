@@ -8,17 +8,7 @@ import { ensureDefaultFont } from './fonts.js';
 
 export const OFFICIAL_ROOT_PATH = '/echarts-official';
 
-const MISSING_NAMESPACES = [
-  'graphic',
-  'util',
-  'color',
-  'number',
-  'format',
-  'helper',
-  'matrix',
-  'vector',
-  'time',
-];
+const MISSING_NAMESPACES = [];
 
 function missingNamespace(path) {
   return new Proxy(function missingOfficialApi() {}, {

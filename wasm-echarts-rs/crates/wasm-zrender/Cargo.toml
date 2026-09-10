@@ -8,7 +8,9 @@ description = "wasm-bindgen 薄封装，浏览器侧暴露对齐 zrender export.
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["console_error_panic_hook"]
+default = ["console_error_panic_hook", "standalone"]
+# 作为 wasm-echarts 的 rlib 编入时关掉，避免两份 #[wasm_bindgen(start)]
+standalone = []
 
 [dependencies]
 rust-zrender = { path = "../rust-zrender" }

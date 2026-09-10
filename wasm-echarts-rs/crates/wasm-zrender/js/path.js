@@ -1,6 +1,6 @@
 import { Displayable } from './displayable.js';
 import { asPatch } from './element.js';
-import { native } from './native.js';
+import { native } from './native-core.js';
 import { PathRecorder } from './path_recorder.js';
 
 export { PathRecorder };

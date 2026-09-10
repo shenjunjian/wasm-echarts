@@ -56,7 +56,7 @@ rustup target add wasm32-unknown-unknown
 ## 编译
 
 Workspace 含三个 Rust crate：**`rust-zrender`**（纯 lib）、**`wasm-zrender`** / **`wasm-echarts`**（wasm-bindgen 产物）。  
-当前源码二者均只依赖 `rust-zrender`。第 1 波起 `wasm-echarts` 将 path 依赖 `wasm-zrender`（rlib），echarts 运行时只加载一份 WASM，`getZr()` 与 ChartView 共用 Storage。详见 [AGENT.md](AGENT.md) 与 [canvas 全量对齐计划](.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md)。
+`wasm-echarts` path 依赖 `wasm-zrender`（rlib），echarts 运行时只加载一份 WASM，`getZr()` 与 ChartView 共用 Storage。zrender 文档站可继续单独用 `wasm-zrender/pkg`。详见 [AGENT.md](AGENT.md) 与 [canvas 全量对齐计划](.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md)。
 
 ### wasm-echarts（ECharts Demo）
 
@@ -132,15 +132,16 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 
 #### 1. 与官方一致的公开 API
 
-`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version`（`'6.1.0'`）/ `use`（只提示）；实例 `setOption(option)` / `setOption(option, notMerge | opts)` / `getOption` / `resize` / `clear` / `dispatchAction` / `on` / `off` / `getWidth` / `getHeight` / `getDevicePixelRatio` / `isDisposed` / `dispose` / `getDom` / `getId` / `convertToPixel` / `convertFromPixel`（cartesian `xAxis`/`yAxis`/`grid` 最小集）。`init(canvas)` 后 `setOption` 自动上屏，并绑定指针（`click` / `mouseover` / `mouseout` / `globalout`）。`dispatchAction` 已接线：`highlight` / `downplay` / `select` / `unselect` / `toggleSelect` / `dataZoom` / `showTip` / `hideTip`。
+`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version`（`'6.1.0'`）/ `use`（只提示）；`connect` / `disconnect` / `registerTheme` / `registerMap` / `getMap`；命名空间 `graphic` / `util` / `number` / `time` / `format` / `helper` / `matrix` / `vector` / `color` / `env`。实例 `setOption` / `getOption` / `resize` / `clear` / `dispatchAction` / `on` / `off` / `getWidth` / `getHeight` / `getDevicePixelRatio` / `isDisposed` / `dispose` / `getDom` / `getId` / `convertToPixel` / `convertFromPixel` / `containPixel` / `getZr` / `showLoading` / `hideLoading` / `getDataURL` / `renderToCanvas` / `appendData` / `setTheme`。`init(canvas)` 后 `setOption` 自动上屏，并绑定指针（`click` / `mouseover` / `mouseout` / `globalout`）。`dispatchAction` 已接线：`highlight` / `downplay` / `select` / `unselect` / `toggleSelect` / `dataZoom` / `showTip` / `hideTip`。
 
 #### 2. 与官方不一致 / 例外
 
 - `use(...)` 导出但不按需加载，只 `console.info` 提示已编进 WASM。
 - `init(null)` 允许离屏；仅 canvas，无 SVG。
-- 动画终态；`lazyUpdate` 同步；字体须从 `@wasm-echarts` 调 `registerFont`（与 wasm-zrender fontdb 不共享）。
-- `getZr()` 目标为与 ChartView 共用 Storage 的 wasm-zrender 实例（第 1 波落地）；当前尚未导出。
-- `showLoading` / `hideLoading` 导出后不播旋转动画（静态遮罩或空操作）；当前尚未导出。
+- 动画终态；`lazyUpdate` 同步。
+- 字体：WASM 不读系统字体。须从 `@wasm-echarts` 调 `registerFont`。echarts 页与 `getZr` 共用同一份 fontdb；zrender 文档站的 pkg 仍是另一份内存。
+- `getZr()` 返回与 ChartView 共用 Storage 的 wasm-zrender 实例；无 SVG painter / hover layer；动画终态。
+- `showLoading` / `hideLoading` 导出，静态半透明遮罩 + 文案，不播旋转动画。
 - toolbox DataView 浮层与 SaveAsImage 的 DOM 下载条明确不做。
 - `notMerge` 只作 `setOption` 第二参数，写在 option 根上不会当合并开关。
 - `replaceMerge` 只按顶层 key 整段替换，不按 component `id`。
@@ -162,8 +163,8 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 
 #### 4. 已实现 / 未实现
 
-- **已实现（部分生效）**：line / bar / pie / scatter；单 cartesian；`axisLabel.formatter`；pie `center`/`radius`/`startAngle`/`clockwise`；`symbol`/`symbolSize`；series label；CallbackDataParams（`componentType`/`seriesType`/`percent`/`data`）；`convertToPixel` cartesian 最小集；inside dataZoom 滚轮；`on`/`off` 指针事件；内建 string tooltip；`showTip`/`hideTip`；hover / toggleSelect；竖线 axisPointer。
-- **未实现（按 canvas 全量对齐计划补齐，不是永久例外）**：已导出只 `console.warn` 的有 `connect` / `registerTheme` / `registerMap` / `registerPreprocessor` 等。实例尚未导出：`getZr` / `setTheme` / `appendData` / `getDataURL` / `showLoading` / `containPixel` 等。其余 chart、polar、dataset、`graphic`/`util` 命名空间、line `smooth`/`areaStyle`/`stack` 等见 [AGENT.md](AGENT.md) 与 [echarts 文档](wasm-echarts-rs/site/echarts/docs/index.html)。
+- **已实现（部分生效）**：line / bar / pie / scatter；单 cartesian；`getZr` 共用 Storage；`graphic`/`util`/`time` 等命名空间；`showLoading` 静态遮罩；`getDataURL`/`renderToCanvas`；`connect`/`registerTheme`/`registerMap`（表结构）；`appendData`/`containPixel`；`axisLabel.formatter`；pie `center`/`radius`/`startAngle`/`clockwise`；`symbol`/`symbolSize`；series label；CallbackDataParams；`convertToPixel` cartesian 最小集；inside dataZoom 滚轮；`on`/`off` 指针事件；内建 string tooltip；`showTip`/`hideTip`；hover / toggleSelect；竖线 axisPointer。
+- **未实现（按 canvas 全量对齐计划补齐，不是永久例外）**：已导出只 `console.warn` 的有 `registerPreprocessor` / `registerLocale` / `setPlatformAPI`。其余 chart、polar、dataset、`option.graphic` 组件、line `smooth`/`areaStyle`/`stack` 等见 [AGENT.md](AGENT.md) 与 [echarts 文档](wasm-echarts-rs/site/echarts/docs/index.html)。
 
 native `EChartsInstance`（`wasm_echarts.d.ts`）是内部 handle，不要从 site 直接 `new`。
 

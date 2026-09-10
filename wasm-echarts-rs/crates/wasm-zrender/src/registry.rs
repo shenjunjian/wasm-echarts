@@ -720,7 +720,40 @@ pub(crate) fn refresh_all_font_databases(resolved: &rust_zrender::ResolvedFontCo
     });
 }
 
-pub(crate) fn with_zr<F, T>(id: u32, f: F) -> Result<T, JsValue>
+pub fn insert_renderer(zr: ZRenderer) -> u32 {
+    ZR_REGISTRY.with(|reg| reg.borrow_mut().insert(zr))
+}
+
+pub fn dispose_renderer(id: u32) {
+    crate::handler::detach(id);
+    ZR_REGISTRY.with(|reg| {
+        reg.borrow_mut().remove(id);
+    });
+    ELEMENT_REGISTRY.with(|reg| {
+        reg.borrow_mut().remove_by_zr(id);
+    });
+}
+
+/// `Storage::new()` 之后把 `getZr().add` 的已挂载根节点重新物化进同一 Storage。
+pub fn rematerialize_mounted_roots(zr: &mut ZRenderer, zr_id: u32) -> Result<(), JsValue> {
+    ELEMENT_REGISTRY.with(|reg| {
+        let mut reg = reg.borrow_mut();
+        for record in reg.elements.values_mut() {
+            if record.zr_id == Some(zr_id) {
+                record.storage_index = None;
+            }
+        }
+        let roots = reg.mounted_root_ids(zr_id);
+        for id in roots {
+            reg.materialize_tree(zr, zr_id, id)?;
+            let child = reg.child_ref(id)?;
+            zr.storage.add_root(child);
+        }
+        Ok(())
+    })
+}
+
+pub fn with_zr<F, T>(id: u32, f: F) -> Result<T, JsValue>
 where
     F: FnOnce(&mut ZRenderer) -> Result<T, JsValue>,
 {
@@ -1141,6 +1174,25 @@ mod tests {
         assert_eq!(reg.children_of(group_id), vec![a, c]);
         assert_eq!(reg.parent_id(b), None);
         assert_eq!(reg.parent_id(c), Some(group_id));
+    }
+
+    #[test]
+    fn rematerialize_preserves_user_root_after_storage_reset() {
+        ELEMENT_REGISTRY.with(|reg| reg.borrow_mut().clear());
+        ZR_REGISTRY.with(|reg| reg.borrow_mut().clear());
+
+        let zr = ZRenderer::new(120, 80).unwrap();
+        let zr_id = ZR_REGISTRY.with(|reg| reg.borrow_mut().insert(zr));
+        let group = register_group();
+        mount_element_to_zr(zr_id, &group).unwrap();
+
+        with_zr(zr_id, |zr| {
+            zr.storage = rust_zrender::Storage::new();
+            rematerialize_mounted_roots(zr, zr_id).unwrap();
+            assert_eq!(zr.storage.roots().len(), 1);
+            Ok(())
+        })
+        .unwrap();
     }
 
     #[test]

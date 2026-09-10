@@ -1,5 +1,7 @@
-import { BoundingRect } from './native.js';
+import { native } from './native-core.js';
 import * as matrix from './tool/matrix.js';
+
+const BoundingRect = native.BoundingRect;
 
 BoundingRect.calculateTransform = function (out, a, b) {
   const sx = !a.width ? 1 : b.width / a.width;

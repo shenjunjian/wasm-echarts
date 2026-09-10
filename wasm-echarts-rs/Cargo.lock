@@ -977,6 +977,7 @@ dependencies = [
  "rust-zrender",
  "wasm-bindgen",
  "wasm-bindgen-test",
+ "wasm-zrender",
  "web-sys",
 ]
 

@@ -1,5 +1,5 @@
 import { Element, nativeHandle } from './element.js';
-import { native } from './native.js';
+import { native } from './native-core.js';
 
 /**
  * 官方 Group extends Element（不是 Displayable）。

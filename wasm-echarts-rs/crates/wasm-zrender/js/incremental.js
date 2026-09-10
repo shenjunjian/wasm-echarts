@@ -1,6 +1,6 @@
 import { Displayable } from './displayable.js';
 import { nativeHandle } from './element.js';
-import { native } from './native.js';
+import { native } from './native-core.js';
 
 /**
  * 按普通 Group 语义落地：可构造、可 addDisplayable，不做增量图层。

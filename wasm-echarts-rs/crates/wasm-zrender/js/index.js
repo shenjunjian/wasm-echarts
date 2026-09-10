@@ -1,7 +1,9 @@
 /**
  * wasm-zrender 公开 API：官方 export.ts / zrender.ts 命名空间。
  * default 仍是 wasm-bindgen 的 initWasm。
+ * 必须先加载 native.js（注入 standalone pkg），shapes 才能拿到 native 类。
  */
+import './native.js';
 export { default } from './native.js';
 
 export {

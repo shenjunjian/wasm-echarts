@@ -1,5 +1,5 @@
 import { Displayable } from './displayable.js';
-import { native } from './native.js';
+import { native } from './native-core.js';
 
 export class TSpan extends Displayable {
   constructor(opts) {
