@@ -8,12 +8,7 @@ export const OFFICIAL_CATEGORY_GROUPS = [
     title: '折线图',
     handmade: [
       { id: 'line', title: '基础折线', description: 'category 轴折线图' },
-      {
-        id: 'fonts',
-        title: '多字体',
-        description:
-          'registerFont 引入雅黑 / 宋体 / 楷体，分别用于标题、副标题、图例与轴单位',
-      },
+
     ],
   },
   {
@@ -57,6 +52,12 @@ export const OFFICIAL_CATEGORY_GROUPS = [
 ];
 
 export const INTERACTION_EXAMPLES = [
+  {
+    id: 'fonts',
+    title: '多字体',
+    description:
+      'registerFont 引入雅黑 / 宋体 / 楷体，分别用于标题、副标题、图例与轴单位',
+  },
   {
     id: 'interactive',
     title: '点击 / tooltip / zoom',

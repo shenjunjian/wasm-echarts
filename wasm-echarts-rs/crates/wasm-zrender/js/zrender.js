@@ -156,6 +156,26 @@ export class ZRender {
     }
     return this;
   }
+
+  /**
+   * 离屏 canvas painter 占位。无 SVG / hover layer；`getSvgDom` 只 warn。
+   */
+  get painter() {
+    if (!this._painter) {
+      this._painter = {
+        type: 'canvas',
+        getType() {
+          return 'canvas';
+        },
+        getSvgDom() {
+          console.warn('[wasm-zrender] painter.getSvgDom 未实现（无 SVG painter）');
+          return null;
+        },
+        getViewportRoot: () => this.dom || null,
+      };
+    }
+    return this._painter;
+  }
 }
 
 function wrap(handle) {

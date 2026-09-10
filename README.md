@@ -132,7 +132,7 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 
 #### 1. 与官方一致的公开 API
 
-`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version`（`'6.1.0'`）/ `use`（只提示）；`connect` / `disconnect` / `registerTheme` / `registerMap` / `getMap` / `parseGeoJSON`；`registerPreprocessor` / `registerProcessor` / `registerLayout` / `registerVisual` / `registerAction` / `registerCoordinateSystem` / `registerCustomSeries` / `PRIORITY`；命名空间 `graphic` / `util` / `number` / `time` / `format` / `helper` / `matrix` / `vector` / `color` / `env`；`throttle`。实例 `setOption` / `getOption` / `resize` / `clear` / `dispatchAction` / `on` / `off` / `getWidth` / `getHeight` / `getDevicePixelRatio` / `isDisposed` / `dispose` / `getDom` / `getId` / `convertToPixel` / `convertFromPixel` / `containPixel` / `getZr` / `showLoading` / `hideLoading` / `getDataURL` / `renderToCanvas` / `appendData` / `setTheme`。`init(canvas)` 后 `setOption` 自动上屏，并绑定指针（`click` / `mouseover` / `mouseout` / `globalout`）。`dispatchAction` 已接线：`highlight` / `downplay` / `select` / `unselect` / `toggleSelect` / `dataZoom` / `showTip` / `hideTip` / `legendToggleSelect` / `legendSelect` / `legendUnSelect` / `restore` / `timelineChange` / `brush` / `expandAxisBreak` / `collapseAxisBreak` / `toggleAxisBreak`。
+`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version`（`'6.1.0'`）/ `use`（只提示）；`connect` / `disconnect` / `registerTheme` / `registerMap` / `getMap` / `parseGeoJSON`；`registerPreprocessor` / `registerProcessor` / `registerLayout` / `registerVisual` / `registerAction` / `registerCoordinateSystem` / `registerCustomSeries` / `PRIORITY`；命名空间 `graphic` / `util` / `number` / `time` / `format` / `helper` / `matrix` / `vector` / `color` / `env`；`throttle`。实例 `setOption` / `getOption` / `resize` / `clear` / `dispatchAction` / `on` / `off` / `getWidth` / `getHeight` / `getDevicePixelRatio` / `isDisposed` / `dispose` / `getDom` / `getId` / `convertToPixel` / `convertFromPixel` / `containPixel` / `getZr` / `showLoading` / `hideLoading` / `getDataURL` / `renderToCanvas` / `getRenderedCanvas` / `appendData` / `setTheme`。`init(canvas)` 后 `setOption` 自动上屏，并绑定指针（`click` / `mouseover` / `mouseout` / `globalout`）。`dispatchAction` 已接线：`highlight` / `downplay` / `select` / `unselect` / `toggleSelect` / `dataZoom` / `showTip` / `hideTip` / `legendToggleSelect` / `legendSelect` / `legendUnSelect` / `restore` / `timelineChange` / `timelinePlayChange` / `takeGlobalCursor` / `brush` / `brushEnd` / `expandAxisBreak` / `collapseAxisBreak` / `toggleAxisBreak`。
 
 #### 2. 与官方不一致 / 例外
 
@@ -141,7 +141,7 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 - 动画终态；`lazyUpdate` 同步。`universalTransition` 只跳终态，不插值。
 - 扩展 StageHandler 拿到简化 `ecModel`（`getOption` / `eachSeries`），不是官方 GlobalModel。`labelLayout` / `axis.breaks` / `axis.jitter` 是 canvas 终态实现。
 - 字体：WASM 不读系统字体。须从 `@wasm-echarts` 调 `registerFont`。echarts 页与 `getZr` 共用同一份 fontdb；zrender 文档站的 pkg 仍是另一份内存。
-- `getZr()` 返回与 ChartView 共用 Storage 的 wasm-zrender 实例；无 SVG painter / hover layer；动画终态。
+- `getZr()` 返回与 ChartView 共用 Storage 的 wasm-zrender 实例（同一份 WASM，不是第二份 `wasm-zrender/pkg`）。无 SVG painter（`zr.painter.getSvgDom` / `renderToSVGString` / `getSvgDataURL` 只 warn）；无 hover layer / dirty rect；动画终态。
 - `showLoading` / `hideLoading` 导出，静态半透明遮罩 + 文案，不播旋转动画。
 - toolbox DataView 浮层与 SaveAsImage 的 DOM 下载条明确不做。
 - `notMerge` 只作 `setOption` 第二参数，写在 option 根上不会当合并开关。

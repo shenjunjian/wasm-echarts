@@ -5,9 +5,10 @@
  *   node scripts/probe-official-examples.mjs --category line
  *   node scripts/probe-official-examples.mjs --category bar --category pie
  *   node scripts/probe-official-examples.mjs --base-url http://localhost:5175
+ *   node scripts/probe-official-examples.mjs --out probe-full.json
  * 省略 --category 时探测 examples 目录里已有的全部 official-*-catalog.js。
  */
-import { readdir } from 'node:fs/promises';
+import { readdir, writeFile } from 'node:fs/promises';
 import { dirname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -17,6 +18,7 @@ const examplesDir = join(__dirname, '..', 'echarts', 'examples');
 export function parseArgs(argv) {
   const categories = [];
   let baseUrl = 'http://localhost:5175';
+  let outPath = null;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--category' || arg === '-c') {
@@ -43,13 +45,25 @@ export function parseArgs(argv) {
       baseUrl = arg.slice('--base-url='.length).replace(/\/$/, '');
       continue;
     }
+    if (arg === '--out') {
+      const value = argv[++i];
+      if (!value) {
+        throw new Error('--out 需要文件路径');
+      }
+      outPath = value;
+      continue;
+    }
+    if (arg.startsWith('--out=')) {
+      outPath = arg.slice('--out='.length);
+      continue;
+    }
     if (/^https?:\/\//.test(arg)) {
       baseUrl = arg.replace(/\/$/, '');
       continue;
     }
     throw new Error(`未知参数: ${arg}`);
   }
-  return { categories, baseUrl };
+  return { categories, baseUrl, outPath };
 }
 
 async function loadPlaywright() {
@@ -167,7 +181,7 @@ async function probeOne(page, baseUrl, item) {
 }
 
 export async function main(argv = process.argv.slice(2)) {
-  const { categories: requested, baseUrl } = parseArgs(argv);
+  const { categories: requested, baseUrl, outPath } = parseArgs(argv);
   const categories = requested.length ? requested : await listCatalogCategories();
   if (!categories.length) {
     throw new Error('没有可探测的 official-*-catalog.js，先跑 sync-official-examples.mjs');
@@ -215,8 +229,13 @@ export async function main(argv = process.argv.slice(2)) {
 
   const ok = rows.filter((r) => r.status === 'ok');
   const bad = rows.filter((r) => r.status !== 'ok');
+  const report = { categories, ok, bad, rows };
   console.log('\n--- JSON ---');
-  console.log(JSON.stringify({ categories, ok, bad, rows }, null, 2));
+  console.log(JSON.stringify(report, null, 2));
+  if (outPath) {
+    await writeFile(outPath, JSON.stringify(report, null, 2), 'utf8');
+    console.log(`已写入 ${outPath}（ok ${ok.length} / 共 ${rows.length}）`);
+  }
 }
 
 function isDirectRun() {

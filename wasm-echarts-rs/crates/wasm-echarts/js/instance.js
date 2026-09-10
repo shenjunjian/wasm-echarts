@@ -912,12 +912,72 @@ export class ECharts {
     return !!this._native.containPixel(finder, value);
   }
 
+  /**
+   * 与 ChartView 共用同一份 wasm-zrender 实例（同一 WASM / Storage）。
+   * 无 SVG painter / hover layer；动画写终态。`painter.getSvgDom` 只 warn。
+   */
   getZr() {
     this._assertAlive();
     if (!this._zr) {
       this._zr = wrapZRender(this._native.getZr());
     }
+    if (this._zr && this._dom && this._zr.dom == null) {
+      this._zr.dom = this._dom;
+    }
     return this._zr;
+  }
+
+  isSSR() {
+    return false;
+  }
+
+  /**
+   * 官方已废弃，等价 `renderToCanvas`。
+   */
+  getRenderedCanvas(opts) {
+    return this.renderToCanvas(opts);
+  }
+
+  renderToSVGString() {
+    this._assertAlive();
+    console.warn('[wasm-echarts] renderToSVGString 未实现（无 SVG painter）');
+    return '';
+  }
+
+  getSvgDataURL() {
+    this._assertAlive();
+    console.warn('[wasm-echarts] getSvgDataURL 未实现（无 SVG painter）');
+    return '';
+  }
+
+  getConnectedDataURL(opts) {
+    this._assertAlive();
+    console.warn('[wasm-echarts] getConnectedDataURL 未按 connect 拼图，回退到 getDataURL');
+    return this.getDataURL(opts);
+  }
+
+  convertToLayout() {
+    this._assertAlive();
+    console.warn('[wasm-echarts] convertToLayout 未实现');
+    return null;
+  }
+
+  getVisual() {
+    this._assertAlive();
+    console.warn('[wasm-echarts] getVisual 未实现');
+    return undefined;
+  }
+
+  updateLabelLayout() {
+    this._assertAlive();
+  }
+
+  /**
+   * 官方实例上为 private；扩展示例会调。不返回 GlobalModel，避免抛 TypeError。
+   */
+  getModel() {
+    console.warn('[wasm-echarts] getModel 未实现');
+    return undefined;
   }
 
   showLoading(name, cfg) {

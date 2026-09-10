@@ -601,9 +601,9 @@ chart-map, chart-lines, chart-parallel, chart-custom
 | `getWidth` / `getHeight` / `getDevicePixelRatio` / `isDisposed` / `dispose` | 实例方法 |
 | `dispatchAction` | 已接线 type：`highlight` / `downplay` / `select` / `unselect` / `toggleSelect` / `dataZoom` / `showTip` / `hideTip` / `legendToggleSelect` / `legendSelect` / `legendUnSelect` / `restore` / `timelineChange` / `timelinePlayChange` / `takeGlobalCursor` / `brush` / `brushEnd` / `expandAxisBreak` / `collapseAxisBreak` / `toggleAxisBreak`；`registerAction` 登记的自定义 type 也会调用 |
 | `getDom` / `getId` | `init` 后可取 |
-| `getZr` | `getZr()` 返回与 ChartView 共用 Storage 的 wasm-zrender 实例；无 SVG painter / hover layer；动画终态 |
+| `getZr` | `getZr()` 返回与 ChartView 共用 Storage 的 wasm-zrender 实例（同一份 WASM，不是第二份 `wasm-zrender/pkg`）；可 `add` / `on` / `configLayer`。无 SVG painter / hover layer；动画终态 |
 | `showLoading` / `hideLoading` | 静态半透明遮罩 + 文案；不播旋转动画 |
-| `getDataURL` / `renderToCanvas` | 离屏 RGBA → PNG/JPEG 数据 URL / 画到 canvas；`type: 'svg'` 不支持 |
+| `getDataURL` / `renderToCanvas` / `getRenderedCanvas` | 离屏 RGBA → PNG/JPEG 数据 URL / 画到 canvas；`getRenderedCanvas` 等价 `renderToCanvas`；`type: 'svg'` 不支持 |
 | `containPixel` | cartesian 多 grid；finder 可指定 `gridIndex` / `seriesIndex` / 轴 |
 | `appendData` | `{ seriesIndex, data }` 追加到 `series.data` 后重绘 |
 | `connect` / `disconnect` | 按 `chart.group` 转发 `dispatchAction` |
@@ -624,13 +624,14 @@ chart-map, chart-lines, chart-parallel, chart-custom
 | `use(...)` | 导出但不按需加载；只提示「已编进 WASM，不必 use」 |
 | `init(null)` | 允许离屏（官方客户端无 dom 会抛错） |
 | 动画 | 不播中间帧；`lazyUpdate` 同步执行。`universalTransition` / `echarts.use(UniversalTransition)` 只跳终态，不做系列间插值 |
-| 渲染 | 仅 canvas；无 SVG / `renderToSVGString` / `getSvgDataURL` |
+| 渲染 | 仅 canvas；无 SVG / `renderToSVGString` / `getSvgDataURL`。`zr.painter.getSvgDom` 只 `console.warn` |
 | 字体 | 须从 `@wasm-echarts` 调 `registerFont`；WASM 不读系统字体。echarts 页只一份 WASM，与 `getZr` 共用 fontdb。zrender 文档站的 `wasm-zrender/pkg` 仍是另一份内存 |
 | `notMerge` | 只作 `setOption` 第二参数；写在 option 根上不会当合并开关 |
 | `replaceMerge` | 只按**顶层 key**整段替换，不按 component `id`（比官方弱） |
 | `lazyUpdate` / `silent` | 同步 flush，忽略排队与静默 |
 | 指针重绘 | `mousemove` 仅在 hover / axisPointer / 拖拽导致画面变化时 `refresh`+`putImageData`。同一数据项上滑动只更新 tooltip DOM，不上屏。无 dirty-rect / hover layer |
 | `showLoading` / `hideLoading` | 导出；静态半透明遮罩 + 文案，不播旋转动画 |
+| `getZr()` | 同一份 WASM 上的 wasm-zrender 实例，不是第二份 pkg。无 SVG painter（`painter.getSvgDom` 只 warn）/ hover layer / dirty rect；动画写终态 |
 | default export | wasm-bindgen `initWasm`，不是 echarts 命名空间对象 |
 | tooltip DOM | facade 内建简单 string HTML；不是官方 TooltipView；HTMLElement formatter 未实现 |
 | DataView / SaveAsImage | toolbox DataView 浮层与 SaveAsImage 的 DOM 下载条明确不做 |
@@ -709,9 +710,7 @@ chart-map, chart-lines, chart-parallel, chart-custom
 
 **未实现（按 canvas 全量对齐计划补齐，不是永久例外）**
 
-已导出同名、内部只 `console.warn`：`registerLocale`。
-
-实例上尚未做完：`convertToLayout` / `getVisual`。
+已导出同名、内部只 `console.warn`：`registerLocale`、`convertToLayout`、`getVisual`、`renderToSVGString`、`getSvgDataURL`、`getModel`（官方为 private）。`getConnectedDataURL` 不按 connect 拼图，回退 `getDataURL`。`isSSR()` 恒为 `false`。`updateLabelLayout` 为空操作（labelLayout 已在 `setOption` 终态做完）。
 
 Charts：未识别的 `series.type` 会 `console.warn`（不再静默当 `Other`；`registerCustomSeries` 登记过的 type 当 custom）。已接线图表的视觉/布局相对官方仍有简化（force 布局不迭代、桑基非完整节点平衡、tree 非 tidy、chord 用贝塞尔而非丝带、pictorialBar 非全部 symbolClip 语义）。treemap 大树（`treemap-disk` / `treemap-show-parent`）与 `levels` 色映射（`treemap-visual`）会 WASM panic，见第 8.5 波 probe 表。parallel 未接 `progressive`（`parallel-nutrients` 约 1.4 万条折线会卡死，见第 8.6 波）。`lines-ny` 分片 bin 未同步、`map-usa-projection` 依赖 `d3.geoAlbersUsa`，见第 8.7 波 probe 表。`bar-histogram` 依赖全局 `ecStat`，见第 8.8 波 probe 表。
 

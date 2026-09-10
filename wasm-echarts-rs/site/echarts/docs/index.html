@@ -110,7 +110,7 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td><code>dispatchAction</code></td>
-            <td>已接线：<code>highlight</code> / <code>downplay</code> / <code>select</code> / <code>unselect</code> / <code>toggleSelect</code> / <code>dataZoom</code> / <code>showTip</code> / <code>hideTip</code> / <code>legendToggleSelect</code> / <code>legendSelect</code> / <code>legendUnSelect</code> / <code>restore</code> / <code>timelineChange</code> / <code>brush</code>。其它 type <code>console.warn</code>。</td>
+            <td>已接线：<code>highlight</code> / <code>downplay</code> / <code>select</code> / <code>unselect</code> / <code>toggleSelect</code> / <code>dataZoom</code> / <code>showTip</code> / <code>hideTip</code> / <code>legendToggleSelect</code> / <code>legendSelect</code> / <code>legendUnSelect</code> / <code>restore</code> / <code>timelineChange</code> / <code>timelinePlayChange</code> / <code>takeGlobalCursor</code> / <code>brush</code> / <code>brushEnd</code> / <code>expandAxisBreak</code> / <code>collapseAxisBreak</code> / <code>toggleAxisBreak</code>。其它 type <code>console.warn</code>。</td>
           </tr>
           <tr>
             <td><code>getWidth</code> / <code>getHeight</code> / <code>getDevicePixelRatio</code> / <code>isDisposed</code> / <code>dispose</code> / <code>getDom</code> / <code>getId</code></td>
@@ -122,15 +122,15 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td><code>getZr</code></td>
-            <td>返回与 ChartView 共用 Storage 的 wasm-zrender 实例</td>
+            <td>返回与 ChartView 共用 Storage 的 wasm-zrender <code>ZRender</code> 实例（同一份 WASM，不是第二份 <code>wasm-zrender/pkg</code>）。可 <code>add</code> / <code>on</code> / <code>configLayer</code>。无 SVG painter / hover layer；动画写终态（见例外）。</td>
           </tr>
           <tr>
             <td><code>showLoading</code> / <code>hideLoading</code></td>
             <td>静态遮罩；不播旋转动画</td>
           </tr>
           <tr>
-            <td><code>getDataURL</code> / <code>renderToCanvas</code></td>
-            <td>离屏 RGBA → PNG/JPEG / 画到 canvas</td>
+            <td><code>getDataURL</code> / <code>renderToCanvas</code> / <code>getRenderedCanvas</code></td>
+            <td>离屏 RGBA → PNG/JPEG / 画到 canvas。<code>getRenderedCanvas</code> 等价 <code>renderToCanvas</code>。<code>type: 'svg'</code> / <code>renderToSVGString</code> / <code>getSvgDataURL</code> 只 warn。</td>
           </tr>
           <tr>
             <td><code>containPixel</code> / <code>appendData</code> / <code>setTheme</code></td>
@@ -139,6 +139,10 @@ chart.on('click', (params) => {
           <tr>
             <td><code>connect</code> / <code>registerTheme</code> / <code>registerMap</code> / <code>getMap</code> / <code>parseGeoJSON</code> / <code>registerTransform</code></td>
             <td>按 group 转发 action；主题表；注册并绘制 geo；解析 GeoJSON；dataset 外部 transform</td>
+          </tr>
+          <tr>
+            <td><code>registerPreprocessor</code> / <code>registerProcessor</code> / <code>registerLayout</code> / <code>registerVisual</code> / <code>registerAction</code> / <code>registerCoordinateSystem</code> / <code>registerCustomSeries</code> / <code>PRIORITY</code> / <code>setPlatformAPI</code></td>
+            <td>扩展注册真表。layout/visual 的 <code>ecModel</code> 是简化对象（见例外）</td>
           </tr>
           <tr>
             <td><code>graphic</code> / <code>util</code> / <code>time</code> / <code>format</code> / <code>number</code> / <code>helper</code> / <code>matrix</code> / <code>vector</code> / <code>color</code> / <code>env</code> / <code>throttle</code></td>
@@ -185,7 +189,7 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td><code>getZr()</code></td>
-            <td>返回与 ChartView 共用 Storage 的 wasm-zrender 实例。不是第二份 zrender wasm；无 SVG painter / hover layer；动画终态</td>
+            <td>返回与 ChartView 共用 Storage 的 wasm-zrender 实例，不是第二份 zrender wasm。无 SVG painter（<code>zr.painter.getSvgDom</code> / <code>renderToSVGString</code> / <code>getSvgDataURL</code> 只 <code>console.warn</code>）；无 hover layer / dirty rect；<code>animate</code> / UniversalTransition 写终态</td>
           </tr>
           <tr>
             <td><code>showLoading</code> / <code>hideLoading</code></td>
@@ -341,7 +345,7 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td><code>getZr</code> / 命名空间</td>
-            <td>与 ChartView 共用 Storage；<code>graphic</code>（含 <code>LinearGradient</code>）/<code>util</code>/<code>time</code>/<code>format</code>/<code>number</code>/<code>helper</code>/<code>matrix</code>/<code>vector</code>/<code>color</code>/<code>env</code>；<code>throttle</code></td>
+            <td>与 ChartView 共用同一份 wasm-zrender 实例与 Storage（echarts 页只加载一份 WASM）；<code>graphic</code>（含 <code>LinearGradient</code>）/<code>util</code>/<code>time</code>/<code>format</code>/<code>number</code>/<code>helper</code>/<code>matrix</code>/<code>vector</code>/<code>color</code>/<code>env</code>；<code>throttle</code>。无 SVG painter / hover layer；动画终态</td>
           </tr>
           <tr>
             <td>实例 API</td>
@@ -355,8 +359,7 @@ chart.on('click', (params) => {
       </table>
 
       <h4>未实现（按 canvas 全量对齐计划补齐，不是永久例外）</h4>
-      <p>下列官方入口已导出同名，内部只 <code>console.warn</code>：<code>registerLocale</code>。</p>
-      <p>实例上尚未做完：<code>convertToLayout</code> / <code>getVisual</code>。</p>
+      <p>下列官方入口已导出同名，内部只 <code>console.warn</code>：<code>registerLocale</code>、<code>convertToLayout</code>、<code>getVisual</code>、<code>renderToSVGString</code>、<code>getSvgDataURL</code>、<code>getModel</code>（官方为 private；扩展示例会调）。<code>getConnectedDataURL</code> 不按 connect 拼图，回退 <code>getDataURL</code>。<code>getRenderedCanvas</code> 等价 <code>renderToCanvas</code>。<code>isSSR()</code> 恒为 <code>false</code>。<code>updateLabelLayout</code> 为空操作（labelLayout 已在 <code>setOption</code> 终态做完）。</p>
       <ul>
         <li>Charts：未识别的 <code>series.type</code> 会 <code>console.warn</code>（不再静默当 Other；<code>registerCustomSeries</code> 登记过的 type 当 custom）。已接线图表相对官方仍有简化（force 不迭代、桑基非完整节点平衡、tree 非 tidy、chord 用贝塞尔而非丝带、pictorialBar 非全部 symbolClip）。</li>
         <li>Components：geo roam / SVG 地图源。toolbox DataView DOM / SaveAsImage 下载条明确不做。</li>
