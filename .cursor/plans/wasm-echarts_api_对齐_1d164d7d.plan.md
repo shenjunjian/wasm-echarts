@@ -25,6 +25,8 @@ isProject: false
 
 # wasm-echarts API 规范与补齐
 
+**范围说明（2026-09-10）**：本计划覆盖公开入口 `init` / `setOption` / `on` 等 core.ts 对齐，波次 0–5 已落地。canvas 图表 option、`getZr`、`graphic`/`util` 命名空间、其余图与组件改走 [`echarts_canvas_全量对齐_3ceaa41e.plan.md`](echarts_canvas_全量对齐_3ceaa41e.plan.md)。下文「`getZr` 因 crate 隔离不导出」已废止。
+
 对照源（只读，禁止改）：[`echarts-master/src/core/echarts.ts`](echarts-master/src/core/echarts.ts)、[`echarts-master/src/export/core.ts`](echarts-master/src/export/core.ts)、[`echarts-master/src/export/api.ts`](echarts-master/src/export/api.ts)。禁止整文件复制官方实现。
 
 当前公开入口是 wasm-bindgen 直出 [`EChartsInstance`](wasm-echarts-rs/crates/wasm-echarts/src/instance.rs)，site 这样用：

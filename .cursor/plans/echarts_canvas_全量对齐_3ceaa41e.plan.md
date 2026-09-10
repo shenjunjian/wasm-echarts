@@ -4,7 +4,7 @@ overview: 废止「不是一次移植完」和折线缺口补齐计划。除 SVG
 todos:
   - id: wave0-rules
     content: 第 0 波：AGENT/文档改口径；废弃折线缺口补齐计划
-    status: pending
+    status: completed
   - id: wave1-shared-zr
     content: 第 1 波：wasm-echarts 依赖 wasm-zrender，单 WASM，getZr 共享 Storage；导出 graphic/util/time 等；挡脚本的实例 API
     status: pending
