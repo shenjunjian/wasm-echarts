@@ -1,11 +1,11 @@
 /**
- * 官网折线示例：矩阵中的微型折线图
+ * 官网示例：矩阵中的微型折线图
  * https://echarts.apache.org/examples/zh/editor.html?c=matrix-sparkline
  * 未实现的官方 API 保持报错，不在本文件里补齐。
  */
 import { runOfficialExample } from '../../src/echarts/official-runtime.js';
 
-runOfficialExample(async ({ echarts, myChart, ROOT_PATH, $, app }) => {
+runOfficialExample(async ({ echarts, myChart, ROOT_PATH, CDN_PATH, $, app }) => {
   let option;
   try {
     /*

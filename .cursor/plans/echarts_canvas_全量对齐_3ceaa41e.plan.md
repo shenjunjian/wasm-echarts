@@ -46,7 +46,7 @@ todos:
     status: completed
   - id: wave8-coords-extra
     content: 第 8.6 波：calendar / matrix / parallel
-    status: pending
+    status: completed
   - id: wave8-map
     content: 第 8.7 波：map / geo / lines
     status: pending
