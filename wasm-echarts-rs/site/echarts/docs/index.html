@@ -361,11 +361,12 @@ chart.on('click', (params) => {
         <li>Charts：未识别的 <code>series.type</code> 会 <code>console.warn</code>（不再静默当 Other；<code>registerCustomSeries</code> 登记过的 type 当 custom）。已接线图表相对官方仍有简化（force 不迭代、桑基非完整节点平衡、tree 非 tidy、chord 用贝塞尔而非丝带、pictorialBar 非全部 symbolClip）。</li>
         <li>Components：geo roam / SVG 地图源。toolbox DataView DOM / SaveAsImage 下载条明确不做。</li>
         <li>Actions：geo roam 等</li>
-        <li>option 名字在但未按官方做：<code>smoothMonotone</code>、pie 完整 <code>avoidLabelOverlap</code>、色板不是官方 palette 全套</li>
+        <li>option 名字在但未按官方做：<code>smoothMonotone</code>、pie 完整 <code>avoidLabelOverlap</code> / <code>padAngle</code> / <code>alignTo</code>、bar <code>showBackground</code> / polar <code>roundCap</code>、色板不是官方 palette 全套、rich text 标签当普通 Text</li>
         <li>tooltip HTMLElement formatter / <code>confine</code> / <code>renderMode: 'richText'</code></li>
         <li><code>UniversalTransition</code> 只跳终态，不做系列间插值</li>
+        <li>bar 未接 <code>large</code>：官网 <code>bar-large</code>（50 万柱）会卡死主线程，probe 判 timeout</li>
       </ul>
-      <p>官网折线 40 例：第 5 波已接 polar 与 y 类目轴对调。第 6 波已接线其余官方图表与 custom <code>renderItem</code>。第 7 波已接扩展注册、media、<code>labelLayout</code>、<code>axis.breaks</code>、jitter。仍可能有视觉缺口（不在示例里 workaround）：<code>smoothMonotone</code>、force 布局不迭代等。</p>
+      <p>官网同步：折线 40、柱状 46、饼图 19。第 8.1 波 bar+pie probe 65 条中 64 <code>ok</code>；唯一失败 <code>bar-large</code>（不改官方 option）。仍可能有视觉缺口（能 <code>setOption</code>、不在示例里 workaround）：<code>smoothMonotone</code>、<code>padAngle</code>、<code>roundCap</code>、<code>showBackground</code>、<code>realtimeSort</code> 只终态、force 布局不迭代等。</p>
     </div>
 
     <div class="doc-section">
@@ -394,8 +395,8 @@ chart.on('click', (params) => {
             <td>连续 <code>registerFont</code>；title / subtext / legend / 轴名称与轴标签使用不同 <code>fontFamily</code></td>
           </tr>
           <tr>
-            <td><a href="../examples/#line-simple">官网折线</a></td>
-            <td>同步官网 <code>#chart-type-line</code> 40 条。其它图类用 <code>official-{category}-catalog.js</code> 生成后自动进画廊。能力补在库里，不在示例里 workaround。当前缺 API 仍会报错，预览层展示错误</td>
+            <td><a href="../examples/#line-simple">官网折线</a> / <a href="../examples/#bar-simple">官网柱状</a> / <a href="../examples/#pie-simple">官网饼图</a></td>
+            <td>同步官网 line 40 + bar 46 + pie 19。catalog 一经生成即自动进画廊。能力补在库里，不在示例里 workaround。<code>bar-large</code> 会卡死（见未实现表）；其它缺 API 仍会报错，预览层展示错误</td>
           </tr>
           <tr>
             <td><a href="../examples/#merge">merge</a></td>

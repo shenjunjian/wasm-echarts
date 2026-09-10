@@ -106,6 +106,38 @@ async function loadCatalog(category) {
   return examples;
 }
 
+const EXAMPLE_TIMEOUT_MS = 40000;
+
+function withTimeout(promise, ms, timeoutValue) {
+  let timer;
+  const timeout = new Promise((resolve) => {
+    timer = setTimeout(() => resolve({ timedOut: true, value: timeoutValue }), ms);
+  });
+  return Promise.race([
+    promise.then((value) => ({ timedOut: false, value })),
+    timeout,
+  ]).finally(() => clearTimeout(timer));
+}
+
+async function recycleBrowser(browser, chromium) {
+  try {
+    const proc = browser.process?.();
+    await Promise.race([
+      browser.close(),
+      new Promise((resolve) => setTimeout(resolve, 4000)),
+    ]);
+    proc?.kill?.();
+  } catch {
+    try {
+      browser.process?.()?.kill?.();
+    } catch {
+      // ignore
+    }
+  }
+  const next = await launchBrowser(chromium);
+  return { browser: next, page: await next.newPage() };
+}
+
 async function probeOne(page, baseUrl, item) {
   const url = `${baseUrl}/echarts/examples/${item.id}.html`;
   const pageErrors = [];
@@ -153,19 +185,32 @@ export async function main(argv = process.argv.slice(2)) {
   }
 
   const { chromium } = await loadPlaywright();
-  const browser = await launchBrowser(chromium);
-  const page = await browser.newPage();
+  let browser = await launchBrowser(chromium);
+  let page = await browser.newPage();
   const rows = [];
   try {
     console.log(`探测 ${items.length} 条（${categories.join(', ')}） @ ${baseUrl}`);
     for (const item of items) {
       process.stdout.write(`${item.id} … `);
-      const row = await probeOne(page, baseUrl, item);
+      const raced = await withTimeout(
+        probeOne(page, baseUrl, item),
+        EXAMPLE_TIMEOUT_MS,
+        {
+          id: item.id,
+          title: item.title,
+          status: 'timeout',
+          error: `探测超过 ${EXAMPLE_TIMEOUT_MS}ms（页面可能卡死）`,
+        },
+      );
+      const row = raced.value;
       rows.push(row);
       console.log(row.status, row.error ? `- ${row.error.split('\n')[0]}` : '');
+      if (raced.timedOut || row.status === 'timeout') {
+        ({ browser, page } = await recycleBrowser(browser, chromium));
+      }
     }
   } finally {
-    await browser.close();
+    await browser.close().catch(() => {});
   }
 
   const ok = rows.filter((r) => r.status === 'ok');

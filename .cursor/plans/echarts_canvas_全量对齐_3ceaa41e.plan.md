@@ -31,7 +31,7 @@ todos:
     status: completed
   - id: wave8-bar-pie
     content: 第 8.1 波：同步官网 bar + pie，probe，失败写入文档；不改官方 option
-    status: pending
+    status: completed
   - id: wave8-scatter
     content: 第 8.2 波：同步官网 scatter，probe，失败写入文档
     status: pending

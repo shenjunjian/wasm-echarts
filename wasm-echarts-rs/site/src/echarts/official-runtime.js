@@ -7,6 +7,7 @@ import initWasm, * as echartsApi from '@wasm-echarts';
 import { ensureDefaultFont } from './fonts.js';
 
 export const OFFICIAL_ROOT_PATH = '/echarts-official';
+export const OFFICIAL_CDN_PATH = 'https://fastly.jsdelivr.net/npm/';
 
 const MISSING_NAMESPACES = [];
 
@@ -98,6 +99,28 @@ function jqueryGet(url, maybeData, maybeCb) {
   return request;
 }
 
+function jqueryWhen(...deferreds) {
+  const promise = Promise.all(deferreds);
+  const wrap = (results) => results.map((data) => [data, 'success', null]);
+  const thenable = {
+    done(cb) {
+      promise.then((results) => cb(...wrap(results))).catch((err) => reportExampleError(err));
+      return thenable;
+    },
+    fail(cb) {
+      promise.catch(cb);
+      return thenable;
+    },
+    then(onFulfilled, onRejected) {
+      return promise.then(
+        (results) => onFulfilled?.(...wrap(results)),
+        onRejected,
+      );
+    },
+  };
+  return thenable;
+}
+
 function publishResult(partial) {
   const prev = window.__OFFICIAL_EXAMPLE_RESULT__ || {};
   const next = { ...prev, ...partial, updatedAt: Date.now() };
@@ -128,7 +151,8 @@ function reportExampleError(err) {
  *   echarts: object;
  *   myChart: object;
  *   ROOT_PATH: string;
- *   $: { get: typeof jqueryGet };
+ *   CDN_PATH: string;
+ *   $: { get: typeof jqueryGet; getJSON: typeof jqueryGet; when: typeof jqueryWhen };
  *   app: { config: Record<string, unknown>; configParameters: Record<string, unknown> };
  * }) => unknown} body
  */
@@ -172,10 +196,13 @@ export async function runOfficialExample(body) {
     });
 
     const app = { config: {}, configParameters: {} };
-    const $ = { get: jqueryGet };
+    const $ = { get: jqueryGet, getJSON: jqueryGet, when: jqueryWhen };
     const ROOT_PATH = OFFICIAL_ROOT_PATH;
+    const CDN_PATH = OFFICIAL_CDN_PATH;
+    globalThis.CDN_PATH = CDN_PATH;
+    globalThis.ROOT_PATH = ROOT_PATH;
 
-    let option = await body({ echarts, myChart, ROOT_PATH, $, app });
+    let option = await body({ echarts, myChart, ROOT_PATH, CDN_PATH, $, app });
     if (!optionApplied && option) {
       myChart.setOption(option);
     }

@@ -144,7 +144,7 @@ function wrapOfficialSource(id, title, officialSource) {
  */
 import { runOfficialExample } from '../../src/echarts/official-runtime.js';
 
-runOfficialExample(async ({ echarts, myChart, ROOT_PATH, $, app }) => {
+runOfficialExample(async ({ echarts, myChart, ROOT_PATH, CDN_PATH, $, app }) => {
   let option;
   try {
 ${indent(body, 4)}

@@ -1,11 +1,11 @@
 /**
- * 官网折线示例：联动和共享数据集
+ * 官网示例：联动和共享数据集
  * https://echarts.apache.org/examples/zh/editor.html?c=dataset-link
  * 未实现的官方 API 保持报错，不在本文件里补齐。
  */
 import { runOfficialExample } from '../../src/echarts/official-runtime.js';
 
-runOfficialExample(async ({ echarts, myChart, ROOT_PATH, $, app }) => {
+runOfficialExample(async ({ echarts, myChart, ROOT_PATH, CDN_PATH, $, app }) => {
   let option;
   try {
     /*
