@@ -40,7 +40,7 @@ todos:
     status: completed
   - id: wave8-gauge-radar
     content: 第 8.4 波：gauge / radar
-    status: pending
+    status: completed
   - id: wave8-layout
     content: 第 8.5 波：funnel / chord / sunburst / tree / treemap / graph / sankey / themeRiver
     status: pending
