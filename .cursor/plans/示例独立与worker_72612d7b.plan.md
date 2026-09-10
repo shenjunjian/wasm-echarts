@@ -6,13 +6,13 @@ todos:
     content: 去掉 runOfficialExample 代管：sync 模板改为每页自己 init/setOption；只保留 ROOT_PATH/$ 薄 env；改 probe
     status: pending
   - id: worker-facade
-    content: facade 增加 opts.useWorker：Worker 持 WASM，主线程 blit/事件/tooltip；大数据 TypedArray/RGBA 走 SharedArrayBuffer（fallback Transferable）
+    content: facade 增加 opts.useWorker：Worker 持 WASM，主线程 blit/事件/tooltip；option 一律 postMessage，仅回传图像可用 SAB
     status: pending
   - id: worker-large-examples
     content: 仅 bar-large / scatter-large 等卡死例开 useWorker，验证不再页面无响应
     status: pending
   - id: docs-agent
-    content: AGENT.md 写清独立示例写法、useWorker、function option 限制、以及 Worker 大数据用 SAB 的规范
+    content: AGENT.md 写清独立示例写法、useWorker、function option 限制、option 不用 SAB、仅回图可用 SAB
     status: pending
 isProject: false
 ---
@@ -89,10 +89,9 @@ flowchart LR
     Wasm[EChartsInstance WASM]
     Skia[tiny-skia]
   end
-  Facade -->|"option 骨架 postMessage"| Wasm
-  Facade -->|"大数据 TypedArray SAB"| Wasm
+  Facade -->|"option 整份 postMessage"| Wasm
   Facade -->|"pointer x y"| Wasm
-  Wasm -->|"RGBA SAB 或 ImageBitmap"| Facade
+  Wasm -->|"RGBA SAB"| Facade
   Wasm -->|"tooltip HTML"| Tip
   Facade --> Canvas
 ```
@@ -133,26 +132,20 @@ WASM 侧短期内不必为 Worker 改绘制内核；要改的是 **JS 把实例�
 
 ---
 
-## Worker 传输规范：SharedArrayBuffer
+## Worker 传输规范：SharedArrayBuffer 只用于回图
 
-**结论：整份 option 不要塞进 SAB；大数据 TypedArray 和像素回传要用 SAB（或同级的 Transferable）。** 这是 Worker 路径的硬规范，落地时写入 [AGENT.md](AGENT.md)。
+为统一口径：**option 方向一律不用 SAB**（包括 `series.data` / `dataset.source` 里的大 `TypedArray`）。主线程 → Worker 的 option 只走 `postMessage` 结构化克隆。这是 Worker 路径的硬规范，落地时写入 [AGENT.md](AGENT.md)。
 
-`postMessage` 结构化克隆会把 `scatter-large` 那种 `Float32Array`（约 50 万点 × 2 系列）和整幅 RGBA 再拷一份。绘制已经很重，再拷一遍纯浪费。SAB 让主线程和 Worker 看同一块内存，避免这次拷贝。
+SAB 只用于 **Worker → 主线程回传图像**：
 
-**不要用 SAB 装整个 option。** option 是嵌套对象 + 字符串 + 函数，SAB 只是字节缓冲。塞进去等于先自己做一遍序列化，函数照样过不去，比 `postMessage({ title, series, ... })` 更差。
+- Worker 把 RGBA 写进预分配的 SAB（可双缓冲，避免每帧 `new Uint8Array`）；主线程 `putImageData`。
+- 站点要 **Cross-Origin Isolation**（`Cross-Origin-Opener-Policy: same-origin` + `Cross-Origin-Embedder-Policy: require-corp`），否则没有 SAB。Vite / 文档站必须配这两个头。不可用时回图 fallback 到 Transferable `ArrayBuffer` / `ImageBitmap`。
+- 同线程 `init(canvas)` 默认路径不强制 SAB；这不是改公开 `setOption` 签名。
 
-规范：
-
-- option **对象骨架**（title、series.type、axis、不可克隆的元数据）继续 `postMessage`。
-- `series.data` / `dataset.source` 里体积大的 `TypedArray` / `ArrayBuffer`：优先写入 **SharedArrayBuffer**（或 `postMessage(..., [buffer])` 转移所有权）。`scatter-large` 的 `Float32Array` 走这条，不要 structured clone。
-- 回图：Worker 把 RGBA 写进 **预分配的 SAB**（可双缓冲，避免每帧 `new Uint8Array`）；主线程 `ImageData`/`putImageData` 或 `drawImage(ImageBitmap)`。单帧一次性也可以 `Transferable ArrayBuffer` / `ImageBitmap`。能 `transferControlToOffscreen` 时优先 OffscreenCanvas，主线程不再拷像素。
-- 站点要 **Cross-Origin Isolation**（`Cross-Origin-Opener-Policy: same-origin` + `Cross-Origin-Embedder-Policy: require-corp`），否则 `SharedArrayBuffer` 不可用。Vite / 文档站必须配这两个头。不可用时 **fallback 到 Transferable ArrayBuffer**，不要静默再走结构化克隆拷大数据。
-- 同线程 `init(canvas)` 默认路径不强制 SAB；这是 Worker 过界传输规范，不是改公开 `setOption` 签名。
-
-相对收益：传 50 万点 × 8 字节、或 800×600×4 的 RGBA，SAB/Transferable 能省掉一次完整 memcpy。省不掉的是 Worker 里 WASM 解析和 tiny-skia 绘制。
+option 含函数时仍不能克隆进 Worker，与 SAB 无关，限制照旧。
 
 ---
 
 ## 文档
 
-同步 [AGENT.md](AGENT.md)：示例不再经 `runOfficialExample`；`init` 的 `useWorker`；与官方不一致表加 Worker 函数 option 限制；Worker 大数据 TypedArray / RGBA 用 SharedArrayBuffer（需 COOP/COEP，失败则 Transferable）。
+同步 [AGENT.md](AGENT.md)：示例不再经 `runOfficialExample`；`init` 的 `useWorker`；与官方不一致表加 Worker 函数 option 限制；option（含 TypedArray）不用 SAB；仅 Worker 回传图像可用 SAB（需 COOP/COEP）。
