@@ -99,6 +99,35 @@ function jqueryGet(url, maybeData, maybeCb) {
   return request;
 }
 
+function jqueryGetScript(url, maybeCb) {
+  const request = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = url;
+    script.async = true;
+    script.onload = () => resolve(url);
+    script.onerror = () => reject(new Error(`GET script ${url} 失败`));
+    document.head.appendChild(script);
+  })
+    .then((loaded) => {
+      if (typeof maybeCb === 'function') maybeCb();
+      return loaded;
+    })
+    .catch((err) => {
+      reportExampleError(err);
+    });
+  request.done = function done(cb) {
+    request.then((loaded) => {
+      if (loaded != null && typeof cb === 'function') cb();
+    });
+    return request;
+  };
+  request.fail = function fail(cb) {
+    request.catch(cb);
+    return request;
+  };
+  return request;
+}
+
 function jqueryWhen(...deferreds) {
   const promise = Promise.all(deferreds);
   const wrap = (results) => results.map((data) => [data, 'success', null]);
@@ -152,7 +181,7 @@ function reportExampleError(err) {
  *   myChart: object;
  *   ROOT_PATH: string;
  *   CDN_PATH: string;
- *   $: { get: typeof jqueryGet; getJSON: typeof jqueryGet; when: typeof jqueryWhen };
+ *   $: { get: typeof jqueryGet; getJSON: typeof jqueryGet; getScript: typeof jqueryGetScript; when: typeof jqueryWhen };
  *   app: { config: Record<string, unknown>; configParameters: Record<string, unknown> };
  * }) => unknown} body
  */
@@ -196,7 +225,7 @@ export async function runOfficialExample(body) {
     });
 
     const app = { config: {}, configParameters: {} };
-    const $ = { get: jqueryGet, getJSON: jqueryGet, when: jqueryWhen };
+    const $ = { get: jqueryGet, getJSON: jqueryGet, getScript: jqueryGetScript, when: jqueryWhen };
     const ROOT_PATH = OFFICIAL_ROOT_PATH;
     const CDN_PATH = OFFICIAL_CDN_PATH;
     globalThis.CDN_PATH = CDN_PATH;

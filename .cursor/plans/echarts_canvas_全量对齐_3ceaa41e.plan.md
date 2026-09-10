@@ -37,7 +37,7 @@ todos:
     status: completed
   - id: wave8-cartesian-extra
     content: 第 8.3 波：candlestick / boxplot / heatmap / pictorialBar
-    status: pending
+    status: completed
   - id: wave8-gauge-radar
     content: 第 8.4 波：gauge / radar
     status: pending
