@@ -38,6 +38,8 @@ pub struct GlobalModel {
     pub y_axes: Vec<AxisModel>,
     pub series: Vec<SeriesModel>,
     pub data_zoom: DataZoomRange,
+    /// `None` = 所有 x 轴；`Some` 时只缩放这些轴（读 dataZoom.xAxisIndex）。
+    pub data_zoom_x_axes: Option<Vec<usize>>,
 }
 
 impl GlobalModel {
@@ -129,6 +131,7 @@ impl GlobalModel {
             y_axes,
             series,
             data_zoom,
+            data_zoom_x_axes: parse_data_zoom_x_axes(root),
         }
     }
 
@@ -150,8 +153,13 @@ impl GlobalModel {
     }
 
     pub fn visible_category_range_of(&self, x_axis_index: usize) -> (usize, usize) {
-        self.data_zoom
-            .category_window(self.category_count_of(x_axis_index))
+        let total = self.category_count_of(x_axis_index);
+        if let Some(axes) = &self.data_zoom_x_axes {
+            if !axes.contains(&x_axis_index) {
+                return (0, total);
+            }
+        }
+        self.data_zoom.category_window(total)
     }
 
     pub fn category_count(&self) -> usize {
@@ -176,6 +184,22 @@ impl GlobalModel {
         let x = self.x_axis_at(series.x_axis_index);
         self.grid_at(x.grid_index)
     }
+}
+
+fn parse_data_zoom_x_axes(root: &OptionValue) -> Option<Vec<usize>> {
+    for c in as_components(root.get("dataZoom")) {
+        if let Some(v) = c.get("xAxisIndex") {
+            return Some(match v {
+                OptionValue::Number(n) => vec![*n as usize],
+                OptionValue::Array(arr) => arr
+                    .iter()
+                    .filter_map(|v| v.as_f64().map(|n| n as usize))
+                    .collect(),
+                _ => continue,
+            });
+        }
+    }
+    None
 }
 
 fn parse_grids(value: Option<&OptionValue>, width: f64, height: f64) -> Vec<GridRect> {
@@ -731,5 +755,74 @@ mod tests {
         ]));
         assert_eq!(model.series[0].data.len(), 1);
         assert_eq!(model.series[0].data[0].value, 2.0);
+    }
+
+    #[test]
+    fn data_zoom_x_axis_index_skips_other_axes() {
+        let cats: Vec<OptionValue> = (0..10)
+            .map(|i| OptionValue::String(i.to_string()))
+            .collect();
+        let mut option = OptionModel::new();
+        option.apply(
+            obj(vec![
+                (
+                    "xAxis",
+                    OptionValue::Array(vec![
+                        obj(vec![
+                            ("type", OptionValue::String("category".into())),
+                            ("data", OptionValue::Array(cats.clone())),
+                        ]),
+                        obj(vec![
+                            ("type", OptionValue::String("category".into())),
+                            ("data", OptionValue::Array(cats)),
+                        ]),
+                    ]),
+                ),
+                (
+                    "yAxis",
+                    OptionValue::Array(vec![
+                        obj(vec![("type", OptionValue::String("value".into()))]),
+                        obj(vec![("type", OptionValue::String("value".into()))]),
+                    ]),
+                ),
+                (
+                    "dataZoom",
+                    obj(vec![
+                        ("type", OptionValue::String("inside".into())),
+                        ("start", OptionValue::Number(0.0)),
+                        ("end", OptionValue::Number(50.0)),
+                        ("xAxisIndex", OptionValue::Number(0.0)),
+                    ]),
+                ),
+                (
+                    "series",
+                    OptionValue::Array(vec![
+                        obj(vec![
+                            ("type", OptionValue::String("line".into())),
+                            ("xAxisIndex", OptionValue::Number(0.0)),
+                            ("data", OptionValue::Array(vec![OptionValue::Number(1.0)])),
+                        ]),
+                        obj(vec![
+                            ("type", OptionValue::String("line".into())),
+                            ("xAxisIndex", OptionValue::Number(1.0)),
+                            ("data", OptionValue::Array(vec![OptionValue::Number(1.0)])),
+                        ]),
+                    ]),
+                ),
+            ]),
+            SetOptionFlags {
+                not_merge: true,
+                ..Default::default()
+            },
+        );
+        let model = GlobalModel::from_option_with_zoom(
+            &option,
+            400,
+            300,
+            crate::interaction::DataZoomRange::clamped(0.0, 50.0),
+        );
+        assert_eq!(model.data_zoom_x_axes.as_deref(), Some(&[0][..]));
+        assert_eq!(model.visible_category_range_of(0), (0, 5));
+        assert_eq!(model.visible_category_range_of(1), (0, 10));
     }
 }

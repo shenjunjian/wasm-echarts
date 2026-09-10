@@ -151,11 +151,10 @@ function optionHasDataZoom(option) {
   if (!option || option.dataZoom == null) {
     return false;
   }
-  const dz = option.dataZoom;
-  if (Array.isArray(dz)) {
-    return dz.length > 0;
-  }
-  return typeof dz === 'object';
+  const items = Array.isArray(option.dataZoom)
+    ? option.dataZoom
+    : [option.dataZoom];
+  return items.some((item) => item && item.type === 'inside');
 }
 
 function tooltipAllowed(option) {

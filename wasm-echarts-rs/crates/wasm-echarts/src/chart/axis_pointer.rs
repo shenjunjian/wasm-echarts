@@ -158,3 +158,88 @@ fn add_label_box(zr: &mut ZRenderer, group: usize, x: f64, y: f64, w: f64, h: f6
     );
     zr.storage.group_add_child(group, ChildRef::Path(rect));
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::interaction::InteractionState;
+    use crate::model::GlobalModel;
+    use crate::option::{OptionModel, OptionValue, SetOptionFlags};
+    use indexmap::IndexMap;
+
+    fn obj(pairs: Vec<(&str, OptionValue)>) -> OptionValue {
+        let mut m = IndexMap::new();
+        for (k, v) in pairs {
+            m.insert(k.into(), v);
+        }
+        OptionValue::Object(m)
+    }
+
+    #[test]
+    fn cross_draws_two_lines() {
+        let mut option = OptionModel::new();
+        option.apply(
+            obj(vec![
+                (
+                    "tooltip",
+                    obj(vec![
+                        ("trigger", OptionValue::String("axis".into())),
+                        (
+                            "axisPointer",
+                            obj(vec![("type", OptionValue::String("cross".into()))]),
+                        ),
+                    ]),
+                ),
+                (
+                    "xAxis",
+                    obj(vec![
+                        ("type", OptionValue::String("category".into())),
+                        (
+                            "data",
+                            OptionValue::Array(vec![
+                                OptionValue::String("a".into()),
+                                OptionValue::String("b".into()),
+                            ]),
+                        ),
+                    ]),
+                ),
+                (
+                    "yAxis",
+                    obj(vec![("type", OptionValue::String("value".into()))]),
+                ),
+                (
+                    "series",
+                    OptionValue::Array(vec![obj(vec![
+                        ("type", OptionValue::String("line".into())),
+                        (
+                            "data",
+                            OptionValue::Array(vec![
+                                OptionValue::Number(1.0),
+                                OptionValue::Number(2.0),
+                            ]),
+                        ),
+                    ])]),
+                ),
+            ]),
+            SetOptionFlags {
+                not_merge: true,
+                replace_merge: vec![],
+            },
+        );
+        let mut interaction = InteractionState::from_option(&option);
+        let model = GlobalModel::from_option(&option, 400, 300);
+        let g = model.grid();
+        interaction.set_pointer(Some(g.x + g.width / 2.0), Some(g.y + g.height / 2.0));
+        let mut zr = ZRenderer::new(400, 300).unwrap();
+        let group = zr.storage.create_group();
+        render_axis_pointer(&mut zr, group, &model, &option, &interaction);
+        let lines = zr
+            .storage
+            .paths()
+            .iter()
+            .filter(|p| matches!(p.shape, Shape::Line(_)))
+            .count();
+        assert!(lines >= 2, "cross lines {}", lines);
+        assert!(zr.storage.texts().iter().any(|t| t.content == "a" || t.content == "b"));
+    }
+}

@@ -16,7 +16,7 @@ todos:
     status: completed
   - id: wave4-components
     content: 第 4 波：legend 筛选、mark*、graphic、visualMap、slider、axisPointer、brush、timeline、toolbox（无 DataView）
-    status: pending
+    status: completed
   - id: wave5-coords
     content: 第 5 波：polar/radar/single/parallel/calendar/matrix/geo
     status: pending

@@ -130,7 +130,7 @@ wasm-zrender  ✗ 不依赖  wasm-echarts
 - `setOption(option)` 与 `setOption(option, notMerge)` / `setOption(option, { notMerge, replaceMerge, silent })`。`notMerge` **不是** option 里的字段。
 - `resize()` 无参（读 canvas 尺寸）与 `resize({ width, height, devicePixelRatio })`。
 - `init(canvas)` 后指针事件由 facade 绑定；发出官方事件名 `click` / `mouseover` / `mouseout` / `globalout`。
-- 已接线的 `dispatchAction` type 名保持官方字符串：`highlight` / `downplay` / `select` / `unselect` / `toggleSelect` / `dataZoom`；并补 `showTip` / `hideTip`。
+- 已接线的 `dispatchAction` type 名保持官方字符串：`highlight` / `downplay` / `select` / `unselect` / `toggleSelect` / `dataZoom`；并补 `showTip` / `hideTip`、`legendToggleSelect` / `legendSelect` / `legendUnSelect`、`restore`、`timelineChange` / `timelinePlayChange`、`takeGlobalCursor`、`brush` / `brushEnd`。
 - `export/api.ts` 命名空间：`graphic` / `util` / `number` / `time` / `format` / `helper` / `matrix` / `vector` / `color`（第 1 波从 wasm-zrender 再导出或按签名重写）。
 - `getZr` / `getDataURL` / `renderToCanvas` / `appendData` / `setTheme` / `registerTheme` / `registerMap` / `connect` / `registerTransform`：按 canvas 全量对齐计划接线，不是永久例外。
 
@@ -199,8 +199,8 @@ site 示例 JS（创建 canvas；`echarts.init` / `setOption`）
 | **4 JS 薄壳 + API 骨架** | init/setOption/resize/事件、`OptionValue` | **部分完成**。`js/` facade 已有 `init`/`setOption(option, notMerge\|opts)`/`getOption`/`resize`/`clear`/`dispose`/`use`/`on`/`off`；`init(canvas)` 绑指针并内建 string tooltip |
 | **4b 回调桥** | CallbackDataParams、call0/1/2 | **部分完成**。`formatter` / `itemStyle.color` / `axisLabel.formatter` / `symbolSize` 回调可用；params 含 `componentType`/`seriesType`/`percent`/`data`。`renderItem`/`api`、per-series 缓存 **未完成** |
 | **5 echarts MVP** | GlobalModel、cartesian、line/bar、Scheduler | **部分完成**。line/bar 可渲染；`axisLabel.formatter`、`symbol`/`symbolSize`、`label.show`；`convertToPixel` 最小集。`replaceMerge` 仅为顶层 key；SeriesData/Source、media query **未完成** |
-| **6 交互完善** | hover/tooltip/dataZoom/axisPointer | **部分完成**。`init(canvas)` 绑指针；hover 高亮、`on('click')`、string tooltip DOM、`showTip`/`hideTip`、wheel inside dataZoom、竖线 axisPointer。pinch、slider、HTMLElement tooltip、十字/多轴 **未完成** |
-| **7 扩展与优化** | pie/scatter、RichText、脏矩形、视觉回归 | **部分完成**。pie（`center`/`radius`/`startAngle`/`clockwise`/`label`/`labelLine`）/ scatter（`symbol`/`symbolSize`）、轴标签 Text、title/legend 最小绘制、`fontFamily`、`benchmark_render`、feature flags。legend 点击筛选、gauge、polar、面积图、RichText、脏矩形、golden PNG **未完成** |
+| **6 交互完善** | hover/tooltip/dataZoom/axisPointer | **部分完成**。`init(canvas)` 绑指针；hover 高亮、`on('click')`、string tooltip DOM、`showTip`/`hideTip`、inside 滚轮 + slider 拖动手柄、十字 axisPointer、`tooltip.trigger: 'axis'`。pinch、HTMLElement tooltip **未完成** |
+| **7 扩展与优化** | pie/scatter、RichText、脏矩形、视觉回归 | **部分完成**。pie / scatter canvas option 族、轴标签 Text、title/legend（含点击筛选）、`fontFamily`、`benchmark_render`、feature flags。gauge、polar、RichText、脏矩形、golden PNG **未完成** |
 
 ### wasm-zrender API 规范对齐（波次 0–6 + 文档验收已完成）
 
@@ -595,7 +595,7 @@ chart-line, chart-bar, chart-pie, chart-scatter
 | `resize` | `resize()` 无参读 canvas；`resize({ width, height, devicePixelRatio })`；`'auto'` 回退到 canvas；亦接受 native `resize(w, h, dpr)` |
 | `clear` | `setOption({ series: [] }, true)` |
 | `getWidth` / `getHeight` / `getDevicePixelRatio` / `isDisposed` / `dispose` | 实例方法 |
-| `dispatchAction` | 已接线 type：`highlight` / `downplay` / `select` / `unselect` / `toggleSelect` / `dataZoom` / `showTip` / `hideTip` |
+| `dispatchAction` | 已接线 type：`highlight` / `downplay` / `select` / `unselect` / `toggleSelect` / `dataZoom` / `showTip` / `hideTip` / `legendToggleSelect` / `legendSelect` / `legendUnSelect` / `restore` / `timelineChange` / `timelinePlayChange` / `takeGlobalCursor` / `brush` / `brushEnd` |
 | `getDom` / `getId` | `init` 后可取 |
 | `getZr` | `getZr()` 返回与 ChartView 共用 Storage 的 wasm-zrender 实例；无 SVG painter / hover layer；动画终态 |
 | `showLoading` / `hideLoading` | 静态半透明遮罩 + 文案；不播旋转动画 |
@@ -635,7 +635,7 @@ chart-line, chart-bar, chart-pie, chart-scatter
 | `init` | `EChartsInstance` 构造 | 公开入口；native 构造不要直接用 |
 | `refresh` | `refresh` | 返回 RGBA；离屏无 canvas 时用 |
 | `findHover` | `find_hover` | 命中检测 |
-| `handlePointerMove` / `handlePointerLeave` | `handle_pointer_move` / `handle_pointer_leave` | 非官方；`init(canvas)` 时一般不需要 |
+| `handlePointerMove` / `handlePointerLeave` / `handlePointerDown` / `handlePointerUp` / `handlePointerClick` | `handle_pointer_move` / `handle_pointer_leave` / `handlePointerDown` / `handlePointerUp` / `handlePointerClick` | 非官方；`init(canvas)` 时一般不需要 |
 | `applyDataZoomWheel` | `apply_data_zoom_wheel` | 非官方；`init(canvas)` 时滚轮已绑定 |
 | `getTooltipContent` | `get_tooltip_content` | 自绘 tooltip；`init(canvas)` 时 facade 已内建 string DOM |
 | `benchmarkRender` | `benchmark_render` | 渲染耗时 |
@@ -661,8 +661,17 @@ chart-line, chart-bar, chart-pie, chart-scatter
 | series.label | `label.show` + formatter（`{a}`/`{b}`/`{c}`/`{d}` 或函数）画 Text |
 | 轴标签 | `axisLabel.formatter` 函数或 `'{value}'` 模板真正进 Text |
 | emphasis/select | 图元 state + `dispatchAction` 六个 type |
-| dataZoom | `type: 'inside'` 滚轮改 start/end 百分比窗口；无 slider UI |
-| axisPointer | option 开启时画竖线；无十字、无 `trigger: 'axis'` tooltip |
+| dataZoom | `type: 'inside'` 滚轮改 start/end；`type: 'slider'` canvas 手柄/填充条可拖；读 `xAxisIndex`（只缩放对应轴） |
+| axisPointer | 竖线或 `type: 'cross'` 十字 + 轴上 label；`tooltip.trigger: 'axis'` 按类目汇总各系列 |
+| legend | 色块 + 系列名；`orient` / `selected`；点击筛选（灰显并隐藏系列）；`dispatchAction` `legendToggleSelect` 等 |
+| title | `text` / `subtext`；`padding` / `left`/`right`/`top`/`bottom` / `textAlign` / `textVerticalAlign` / `itemGap` |
+| mark* | `series.markPoint` / `markLine` / `markArea`（`type: min\|max\|average\|median`、`coord`、`xAxis`/`yAxis`） |
+| `option.graphic` | rect/circle/text/group 等画进 ChartView 根组，与 `getZr` 共用 Storage |
+| visualMap | continuous 色条；piecewise 色块 + 点击筛选；按 `pieces` / `inRange.color` 给 series 上色 |
+| toolbox | canvas 按钮：`restore` / `magicType`（line↔bar）/ `dataZoom` 框选缩放；`dataView` / `saveAsImage` 只 `console.warn` |
+| timeline | canvas 滑条；`currentIndex` 把 `options[i]` merge 进 `baseOption` 后终态重绘 |
+| brush | canvas 框选矩形，松开后 `select` 落入点 |
+| thumbnail | cartesian 缩略 + 窗口拖动改 dataZoom |
 | 指针 / tooltip | `init(canvas)` 绑 mousemove/click/leave/wheel；内建 string tooltip DOM；`on`/`off` 发出 `click`/`mouseover`/`mouseout`/`globalout` |
 | showTip / hideTip | `dispatchAction({ type: 'showTip', seriesIndex, dataIndex })` 或 `{ x, y }`；`hideTip` 关 DOM，不改 hover |
 | `getZr` / 命名空间 | `getZr()` 共用 Storage；`graphic`（含 `LinearGradient`/`Rect`）/`util`/`time`/`format`/`number`/`helper`/`matrix`/`vector`/`color`/`env` |
@@ -678,13 +687,13 @@ chart-line, chart-bar, chart-pie, chart-scatter
 
 Charts：Radar、Map、Tree、Treemap、Graph、Chord、Gauge、Funnel、Parallel、Sankey、Boxplot、Candlestick、EffectScatter、Lines、Heatmap、PictorialBar、ThemeRiver、Sunburst、Custom（`renderItem`+`api`）。未接线的 `series.type` 不得再静默当 `Other` 后永远不管。
 
-Components：legend 点击筛选与复杂布局、title 复杂布局、toolbox（canvas 按钮；DataView DOM 明确不做）、visualMap、geo、polar、radar、singleAxis、calendar、graphic、brush、timeline、markPoint/Line/Area、thumbnail。aria 写 DOM 属性非绘制，可后置。
+Components：geo、polar、radar、singleAxis、calendar、matrix。aria 写 DOM 属性非绘制，可后置。
 
-Actions：legend\*、restore、brush、timeline、geo roam 等。
+Actions：geo roam 等。
 
-其它：非 cartesian 的 `convertToPixel` finder、media query、完整 SeriesData。`option.graphic` 组件（与 getZr 图元不同）在第 4 波。line `coordinateSystem: 'polar'`、`smoothMonotone`、分段 visualMap 上色未接。pie label 不是官方完整 `avoidLabelOverlap`。scatter `large` 仍每点一个 Path（跳过状态与 label，不是 IncrementalDisplayable）。官网折线 40 例的其余视觉缺口（mark*、slider、`tooltip.trigger: 'axis'`、y 类目轴对调）归第 4–5 波，不在示例里 workaround。
+其它：非 cartesian 的 `convertToPixel` finder、media query、完整 SeriesData。line `coordinateSystem: 'polar'`、`smoothMonotone` 未接。pie label 不是官方完整 `avoidLabelOverlap`。scatter `large` 仍每点一个 Path（跳过状态与 label，不是 IncrementalDisplayable）。官网折线 40 例的其余视觉缺口（y 类目轴对调、polar）归第 5 波，不在示例里 workaround。
 
-**名字在 option 里出现但未按官方做：** line polar / `smoothMonotone` / visualMap 分段色；`tooltip.trigger: 'axis'`；色板不是官方 palette 全套；pie 完整标签避让。
+**名字在 option 里出现但未按官方做：** line polar / `smoothMonotone`；色板不是官方 palette 全套；pie 完整标签避让。
 
 ### 实现了哪些内容
 
@@ -717,10 +726,11 @@ Actions：legend\*、restore、brush、timeline、geo roam 等。
 | `update_font_database()` | 把全局 fontdb 同步到本实例；`registerFont` 后由 facade 调用 |
 | `resize(w, h, dpr)` | 改画布并重绘 |
 | `find_hover(x, y)` | `{ seriesIndex, dataIndex, pathIndex, ... }` |
-| `handle_pointer_move(x, y)` | hover 高亮 + axisPointer + tooltip 文案，一次返回 |
-| `handle_pointer_leave()` | 取消 hover |
+| `handle_pointer_move(x, y)` | hover 高亮 + axisPointer（十字/竖线）+ `tooltip.trigger: 'axis'` 文案，一次返回 |
+| `handle_pointer_leave()` | 取消 hover / 结束拖拽 |
+| `handlePointerDown` / `handlePointerUp` / `handlePointerClick` | slider / thumbnail / brush 拖拽；legend / toolbox / timeline / visualMap 点击 |
 | `get_tooltip_content(si, di)` | 调 `tooltip.formatter`，string 或 null |
-| `apply_data_zoom_wheel(x, deltaY)` | option 含 inside dataZoom 时缩放 category 窗口 |
+| `apply_data_zoom_wheel(x, deltaY)` | option 含 **inside** dataZoom 时缩放窗口（尊重 `xAxisIndex`） |
 | `dispatch_action(action)` | 见下表 |
 | `append_data` / `contain_pixel` | 追加 series.data；grid 是否包含像素 |
 | `benchmark_render(n)` | 全量 render+refresh 平均毫秒 |
@@ -728,7 +738,7 @@ Actions：legend\*、restore、brush、timeline、geo roam 等。
 | `width()` / `height()` / `dpr()` | 尺寸 |
 | `convert_to_pixel` / `convert_from_pixel` | cartesian 多轴 / time / log finder |
 
-`dispatch_action` 已实现：`highlight`、`downplay`、`select`、`unselect`、`toggleSelect`、`dataZoom`（`start`/`end` 百分比）、`showTip`、`hideTip`。其它 type 会 `console.warn`。
+`dispatch_action` 已实现：`highlight`、`downplay`、`select`、`unselect`、`toggleSelect`、`dataZoom`（`start`/`end` 百分比）、`showTip`、`hideTip`、`legendToggleSelect` / `legendSelect` / `legendUnSelect`、`restore`、`timelineChange` / `timelinePlayChange`、`takeGlobalCursor`、`brush` / `brushEnd`。其它 type 会 `console.warn`。
 
 #### `option/` — 解析与合并
 
@@ -736,6 +746,7 @@ Actions：legend\*、restore、brush、timeline、geo roam 等。
 - `parse_option_value`：递归走 `JsValue`；`LinearGradient` 等 wasm-bindgen 实例按 getter 收成 `type` / `colorStops` 等字段
 - `merge_option`：深合并；函数字段用新值覆盖；数组按 index 合并对象
 - `setOption` 第二参数：`notMerge` 替换整棵树；`replaceMerge` 顶层 key 整段替换；不再从 option 根读取这些字段
+- timeline：`effective_root(index)` 把 `options[index]` merge 进 `baseOption`（或去掉 `options` 的根）
 
 #### `bridge/` — 回调
 
@@ -780,14 +791,14 @@ Actions：legend\*、restore、brush、timeline、geo roam 等。
 | bar | Rect | `barWidth`/`barGap`/`barCategoryGap`/`borderRadius`/`barMinHeight`；同轴并排或 stack |
 | pie | Sector | `center`/`radius`/`r0`/`startAngle`/`clockwise`/`roseType`/`selectedMode`；label 最小避让 + labelLine |
 | scatter | symbol | 双 value 轴；其余常用 symbol；`large` 终态一次画完 |
-| 组件 | 网格框、y 向 splitLine、轴标签 Text、轴名称、title / subtext、legend 色块+系列名、竖线 axisPointer | `axisLabel.formatter` 已进 Text；`fontFamily` / `fontSize` / `color` 从 textStyle、nameTextStyle、axisLabel 读入；legend 无点击筛选 |
+| 组件 | 网格框、splitLine、轴标签/名称、title（padding/align）、legend（orient/selected/点击筛选）、markPoint/Line/Area、`option.graphic`、visualMap、dataZoom slider、十字 axisPointer、toolbox 按钮、timeline、brush 选区、thumbnail | `axisLabel.formatter` 已进 Text；`fontFamily` / `fontSize` / `color` 从 textStyle 读入 |
 
 轴标签走 `ChildRef::Text` 挂到 group，`silent = true`（不抢 hover）。
 
 #### `visual/` + `interaction.rs`
 
 - 色板默认色 + 每点 `resolve_item_color`
-- hover / 多选 set、inside dataZoom 百分比窗口、滚轮缩放、axisPointer 是否开启（读 option）
+- hover / 多选 set、legend 筛选、inside + slider dataZoom、visualMap piecewise 筛选、brush 框选、timeline `currentIndex`、toolbox restore/magicType、axisPointer 十字、`tooltip.trigger: 'axis'`
 
 #### site 示例
 
@@ -835,7 +846,7 @@ chart.setOption({
 });
 ```
 
-`init(canvas)` 后 `setOption` 会自动 `putImageData`，不必再调 `refresh`。离屏用 `init(null, null, { width, height })`，再 `chart.refresh()` 拿 RGBA。有 canvas 时 facade 绑定指针：hover 高亮、string tooltip DOM、wheel inside dataZoom；用户 `chart.on('click', handler)` 即可。
+`init(canvas)` 后 `setOption` 会自动 `putImageData`，不必再调 `refresh`。离屏用 `init(null, null, { width, height })`，再 `chart.refresh()` 拿 RGBA。有 canvas 时 facade 绑定指针：hover 高亮、string tooltip DOM、legend/toolbox/timeline 点击、slider/brush 拖拽、wheel inside dataZoom；用户 `chart.on('click', handler)` 即可。
 
 ### 编译产物在哪里
 
@@ -1111,7 +1122,8 @@ npm run dev
 - 第 1 波（已落地）：单 WASM、`getZr` 共享 Storage、`graphic`/`util`/`time` 等命名空间、挡脚本的实例 API
 - 第 2 波（已落地）：dataset / transform / encode / stack / sampling；多 grid / 轴；time / log
 - 第 3 波（已落地）：line/bar/pie/scatter canvas option 族（`smooth`/`areaStyle`/`step`/`connectNulls`/`endLabel`、bar 宽距圆角、`roseType`/`selectedMode`、scatter `large` 与其余 symbol）
-- 第 4–7 波：canvas 组件、其余坐标系与图表、扩展注册
+- 第 4 波（已落地）：legend 点击筛选、title 布局、mark*、`option.graphic`、visualMap、dataZoom slider、axisPointer 十字 + `tooltip.trigger: 'axis'`、brush、timeline、toolbox canvas 按钮、thumbnail
+- 第 5–7 波：其余坐标系与图表、扩展注册
 - 第 8 波：官网画廊按类同步 + probe
 - 视觉回归（echarts `test/*.html` → golden PNG）；JS vs WASM 基准报告
 

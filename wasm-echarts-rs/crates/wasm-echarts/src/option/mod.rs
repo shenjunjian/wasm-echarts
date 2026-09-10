@@ -240,6 +240,37 @@ impl OptionModel {
         }
     }
 
+    pub fn set_visual_map_selected(&mut self, vm_index: usize, piece: usize, selected: bool) {
+        let vm = match self.root.get_mut("visualMap") {
+            Some(OptionValue::Array(arr)) => arr.get_mut(vm_index),
+            Some(v) if vm_index == 0 => Some(v),
+            None if vm_index == 0 => self.root.as_object_mut().map(|m| {
+                m.insert("visualMap".into(), OptionValue::Object(IndexMap::new()));
+                m.get_mut("visualMap").unwrap()
+            }),
+            _ => None,
+        };
+        let Some(vm) = vm else {
+            return;
+        };
+        if vm.as_object().is_none() {
+            *vm = OptionValue::Object(IndexMap::new());
+        }
+        let map = match vm.as_object_mut() {
+            Some(m) => m,
+            None => return,
+        };
+        let selected_map = map
+            .entry("selected".to_string())
+            .or_insert_with(|| OptionValue::Object(IndexMap::new()));
+        if selected_map.as_object().is_none() {
+            *selected_map = OptionValue::Object(IndexMap::new());
+        }
+        if let Some(obj) = selected_map.as_object_mut() {
+            obj.insert(piece.to_string(), OptionValue::Bool(selected));
+        }
+    }
+
     pub fn set_timeline_index(&mut self, index: usize) {
         let n = OptionValue::Number(index as f64);
         if let Some(tl) = first_mut_component(&mut self.root, "timeline") {
@@ -566,5 +597,44 @@ mod tests {
             model.root().get("backgroundColor").and_then(|v| v.as_str()),
             Some("#fff")
         );
+    }
+
+    #[test]
+    fn timeline_effective_root_merges_options() {
+        let mut model = OptionModel::new();
+        model.apply(
+            obj(vec![
+                (
+                    "baseOption",
+                    obj(vec![("title", obj(vec![("text", OptionValue::String("base".into()))]))]),
+                ),
+                (
+                    "options",
+                    OptionValue::Array(vec![
+                        obj(vec![("title", obj(vec![("text", OptionValue::String("A".into()))]))]),
+                        obj(vec![("title", obj(vec![("text", OptionValue::String("B".into()))]))]),
+                    ]),
+                ),
+                (
+                    "timeline",
+                    obj(vec![("currentIndex", OptionValue::Number(1.0))]),
+                ),
+            ]),
+            SetOptionFlags::default(),
+        );
+        let root = model.effective_root(1);
+        assert_eq!(
+            root.get("title")
+                .and_then(|t| t.get("text"))
+                .and_then(|v| v.as_str()),
+            Some("B")
+        );
+        model.set_timeline_index(0);
+        let idx = model
+            .root()
+            .get("timeline")
+            .and_then(|t| t.get("currentIndex"))
+            .and_then(|v| v.as_f64());
+        assert_eq!(idx, Some(0.0));
     }
 }

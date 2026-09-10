@@ -244,3 +244,56 @@ pub fn next_magic_type(option: &OptionModel) -> String {
     let idx = types.iter().position(|t| t == &cur).unwrap_or(0);
     types[(idx + 1) % types.len()].clone()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::option::{OptionModel, OptionValue, SetOptionFlags};
+    use indexmap::IndexMap;
+
+    fn obj(pairs: Vec<(&str, OptionValue)>) -> OptionValue {
+        let mut m = IndexMap::new();
+        for (k, v) in pairs {
+            m.insert(k.into(), v);
+        }
+        OptionValue::Object(m)
+    }
+
+    #[test]
+    fn magic_type_cycles_line_bar() {
+        let mut option = OptionModel::new();
+        option.apply(
+            obj(vec![
+                (
+                    "toolbox",
+                    obj(vec![(
+                        "feature",
+                        obj(vec![(
+                            "magicType",
+                            obj(vec![(
+                                "type",
+                                OptionValue::Array(vec![
+                                    OptionValue::String("line".into()),
+                                    OptionValue::String("bar".into()),
+                                ]),
+                            )]),
+                        )]),
+                    )]),
+                ),
+                (
+                    "series",
+                    OptionValue::Array(vec![obj(vec![
+                        ("type", OptionValue::String("line".into())),
+                    ])]),
+                ),
+            ]),
+            SetOptionFlags {
+                not_merge: true,
+                replace_merge: vec![],
+            },
+        );
+        assert_eq!(next_magic_type(&option), "bar");
+        option.set_cartesian_series_type("bar");
+        assert_eq!(next_magic_type(&option), "line");
+    }
+}

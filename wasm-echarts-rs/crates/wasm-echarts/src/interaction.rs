@@ -111,13 +111,12 @@ pub struct InteractionState {
     pub hover: Option<DataTarget>,
     pub selected: HashSet<DataTarget>,
     pub data_zoom: DataZoomRange,
+    #[allow(dead_code)]
     pub data_zoom_enabled: bool,
     pub data_zoom_from_option: bool,
     pub data_zoom_has_slider: bool,
-    #[allow(dead_code)]
     pub data_zoom_has_inside: bool,
-    #[allow(dead_code)]
-    pub data_zoom_x_axis_index: usize,
+    pub data_zoom_x_axis_index: Option<usize>,
     pub axis_pointer_enabled: bool,
     pub tooltip_trigger_axis: bool,
     pub pointer_x: Option<f64>,
@@ -166,6 +165,11 @@ impl InteractionState {
             self.legend_selected.clone()
         };
         let prev_zoom_select = self.toolbox_zoom_select;
+        let prev_vm = if not_merge {
+            HashMap::new()
+        } else {
+            self.visual_map_selected.clone()
+        };
         *self = Self::from_option(option);
         if !self.data_zoom_from_option && !not_merge {
             self.data_zoom = prev_zoom;
@@ -174,6 +178,9 @@ impl InteractionState {
         self.selected = prev_selected;
         if self.legend_selected.is_empty() {
             self.legend_selected = prev_legend;
+        }
+        if self.visual_map_selected.is_empty() {
+            self.visual_map_selected = prev_vm;
         }
         self.toolbox_zoom_select = prev_zoom_select;
         if self.restore_snapshot.is_none() && toolbox_has_restore(option.root()) {
@@ -194,6 +201,12 @@ impl InteractionState {
         }
         let next = !self.is_name_selected(name);
         self.legend_selected.insert(name.to_string(), next);
+        next
+    }
+
+    pub fn toggle_visual_map_piece(&mut self, key: usize) -> bool {
+        let next = !self.visual_map_selected.get(&key).copied().unwrap_or(true);
+        self.visual_map_selected.insert(key, next);
         next
     }
 
@@ -294,7 +307,7 @@ struct ParsedZoom {
     from_option: bool,
     has_slider: bool,
     has_inside: bool,
-    x_axis_index: usize,
+    x_axis_index: Option<usize>,
 }
 
 fn parse_data_zoom(root: &OptionValue) -> ParsedZoom {
@@ -306,26 +319,26 @@ fn parse_data_zoom(root: &OptionValue) -> ParsedZoom {
             from_option: false,
             has_slider: false,
             has_inside: false,
-            x_axis_index: 0,
+            x_axis_index: None,
         };
     }
     let mut range = DataZoomRange::default();
     let mut from_option = false;
     let mut has_slider = false;
     let mut has_inside = false;
-    let mut x_axis_index = 0usize;
+    let mut x_axis_index = None;
     for c in &comps {
         let ty = c.get("type").and_then(|v| v.as_str()).unwrap_or("slider");
         match ty {
             "inside" => has_inside = true,
             _ => has_slider = true,
         }
-        if let Some(idx) = c.get("xAxisIndex").and_then(|v| match v {
-            OptionValue::Number(n) => Some(*n as usize),
-            OptionValue::Array(arr) => arr.first().and_then(|v| v.as_f64()).map(|n| n as usize),
-            _ => None,
-        }) {
-            x_axis_index = idx;
+        if x_axis_index.is_none() {
+            x_axis_index = c.get("xAxisIndex").and_then(|v| match v {
+                OptionValue::Number(n) => Some(*n as usize),
+                OptionValue::Array(arr) => arr.first().and_then(|v| v.as_f64()).map(|n| n as usize),
+                _ => None,
+            });
         }
         let start = c.get("start").and_then(|v| v.as_f64());
         let end = c.get("end").and_then(|v| v.as_f64());
@@ -386,13 +399,12 @@ fn parse_timeline_index(root: &OptionValue) -> usize {
 
 fn parse_visual_map_selected(root: &OptionValue) -> HashMap<usize, bool> {
     let mut out = HashMap::new();
-    let Some(vm) = first_component(root.get("visualMap")) else {
-        return out;
-    };
-    if let Some(obj) = vm.get("selected").and_then(|v| v.as_object()) {
-        for (k, v) in obj {
-            if let (Ok(i), Some(b)) = (k.parse::<usize>(), v.as_bool()) {
-                out.insert(i, b);
+    for (vi, vm) in as_components(root.get("visualMap")).into_iter().enumerate() {
+        if let Some(obj) = vm.get("selected").and_then(|v| v.as_object()) {
+            for (k, v) in obj {
+                if let (Ok(i), Some(b)) = (k.parse::<usize>(), v.as_bool()) {
+                    out.insert(vi * 100 + i, b);
+                }
             }
         }
     }
@@ -479,6 +491,7 @@ mod tests {
         );
         let st = InteractionState::from_option(&option);
         assert!(st.data_zoom_has_slider && st.data_zoom_has_inside);
+        assert_eq!(st.data_zoom_x_axis_index, Some(0));
         assert!((st.data_zoom.start - 10.0).abs() < 1e-9);
         assert!((st.data_zoom.end - 60.0).abs() < 1e-9);
     }

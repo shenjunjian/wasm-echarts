@@ -132,7 +132,7 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 
 #### 1. 与官方一致的公开 API
 
-`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version`（`'6.1.0'`）/ `use`（只提示）；`connect` / `disconnect` / `registerTheme` / `registerMap` / `getMap`；命名空间 `graphic` / `util` / `number` / `time` / `format` / `helper` / `matrix` / `vector` / `color` / `env`。实例 `setOption` / `getOption` / `resize` / `clear` / `dispatchAction` / `on` / `off` / `getWidth` / `getHeight` / `getDevicePixelRatio` / `isDisposed` / `dispose` / `getDom` / `getId` / `convertToPixel` / `convertFromPixel` / `containPixel` / `getZr` / `showLoading` / `hideLoading` / `getDataURL` / `renderToCanvas` / `appendData` / `setTheme`。`init(canvas)` 后 `setOption` 自动上屏，并绑定指针（`click` / `mouseover` / `mouseout` / `globalout`）。`dispatchAction` 已接线：`highlight` / `downplay` / `select` / `unselect` / `toggleSelect` / `dataZoom` / `showTip` / `hideTip`。
+`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version`（`'6.1.0'`）/ `use`（只提示）；`connect` / `disconnect` / `registerTheme` / `registerMap` / `getMap`；命名空间 `graphic` / `util` / `number` / `time` / `format` / `helper` / `matrix` / `vector` / `color` / `env`。实例 `setOption` / `getOption` / `resize` / `clear` / `dispatchAction` / `on` / `off` / `getWidth` / `getHeight` / `getDevicePixelRatio` / `isDisposed` / `dispose` / `getDom` / `getId` / `convertToPixel` / `convertFromPixel` / `containPixel` / `getZr` / `showLoading` / `hideLoading` / `getDataURL` / `renderToCanvas` / `appendData` / `setTheme`。`init(canvas)` 后 `setOption` 自动上屏，并绑定指针（`click` / `mouseover` / `mouseout` / `globalout`）。`dispatchAction` 已接线：`highlight` / `downplay` / `select` / `unselect` / `toggleSelect` / `dataZoom` / `showTip` / `hideTip` / `legendToggleSelect` / `legendSelect` / `legendUnSelect` / `restore` / `timelineChange` / `brush`。
 
 #### 2. 与官方不一致 / 例外
 
@@ -163,8 +163,8 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 
 #### 4. 已实现 / 未实现
 
-- **已实现（部分生效）**：line / bar / pie / scatter 的 canvas option 族（line `smooth`/`step`/`connectNulls`/`areaStyle`/`endLabel`/`lineStyle`，bar `barWidth`/`barGap`/`barCategoryGap`/`borderRadius`/`barMinHeight`，pie `roseType`/`selectedMode`，scatter `large` 与其余 symbol）；多 cartesian（grid / 轴 / time / log）；dataset / transform / encode / stack / sampling；`getZr` 共用 Storage；`graphic`/`util`/`time` 等命名空间；`registerTransform`；`showLoading` 静态遮罩；`getDataURL`/`renderToCanvas`；`connect`/`registerTheme`/`registerMap`（表结构）；`appendData`/`containPixel`；`axisLabel.formatter`；series label；CallbackDataParams；`convertToPixel` cartesian finder；inside dataZoom 滚轮；`on`/`off` 指针事件；内建 string tooltip；`showTip`/`hideTip`；hover / toggleSelect；竖线 axisPointer。
-- **未实现（按 canvas 全量对齐计划补齐，不是永久例外）**：已导出只 `console.warn` 的有 `registerPreprocessor` / `registerLocale` / `setPlatformAPI`。其余 chart、polar、`option.graphic` 组件、line polar / `smoothMonotone` / visualMap 分段色等见 [AGENT.md](AGENT.md) 与 [echarts 文档](wasm-echarts-rs/site/echarts/docs/index.html)。
+- **已实现（部分生效）**：line / bar / pie / scatter 的 canvas option 族；多 cartesian（grid / 轴 / time / log）；dataset / transform / encode / stack / sampling；`getZr` 共用 Storage；`graphic`/`util`/`time` 等命名空间；legend 点击筛选、title 布局、mark*、`option.graphic`、visualMap、dataZoom slider + inside、十字 axisPointer、`tooltip.trigger: 'axis'`、brush、timeline、toolbox canvas 按钮、thumbnail；`registerTransform`；`showLoading` 静态遮罩；`getDataURL`/`renderToCanvas`；`connect`/`registerTheme`/`registerMap`（表结构）；`appendData`/`containPixel`；`axisLabel.formatter`；series label；CallbackDataParams；`convertToPixel` cartesian finder；`on`/`off` 指针事件；内建 string tooltip；`showTip`/`hideTip`；hover / toggleSelect。
+- **未实现（按 canvas 全量对齐计划补齐，不是永久例外）**：已导出只 `console.warn` 的有 `registerPreprocessor` / `registerLocale` / `setPlatformAPI`。其余 chart、polar、line polar / `smoothMonotone` 等见 [AGENT.md](AGENT.md) 与 [echarts 文档](wasm-echarts-rs/site/echarts/docs/index.html)。
 
 native `EChartsInstance`（`wasm_echarts.d.ts`）是内部 handle，不要从 site 直接 `new`。
 
@@ -328,7 +328,7 @@ npm run dev
 </script>
 ```
 
-`init(canvas)` 后 facade 绑定指针：hover 高亮、string tooltip、wheel dataZoom。用户写 `chart.on('click', handler)` 即可，不必再调 `handlePointerMove`。
+`init(canvas)` 后 facade 绑定指针：hover 高亮、string tooltip、legend/toolbox 点击、slider/brush 拖拽、wheel inside dataZoom。用户写 `chart.on('click', handler)` 即可，不必再调 `handlePointerMove`。
 
 | 方法 | 说明 |
 |------|------|
@@ -352,7 +352,7 @@ npm run dev
 
 - 图表类型：line / bar / pie / scatter
 - option 中的 JS 函数：`tooltip.formatter`、`label.formatter`、`itemStyle.color` 等
-- 交互：`init(canvas)` 绑指针、hover 命中检测、内建 string tooltip、`on('click')`、`showTip`/`hideTip`、`highlight` / `downplay`、inside dataZoom 滚轮
+- 交互：`init(canvas)` 绑指针、hover、string tooltip、legend 筛选、slider / inside dataZoom、十字 axisPointer、`showTip`/`hideTip`
 - 仅 canvas 渲染，无动画中间帧
 - 公开 JS API：`init` / `setOption` / `getOption` / `resize` / `clear` / `on` / `off` / `dispatchAction` / `dispose` / `use`（只提示）
 

@@ -71,3 +71,68 @@ pub fn points_in_brush(
     }
     out
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::GlobalModel;
+    use crate::option::{OptionModel, OptionValue, SetOptionFlags};
+    use indexmap::IndexMap;
+
+    fn obj(pairs: Vec<(&str, OptionValue)>) -> OptionValue {
+        let mut m = IndexMap::new();
+        for (k, v) in pairs {
+            m.insert(k.into(), v);
+        }
+        OptionValue::Object(m)
+    }
+
+    #[test]
+    fn brush_selects_points_in_rect() {
+        let mut option = OptionModel::new();
+        option.apply(
+            obj(vec![
+                ("brush", obj(vec![])),
+                (
+                    "xAxis",
+                    obj(vec![
+                        ("type", OptionValue::String("category".into())),
+                        (
+                            "data",
+                            OptionValue::Array(vec![
+                                OptionValue::String("a".into()),
+                                OptionValue::String("b".into()),
+                            ]),
+                        ),
+                    ]),
+                ),
+                (
+                    "yAxis",
+                    obj(vec![("type", OptionValue::String("value".into()))]),
+                ),
+                (
+                    "series",
+                    OptionValue::Array(vec![obj(vec![
+                        ("type", OptionValue::String("line".into())),
+                        (
+                            "data",
+                            OptionValue::Array(vec![
+                                OptionValue::Number(1.0),
+                                OptionValue::Number(2.0),
+                            ]),
+                        ),
+                    ])]),
+                ),
+            ]),
+            SetOptionFlags {
+                not_merge: true,
+                replace_merge: vec![],
+            },
+        );
+        let model = GlobalModel::from_option(&option, 400, 300);
+        let g = model.grid();
+        let hits = points_in_brush(&model, (g.x, g.y, g.x + g.width, g.y + g.height));
+        assert_eq!(hits.len(), 2);
+        assert!(brush_enabled(&option));
+    }
+}

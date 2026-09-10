@@ -47,7 +47,11 @@ pub fn render_visual_map(
             let pieces = pieces_of(vm, min, max);
             let n = pieces.len().max(1) as f64;
             for (i, p) in pieces.iter().enumerate() {
-                let on = interaction.visual_map_selected.get(&i).copied().unwrap_or(true);
+                let on = interaction
+                    .visual_map_selected
+                    .get(&(vi * 100 + i))
+                    .copied()
+                    .unwrap_or(true);
                 let color = if on {
                     p.color.clone()
                 } else {
@@ -187,6 +191,20 @@ impl VisualPiece {
     }
 }
 
+pub fn piecewise_hit(option: &OptionModel, data_index: i32) -> Option<(usize, usize)> {
+    if data_index < 0 {
+        return None;
+    }
+    let vi = (data_index / 100) as usize;
+    let piece = (data_index % 100) as usize;
+    let vms = as_components(option.root().get("visualMap"));
+    let vm = vms.get(vi)?;
+    if vm.get("type").and_then(|v| v.as_str()).unwrap_or("continuous") != "piecewise" {
+        return None;
+    }
+    Some((vi, piece))
+}
+
 pub fn map_color(
     option: &OptionModel,
     series_index: usize,
@@ -214,9 +232,12 @@ pub fn map_color(
         let ty = vm.get("type").and_then(|v| v.as_str()).unwrap_or("continuous");
         if ty == "piecewise" {
             let (min, max) = value_extent_from_series(vm, series);
-            for p in pieces_of(vm, min, max) {
+            for (i, p) in pieces_of(vm, min, max).into_iter().enumerate() {
                 if p.matches(value) {
-                    return Some(p.color);
+                    if piece_selected(vm, i) {
+                        return Some(p.color);
+                    }
+                    return Some("#ccc".into());
                 }
             }
         } else {
@@ -234,6 +255,14 @@ pub fn map_color(
         }
     }
     None
+}
+
+fn piece_selected(vm: &OptionValue, index: usize) -> bool {
+    vm.get("selected")
+        .and_then(|v| v.as_object())
+        .and_then(|m| m.get(&index.to_string()))
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true)
 }
 
 fn applies_to_series(vm: &OptionValue, series_index: usize) -> bool {
@@ -456,5 +485,59 @@ mod tests {
             Some("#00f")
         );
         assert_eq!(map_color(&option, 0, 0, &model.series[0]), None);
+    }
+
+    #[test]
+    fn unselected_piece_uses_out_of_range_color() {
+        let mut option = OptionModel::new();
+        option.apply(
+            obj(vec![
+                (
+                    "visualMap",
+                    obj(vec![
+                        ("type", OptionValue::String("piecewise".into())),
+                        ("show", OptionValue::Bool(false)),
+                        ("dimension", OptionValue::Number(0.0)),
+                        (
+                            "selected",
+                            obj(vec![("0", OptionValue::Bool(false))]),
+                        ),
+                        (
+                            "pieces",
+                            OptionValue::Array(vec![obj(vec![
+                                ("gt", OptionValue::Number(1.0)),
+                                ("lt", OptionValue::Number(3.0)),
+                                ("color", OptionValue::String("#00f".into())),
+                            ])]),
+                        ),
+                    ]),
+                ),
+                (
+                    "series",
+                    OptionValue::Array(vec![obj(vec![
+                        ("type", OptionValue::String("line".into())),
+                        (
+                            "data",
+                            OptionValue::Array(vec![
+                                OptionValue::Number(1.0),
+                                OptionValue::Number(2.0),
+                                OptionValue::Number(3.0),
+                            ]),
+                        ),
+                    ])]),
+                ),
+            ]),
+            SetOptionFlags {
+                not_merge: true,
+                replace_merge: vec![],
+            },
+        );
+        let model = GlobalModel::from_option(&option, 200, 150);
+        assert_eq!(
+            map_color(&option, 0, 2, &model.series[0]).as_deref(),
+            Some("#ccc")
+        );
+        assert_eq!(piecewise_hit(&option, 0), Some((0, 0)));
+        assert_eq!(piecewise_hit(&option, 100), None);
     }
 }

@@ -314,6 +314,15 @@ impl EChartsInstance {
                     self.render_and_apply_states();
                 }
             }
+            Some(crate::chart::HIT_VISUAL_MAP) => {
+                if let Some((vi, piece)) =
+                    crate::chart::visual_map::piecewise_hit(&self.effective_option(), data_index)
+                {
+                    let on = self.interaction.toggle_visual_map_piece(vi * 100 + piece);
+                    self.option.set_visual_map_selected(vi, piece, on);
+                    self.render_and_apply_states();
+                }
+            }
             _ => {}
         }
         hit.as_ref().map(hit_to_js).unwrap_or(JsValue::NULL)
@@ -321,11 +330,17 @@ impl EChartsInstance {
 
     /// 滚轮 dataZoom（option 含 dataZoom 时生效）
     pub fn apply_data_zoom_wheel(&mut self, x: f64, delta_y: f64) -> Result<(), JsValue> {
-        if !self.interaction.data_zoom_enabled {
+        if !self.interaction.data_zoom_has_inside {
             return Ok(());
         }
         let model = self.current_model();
-        let grid = model.grid();
+        let grid = match self.interaction.data_zoom_x_axis_index {
+            Some(idx) => {
+                let gi = model.x_axis_at(idx).grid_index;
+                model.grid_at(gi)
+            }
+            None => model.grid(),
+        };
         let anchor = if grid.width > 0.0 {
             ((x - grid.x) / grid.width).clamp(0.0, 1.0)
         } else {

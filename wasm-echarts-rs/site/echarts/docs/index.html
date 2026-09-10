@@ -110,7 +110,7 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td><code>dispatchAction</code></td>
-            <td>已接线：<code>highlight</code> / <code>downplay</code> / <code>select</code> / <code>unselect</code> / <code>toggleSelect</code> / <code>dataZoom</code> / <code>showTip</code> / <code>hideTip</code>。其它 type <code>console.warn</code>。</td>
+            <td>已接线：<code>highlight</code> / <code>downplay</code> / <code>select</code> / <code>unselect</code> / <code>toggleSelect</code> / <code>dataZoom</code> / <code>showTip</code> / <code>hideTip</code> / <code>legendToggleSelect</code> / <code>legendSelect</code> / <code>legendUnSelect</code> / <code>restore</code> / <code>timelineChange</code> / <code>brush</code>。其它 type <code>console.warn</code>。</td>
           </tr>
           <tr>
             <td><code>getWidth</code> / <code>getHeight</code> / <code>getDevicePixelRatio</code> / <code>isDisposed</code> / <code>dispose</code> / <code>getDom</code> / <code>getId</code></td>
@@ -226,7 +226,7 @@ chart.on('click', (params) => {
             <td>主路径用 <code>on('mouseover')</code></td>
           </tr>
           <tr>
-            <td><code>handlePointerMove(x, y)</code> / <code>handlePointerLeave()</code></td>
+            <td><code>handlePointerMove(x, y)</code> / <code>handlePointerLeave()</code> / <code>handlePointerDown</code> / <code>handlePointerUp</code> / <code>handlePointerClick</code></td>
             <td>离屏或自管指针</td>
             <td><code>init(canvas)</code> 时一般不需要</td>
           </tr>
@@ -305,7 +305,11 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td>title / legend</td>
-            <td>title <code>text</code> / <code>subtext</code> 与 <code>textStyle</code> / <code>subtextStyle</code>；legend 色块 + 系列名（<code>textStyle.fontFamily</code>）。无点击筛选、无复杂布局</td>
+            <td>title <code>text</code> / <code>subtext</code>；<code>padding</code> / <code>left</code>/<code>right</code>/<code>top</code>/<code>bottom</code> / <code>textAlign</code>；legend <code>orient</code> / <code>selected</code>、点击筛选</td>
+          </tr>
+          <tr>
+            <td>canvas 组件</td>
+            <td><code>markPoint</code> / <code>markLine</code> / <code>markArea</code>；<code>option.graphic</code>；visualMap continuous/piecewise；dataZoom slider；axisPointer 十字；toolbox（restore / magicType / dataZoom；DataView 只 warn）；timeline；brush；thumbnail</td>
           </tr>
           <tr>
             <td>CallbackDataParams</td>
@@ -313,11 +317,11 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td>交互</td>
-            <td><code>init(canvas)</code> 绑指针；hover 高亮、内建 string tooltip、<code>on('click')</code>、wheel inside dataZoom、竖线 axisPointer</td>
+            <td><code>init(canvas)</code> 绑指针；hover 高亮、内建 string tooltip、<code>on('click')</code>、legend/toolbox/timeline 点击、slider/brush 拖拽、wheel inside dataZoom、<code>tooltip.trigger: 'axis'</code>、十字 axisPointer</td>
           </tr>
           <tr>
             <td><code>dispatchAction</code></td>
-            <td><code>highlight</code> / <code>downplay</code> / <code>select</code> / <code>unselect</code> / <code>toggleSelect</code> / <code>dataZoom</code> / <code>showTip</code> / <code>hideTip</code></td>
+            <td><code>highlight</code> / <code>downplay</code> / <code>select</code> / <code>unselect</code> / <code>toggleSelect</code> / <code>dataZoom</code> / <code>showTip</code> / <code>hideTip</code> / <code>legendToggleSelect</code> / <code>legendSelect</code> / <code>legendUnSelect</code> / <code>restore</code> / <code>timelineChange</code> / <code>brush</code></td>
           </tr>
           <tr>
             <td><code>getZr</code> / 命名空间</td>
@@ -335,13 +339,13 @@ chart.on('click', (params) => {
       <p>实例上尚未做完：<code>convertToLayout</code> / <code>getVisual</code>。</p>
       <ul>
         <li>Charts：Radar、Map、Gauge、Funnel、Heatmap、Custom <code>renderItem</code> 等其余类型。未接线的 <code>series.type</code> 不得静默忽略后永远不管。</li>
-        <li>Components：legend 点击筛选与复杂布局、title 复杂布局、toolbox（canvas 按钮要做；DataView DOM 明确不做）、visualMap、geo、polar、graphic 组件、<code>option.graphic</code>、brush、timeline</li>
-        <li>Actions：legend*、restore、brush、timeline、geo roam 等</li>
+        <li>Components：geo、polar、radar、singleAxis、calendar、matrix。toolbox DataView DOM / SaveAsImage 下载条明确不做。</li>
+        <li>Actions：geo roam 等</li>
         <li>media query / 非 cartesian 的 <code>convertToPixel</code> finder</li>
-        <li>option 名字在但未按官方做：line polar / <code>smoothMonotone</code> / visualMap 分段色、pie 完整 <code>avoidLabelOverlap</code>、色板不是官方 palette 全套</li>
-        <li>tooltip HTMLElement formatter / <code>confine</code> / <code>trigger: 'axis'</code></li>
+        <li>option 名字在但未按官方做：line polar / <code>smoothMonotone</code>、pie 完整 <code>avoidLabelOverlap</code>、色板不是官方 palette 全套</li>
+        <li>tooltip HTMLElement formatter / <code>confine</code> / <code>renderMode: 'richText'</code></li>
       </ul>
-      <p>官网折线 40 例：第 3 波已把 canvas option 族接到绘制。仍可能有视觉缺口（不在示例里 workaround）：polar、visualMap 分段上色、<code>markPoint</code>/<code>markLine</code>、<code>option.graphic</code>、dataZoom slider、<code>tooltip.trigger: 'axis'</code>、y 类目轴对调、<code>smoothMonotone</code>。这些归第 4–5 波。</p>
+      <p>官网折线 40 例：第 3–4 波已把 canvas option 族与 mark* / graphic / slider / <code>trigger: 'axis'</code> 接到绘制。仍可能有视觉缺口（不在示例里 workaround）：polar、y 类目轴对调、<code>smoothMonotone</code>。这些归第 5 波。</p>
     </div>
 
     <div class="doc-section">

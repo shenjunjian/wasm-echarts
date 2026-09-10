@@ -31,7 +31,9 @@ pub use pie::render_pie_series;
 #[cfg(feature = "chart-scatter")]
 pub use scatter::render_scatter_series;
 
-pub use layout::{HIT_DATA_ZOOM, HIT_LEGEND, HIT_THUMBNAIL, HIT_TIMELINE, HIT_TOOLBOX};
+pub use layout::{
+    HIT_DATA_ZOOM, HIT_LEGEND, HIT_THUMBNAIL, HIT_TIMELINE, HIT_TOOLBOX, HIT_VISUAL_MAP,
+};
 pub use toolbox::{next_magic_type, TB_BRUSH, TB_DATA_VIEW, TB_DATA_ZOOM, TB_MAGIC, TB_RESTORE, TB_SAVE};
 
 use crate::coord::Cartesian2D;
