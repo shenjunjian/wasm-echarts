@@ -19,7 +19,7 @@ todos:
     status: completed
   - id: docs-verify
     content: 文档写清：与官方一致/不一致、多出来的非官方 API、已实现与未实现；示例改走 init；手工验收
-    status: completed
+    status: pending
 isProject: false
 ---
 

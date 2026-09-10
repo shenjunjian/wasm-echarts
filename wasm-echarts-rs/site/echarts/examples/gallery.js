@@ -1,4 +1,5 @@
 import { mountExampleGallery } from '../../src/shared/example-gallery.js';
+import { officialLineExamples } from './official-line-catalog.js';
 import lineSource from './line.js?raw';
 import barSource from './bar.js?raw';
 import pieSource from './pie.js?raw';
@@ -8,9 +9,35 @@ import mergeSource from './merge.js?raw';
 import benchSource from './bench.js?raw';
 import fontsSource from './fonts.js?raw';
 
+const officialSources = import.meta.glob(
+  [
+    './*.js',
+    '!./gallery.js',
+    '!./official-line-catalog.js',
+    '!./line.js',
+    '!./bar.js',
+    '!./pie.js',
+    '!./scatter.js',
+    '!./interactive.js',
+    '!./merge.js',
+    '!./bench.js',
+    '!./fonts.js',
+  ],
+  { query: '?raw', import: 'default', eager: true },
+);
+
+function officialSource(id) {
+  const src = officialSources[`./${id}.js`];
+  if (!src) {
+    throw new Error(`缺少官网示例源码: ${id}`);
+  }
+  return src;
+}
+
 mountExampleGallery(document.getElementById('app'), {
   title: 'wasm-echarts 实例',
-  description: '每个示例是完整独立脚本，直接 import @wasm-echarts。轴标签渲染前须 registerFont。右侧查看源码与 iframe 预览。',
+  description:
+    '每个示例是完整独立脚本。折线图含官网同步条目：未实现的官方能力会在预览里报错，便于后续补齐。轴标签渲染前须 registerFont。',
   defaultId: 'line',
   groups: [
     {
@@ -31,6 +58,13 @@ mountExampleGallery(document.getElementById('app'), {
           previewUrl: './fonts.html',
           source: fontsSource,
         },
+        ...officialLineExamples.map((item) => ({
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          previewUrl: `./${item.id}.html`,
+          source: officialSource(item.id),
+        })),
       ],
     },
     {
