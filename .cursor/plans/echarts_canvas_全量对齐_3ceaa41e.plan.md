@@ -49,7 +49,7 @@ todos:
     status: completed
   - id: wave8-map
     content: 第 8.7 波：map / geo / lines
-    status: pending
+    status: completed
   - id: wave8-custom
     content: 第 8.8 波：custom / dataset / graphic
     status: pending
