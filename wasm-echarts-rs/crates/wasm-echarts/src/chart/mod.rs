@@ -2,6 +2,7 @@ mod axis;
 pub(crate) mod axis_pointer;
 mod bar;
 pub(crate) mod brush;
+mod coords;
 pub(crate) mod data_zoom;
 mod graphic;
 mod label;
@@ -36,7 +37,7 @@ pub use layout::{
 };
 pub use toolbox::{next_magic_type, TB_BRUSH, TB_DATA_VIEW, TB_DATA_ZOOM, TB_MAGIC, TB_RESTORE, TB_SAVE};
 
-use crate::coord::Cartesian2D;
+use crate::coord::{Cartesian2D, SeriesCoord};
 use crate::interaction::InteractionState;
 use crate::model::{GlobalModel, SeriesType};
 use crate::option::OptionModel;
@@ -74,12 +75,18 @@ pub fn render_components(
         axis::render_axis_labels(zr, group, model, option);
     }
 
+    coords::render_extra_coords(zr, group, model, option);
+
     for series in &model.series {
         if !interaction.is_name_selected(&series.name) {
             continue;
         }
-        let coord = Cartesian2D::for_series(model, series);
-        let (zoom_start, zoom_end) = model.visible_category_range_of(series.x_axis_index);
+        let coord = SeriesCoord::for_series(model, series);
+        let (zoom_start, zoom_end) = if series.coord_sys.is_cartesian() {
+            model.visible_category_range_of(series.x_axis_index)
+        } else {
+            (0, series.data.len())
+        };
         match series.series_type {
             #[cfg(feature = "chart-line")]
             SeriesType::Line => {

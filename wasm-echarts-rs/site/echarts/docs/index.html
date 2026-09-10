@@ -118,7 +118,7 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td><code>convertToPixel</code> / <code>convertFromPixel</code></td>
-            <td>cartesian 最小集：finder <code>{ xAxisIndex }</code> / <code>{ yAxisIndex }</code> / <code>{ gridIndex }</code> / <code>{ seriesIndex }</code> 或 <code>'xAxis'</code> / <code>'yAxis'</code> / <code>'grid'</code></td>
+            <td>cartesian / polar / geo / calendar / single / parallel / matrix / radar finder</td>
           </tr>
           <tr>
             <td><code>getZr</code></td>
@@ -134,11 +134,11 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td><code>containPixel</code> / <code>appendData</code> / <code>setTheme</code></td>
-            <td>grid 包含判断；追加 series.data；应用已注册主题</td>
+            <td>grid / polar / geo 等包含判断；追加 series.data；应用已注册主题</td>
           </tr>
           <tr>
-            <td><code>connect</code> / <code>registerTheme</code> / <code>registerMap</code> / <code>getMap</code> / <code>registerTransform</code></td>
-            <td>按 group 转发 action；主题表；地图表结构（本波不画 map）；dataset 外部 transform</td>
+            <td><code>connect</code> / <code>registerTheme</code> / <code>registerMap</code> / <code>getMap</code> / <code>parseGeoJSON</code> / <code>registerTransform</code></td>
+            <td>按 group 转发 action；主题表；注册并绘制 geo；解析 GeoJSON；dataset 外部 transform</td>
           </tr>
           <tr>
             <td><code>graphic</code> / <code>util</code> / <code>time</code> / <code>format</code> / <code>number</code> / <code>helper</code> / <code>matrix</code> / <code>vector</code> / <code>color</code> / <code>env</code></td>
@@ -273,7 +273,7 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td>cartesian</td>
-            <td>多 <code>grid</code> / <code>xAxis[]</code> / <code>yAxis[]</code>（<code>gridIndex</code> / <code>xAxisIndex</code> / <code>yAxisIndex</code>）；<code>type: category | value | time | log</code>；<code>convertToPixel</code> / <code>convertFromPixel</code> / <code>containPixel</code> 按 finder 取轴</td>
+            <td>多 <code>grid</code> / <code>xAxis[]</code> / <code>yAxis[]</code>；<code>type: category | value | time | log</code>；y 类目横画；<code>convertToPixel</code> / <code>convertFromPixel</code> / <code>containPixel</code> 按 finder 取轴</td>
           </tr>
           <tr>
             <td>dataset / transform</td>
@@ -285,11 +285,11 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td>line</td>
-            <td><code>smooth</code>（bool→0.5 或数字）/<code>step</code>（start/middle/end）/<code>connectNulls</code>；<code>areaStyle</code>（默认透明度 0.7，色可为 <code>LinearGradient</code>）；<code>lineStyle.width</code>/<code>type</code>；<code>endLabel.show</code>；<code>symbol</code>/<code>symbolSize</code>；<code>stack</code>/<code>sampling</code>。polar 未接</td>
+            <td><code>smooth</code>（bool→0.5 或数字）/<code>step</code>（start/middle/end）/<code>connectNulls</code>；<code>areaStyle</code>（默认透明度 0.7，色可为 <code>LinearGradient</code>）；<code>lineStyle.width</code>/<code>type</code>；<code>endLabel.show</code>；<code>symbol</code>/<code>symbolSize</code>；<code>stack</code>/<code>sampling</code>；<code>coordinateSystem: 'polar'</code></td>
           </tr>
           <tr>
             <td>bar</td>
-            <td>同轴多系列并排（同 <code>stack</code> 共用列）；<code>barWidth</code>/<code>barGap</code>/<code>barCategoryGap</code>/<code>barMinHeight</code>；<code>itemStyle.borderRadius</code></td>
+            <td>同轴多系列并排（同 <code>stack</code> 共用列）；y 类目水平柱；polar 下为扇区；<code>barWidth</code>/<code>barGap</code>/<code>barCategoryGap</code>/<code>barMinHeight</code>；<code>itemStyle.borderRadius</code></td>
           </tr>
           <tr>
             <td>pie</td>
@@ -297,15 +297,19 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td>scatter</td>
-            <td>双 value 轴；<code>symbol</code>（circle/rect/roundRect/triangle/diamond/pin/arrow/star/line 及 empty*）与 <code>symbolSize</code>；<code>large</code> 且点数 ≥ <code>largeThreshold</code> 时终态一次画完、不挂 emphasis、不画 label</td>
+            <td>双 value 轴；也可挂 polar / geo / calendar / single / matrix；<code>symbol</code> 与 <code>symbolSize</code>；<code>large</code> 且点数 ≥ <code>largeThreshold</code> 时终态一次画完、不挂 emphasis、不画 label</td>
           </tr>
           <tr>
             <td>轴</td>
-            <td>轴标签 Text；<code>axisLabel.formatter</code>（函数或 <code>{value}</code> 模板）；<code>xAxis.name</code> / <code>yAxis.name</code>；<code>fontFamily</code> / <code>fontSize</code> / <code>color</code></td>
+            <td>轴标签 Text；<code>axisLabel.formatter</code>（函数或 <code>{value}</code> 模板）；<code>xAxis.name</code> / <code>yAxis.name</code>；polar / radar / singleAxis / parallel / calendar / matrix / geo 底图</td>
           </tr>
           <tr>
             <td>title / legend</td>
             <td>title <code>text</code> / <code>subtext</code>；<code>padding</code> / <code>left</code>/<code>right</code>/<code>top</code>/<code>bottom</code> / <code>textAlign</code>；legend <code>orient</code> / <code>selected</code>、点击筛选</td>
+          </tr>
+          <tr>
+            <td>坐标系</td>
+            <td><code>polar</code>（angleAxis/radiusAxis）/<code>radar</code> 蛛网/<code>singleAxis</code>/<code>parallel</code>/<code>calendar</code>/<code>matrix</code>/<code>geo</code>（<code>registerMap</code> + <code>parseGeoJSON</code>）</td>
           </tr>
           <tr>
             <td>canvas 组件</td>
@@ -329,7 +333,7 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td>实例 API</td>
-            <td><code>showLoading</code>（静态遮罩）/<code>getDataURL</code>/<code>renderToCanvas</code>/<code>appendData</code>/<code>setTheme</code>/<code>containPixel</code>；全局 <code>connect</code>/<code>registerTheme</code>/<code>registerMap</code>/<code>registerTransform</code></td>
+            <td><code>showLoading</code>（静态遮罩）/<code>getDataURL</code>/<code>renderToCanvas</code>/<code>appendData</code>/<code>setTheme</code>/<code>containPixel</code>；全局 <code>connect</code>/<code>registerTheme</code>/<code>registerMap</code>/<code>parseGeoJSON</code>/<code>registerTransform</code></td>
           </tr>
         </tbody>
       </table>
@@ -338,14 +342,14 @@ chart.on('click', (params) => {
       <p>下列官方入口已导出同名，内部只 <code>console.warn</code>：<code>registerLocale</code> / <code>setPlatformAPI</code> / <code>registerPreprocessor</code>。</p>
       <p>实例上尚未做完：<code>convertToLayout</code> / <code>getVisual</code>。</p>
       <ul>
-        <li>Charts：Radar、Map、Gauge、Funnel、Heatmap、Custom <code>renderItem</code> 等其余类型。未接线的 <code>series.type</code> 不得静默忽略后永远不管。</li>
-        <li>Components：geo、polar、radar、singleAxis、calendar、matrix。toolbox DataView DOM / SaveAsImage 下载条明确不做。</li>
+        <li>Charts：Radar、Map、Gauge、Funnel、Heatmap、Custom <code>renderItem</code> 等其余类型。坐标系已画，对应 series 归第 6 波。未接线的 <code>series.type</code> 不得静默忽略后永远不管。</li>
+        <li>Components：geo roam / SVG 地图源。toolbox DataView DOM / SaveAsImage 下载条明确不做。</li>
         <li>Actions：geo roam 等</li>
-        <li>media query / 非 cartesian 的 <code>convertToPixel</code> finder</li>
-        <li>option 名字在但未按官方做：line polar / <code>smoothMonotone</code>、pie 完整 <code>avoidLabelOverlap</code>、色板不是官方 palette 全套</li>
+        <li>media query</li>
+        <li>option 名字在但未按官方做：<code>smoothMonotone</code>、pie 完整 <code>avoidLabelOverlap</code>、色板不是官方 palette 全套</li>
         <li>tooltip HTMLElement formatter / <code>confine</code> / <code>renderMode: 'richText'</code></li>
       </ul>
-      <p>官网折线 40 例：第 3–4 波已把 canvas option 族与 mark* / graphic / slider / <code>trigger: 'axis'</code> 接到绘制。仍可能有视觉缺口（不在示例里 workaround）：polar、y 类目轴对调、<code>smoothMonotone</code>。这些归第 5 波。</p>
+      <p>官网折线 40 例：第 5 波已接 polar 与 y 类目轴对调。仍可能有视觉缺口（不在示例里 workaround）：<code>smoothMonotone</code>。</p>
     </div>
 
     <div class="doc-section">

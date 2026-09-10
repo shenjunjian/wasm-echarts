@@ -83,7 +83,7 @@ fn parse_clock(s: &str) -> (u32, u32, u32, u32) {
 }
 
 /// Howard Hinnant civil-from-days 的逆：公历 → 儒略日偏移（days since 0000-03-01 体系）
-fn days_from_civil(year: i32, month: u32, day: u32) -> Option<i64> {
+pub fn days_from_civil(year: i32, month: u32, day: u32) -> Option<i64> {
     if month == 0 || month > 12 || day == 0 || day > 31 {
         return None;
     }
@@ -94,6 +94,17 @@ fn days_from_civil(year: i32, month: u32, day: u32) -> Option<i64> {
     let doy = (153 * mp + 2) / 5 + day as u64 - 1;
     let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
     Some(era * 146_097 + doe as i64 - 719_468)
+}
+
+/// 周日=0 … 周六=6（UTC，与日历格子一致）
+pub fn weekday_sun0(ms: f64) -> i32 {
+    let days = (ms / 86_400_000.0).floor() as i64;
+    ((days + 4).rem_euclid(7)) as i32
+}
+
+pub fn ymd_of(ms: f64) -> (i32, u32, u32) {
+    let unix_days = (ms / 86_400_000.0).floor() as i64;
+    civil_from_days(unix_days)
 }
 
 pub fn format_time_label(ms: f64) -> String {
@@ -113,7 +124,7 @@ pub fn format_time_label(ms: f64) -> String {
     }
 }
 
-fn civil_from_days(z: i64) -> (i32, u32, u32) {
+pub fn civil_from_days(z: i64) -> (i32, u32, u32) {
     let z = z + 719_468;
     let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
     let doe = (z - era * 146_097) as u64;

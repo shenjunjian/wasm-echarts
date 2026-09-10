@@ -19,7 +19,7 @@ todos:
     status: completed
   - id: wave5-coords
     content: 第 5 波：polar/radar/single/parallel/calendar/matrix/geo
-    status: pending
+    status: completed
   - id: wave6-charts
     content: 第 6 波：其余 18 类图 + custom renderItem；默认 feature 全开
     status: pending

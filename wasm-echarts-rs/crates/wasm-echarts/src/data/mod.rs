@@ -11,10 +11,10 @@ pub use encode::{default_encode, parse_encode, series_name_from_table, table_to_
 pub use sampling::{apply_sampling, Sampling};
 pub use source::{DataTable, SeriesLayoutBy};
 pub use stack::{apply_stack, StackStrategy};
-pub use time::{format_time_label, parse_time_value};
+pub use time::{format_time_label, parse_time_value, weekday_sun0};
 pub use transform::{cell_number, cell_text, register_transform, resolve_datasets};
 
-use crate::model::{DataPoint, SeriesModel, SeriesType};
+use crate::model::{option_index, parse_coord_kind, DataPoint, SeriesModel, SeriesType};
 use crate::option::OptionValue;
 use crate::visual::{parse_series_data, series_name_of, series_type_of};
 
@@ -57,6 +57,14 @@ pub fn build_series(
             let stack_strategy = StackStrategy::from_option(s.get("stackStrategy").and_then(|v| v.as_str()));
             let sampling = Sampling::from_option(s.get("sampling").and_then(|v| v.as_str()));
             let layout = SeriesLayoutBy::from_option(s.get("seriesLayoutBy"));
+            let coord_sys = parse_coord_kind(s, st.as_str());
+            let polar_index = option_index(s, "polarIndex");
+            let radar_index = option_index(s, "radarIndex");
+            let geo_index = option_index(s, "geoIndex");
+            let calendar_index = option_index(s, "calendarIndex");
+            let single_axis_index = option_index(s, "singleAxisIndex");
+            let parallel_index = option_index(s, "parallelIndex");
+            let matrix_index = option_index(s, "matrixIndex");
 
             let mut data = if s.get("data").and_then(|v| v.as_array()).is_some() {
                 parse_series_data(s.get("data"))
@@ -86,6 +94,14 @@ pub fn build_series(
                     data: points,
                     x_axis_index,
                     y_axis_index,
+                    coord_sys,
+                    polar_index,
+                    radar_index,
+                    geo_index,
+                    calendar_index,
+                    single_axis_index,
+                    parallel_index,
+                    matrix_index,
                     stack,
                     stack_strategy,
                     sampling,
@@ -112,6 +128,14 @@ pub fn build_series(
                 data,
                 x_axis_index,
                 y_axis_index,
+                coord_sys,
+                polar_index,
+                radar_index,
+                geo_index,
+                calendar_index,
+                single_axis_index,
+                parallel_index,
+                matrix_index,
                 stack,
                 stack_strategy,
                 sampling,

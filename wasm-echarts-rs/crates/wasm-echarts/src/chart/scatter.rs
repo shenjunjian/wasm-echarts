@@ -4,7 +4,7 @@ use rust_zrender::{TextAlign, TextBaseline, ZRenderer};
 
 use crate::chart::label::add_label;
 use crate::chart::symbol::{add_symbol, SymbolSpec};
-use crate::coord::Cartesian2D;
+use crate::coord::SeriesCoord;
 use crate::model::{GlobalModel, SeriesModel};
 use crate::visual::VisualContext;
 
@@ -25,7 +25,7 @@ pub fn render_scatter_series(
     zr: &mut ZRenderer,
     group: usize,
     _model: &GlobalModel,
-    coord: &Cartesian2D,
+    coord: &SeriesCoord,
     visual: &VisualContext,
     series: &SeriesModel,
 ) {
@@ -35,7 +35,7 @@ pub fn render_scatter_series(
         if !point.value.is_finite() {
             continue;
         }
-        let (cx, cy) = coord.point_for(i, point.x_value, point.value);
+        let (cx, cy) = coord.map_point(point, i);
         if !cx.is_finite() || !cy.is_finite() {
             continue;
         }
@@ -102,7 +102,7 @@ mod tests {
         let mut zr = ZRenderer::new(200, 160).unwrap();
         let group = zr.storage.create_group();
         let series = &model.series[0];
-        let coord = Cartesian2D::for_series(&model, series);
+        let coord = SeriesCoord::for_series(&model, series);
         render_scatter_series(&mut zr, group, &model, &coord, &visual, series);
         zr
     }

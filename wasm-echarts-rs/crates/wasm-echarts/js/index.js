@@ -16,6 +16,8 @@ export {
   registerTheme,
   registerMap,
   getMap,
+  parseGeoJSON,
+  parseGeoJson,
   registerLocale,
   setPlatformAPI,
   registerPreprocessor,

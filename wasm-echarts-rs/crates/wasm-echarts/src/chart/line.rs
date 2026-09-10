@@ -11,7 +11,7 @@ use crate::chart::style::{
     style_opacity, style_width, turn_points_into_step,
 };
 use crate::chart::symbol::{add_symbol, SymbolSpec};
-use crate::coord::Cartesian2D;
+use crate::coord::{Cartesian2D, SeriesCoord};
 use crate::model::{GlobalModel, SeriesModel};
 use crate::option::OptionValue;
 use crate::visual::VisualContext;
@@ -20,7 +20,7 @@ pub fn render_line_series(
     zr: &mut ZRenderer,
     group: usize,
     _model: &GlobalModel,
-    coord: &Cartesian2D,
+    coord: &SeriesCoord,
     visual: &VisualContext,
     series: &SeriesModel,
     zoom_start: usize,
@@ -43,7 +43,11 @@ pub fn render_line_series(
     let line_style = series_opt.and_then(|s| s.get("lineStyle"));
     let line_width = style_width(line_style, 2.0);
     let line_opacity = style_opacity(line_style, 1.0);
-    let origin_y = area_origin_y(coord, area_opt.and_then(|a| a.get("origin")));
+    let origin_opt = area_opt.and_then(|a| a.get("origin"));
+    let origin_y = coord
+        .as_cartesian()
+        .map(|c| area_origin_y(c, origin_opt))
+        .unwrap_or(0.0);
 
     let mut raw_line: Vec<(f64, f64)> = Vec::new();
     let mut raw_base: Vec<(f64, f64)> = Vec::new();
@@ -53,20 +57,20 @@ pub fn render_line_series(
             continue;
         }
         let y_val = p.stacked_value;
-        let (cx, cy) = coord.point_for(i, p.x_value, y_val);
+        let (cx, cy) = coord.map_point(p, i);
         let finite = p.value.is_finite() && y_val.is_finite() && cx.is_finite() && cy.is_finite();
         let (px, py) = if finite { (cx, cy) } else { (f64::NAN, f64::NAN) };
-        let by = if finite {
+        let (bx, by) = if finite {
             if series.stack.is_some() {
-                coord.point_for(i, p.x_value, p.stack_base).1
+                coord.point_for(i, p.x_value, p.stack_base)
             } else {
-                origin_y
+                coord.area_base(i, p.x_value, origin_opt, origin_y)
             }
         } else {
-            f64::NAN
+            (f64::NAN, f64::NAN)
         };
         raw_line.push((px, py));
-        raw_base.push((px, by));
+        raw_base.push((bx, by));
         raw_index.push(i);
     }
 
@@ -299,7 +303,7 @@ mod tests {
         let mut zr = ZRenderer::new(400, 300).unwrap();
         let group = zr.storage.create_group();
         let series = &model.series[0];
-        let coord = Cartesian2D::for_series(&model, series);
+        let coord = SeriesCoord::for_series(&model, series);
         render_line_series(&mut zr, group, &model, &coord, &visual, series, 0, series.data.len());
         zr
     }
@@ -448,5 +452,51 @@ mod tests {
             .filter(|p| matches!(p.shape, Shape::Polyline(_)))
             .count();
         assert_eq!(n, 1);
+    }
+
+    #[test]
+    fn polar_line_draws_polyline() {
+        let zr = render(obj(vec![
+            ("polar", obj(vec![])),
+            (
+                "angleAxis",
+                obj(vec![
+                    ("type", OptionValue::String("value".into())),
+                    ("startAngle", OptionValue::Number(0.0)),
+                ]),
+            ),
+            ("radiusAxis", obj(vec![])),
+            (
+                "series",
+                OptionValue::Array(vec![obj(vec![
+                    ("type", OptionValue::String("line".into())),
+                    ("coordinateSystem", OptionValue::String("polar".into())),
+                    (
+                        "data",
+                        OptionValue::Array(vec![
+                            OptionValue::Array(vec![
+                                OptionValue::Number(1.0),
+                                OptionValue::Number(0.0),
+                            ]),
+                            OptionValue::Array(vec![
+                                OptionValue::Number(2.0),
+                                OptionValue::Number(90.0),
+                            ]),
+                            OptionValue::Array(vec![
+                                OptionValue::Number(3.0),
+                                OptionValue::Number(180.0),
+                            ]),
+                        ]),
+                    ),
+                ])]),
+            ),
+        ]));
+        let n = zr
+            .storage
+            .paths()
+            .iter()
+            .filter(|p| matches!(p.shape, Shape::Polyline(_)))
+            .count();
+        assert!(n >= 1, "polar line should draw a polyline");
     }
 }

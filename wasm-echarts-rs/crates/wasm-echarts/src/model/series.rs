@@ -10,6 +10,40 @@ pub enum SeriesType {
     Other,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum CoordSysKind {
+    #[default]
+    Cartesian,
+    Polar,
+    Radar,
+    Single,
+    Parallel,
+    Calendar,
+    Matrix,
+    Geo,
+    None,
+}
+
+impl CoordSysKind {
+    pub fn from_option(s: Option<&str>) -> Self {
+        match s.unwrap_or("cartesian2d") {
+            "polar" => CoordSysKind::Polar,
+            "radar" => CoordSysKind::Radar,
+            "single" | "singleAxis" => CoordSysKind::Single,
+            "parallel" => CoordSysKind::Parallel,
+            "calendar" => CoordSysKind::Calendar,
+            "matrix" => CoordSysKind::Matrix,
+            "geo" => CoordSysKind::Geo,
+            "none" => CoordSysKind::None,
+            _ => CoordSysKind::Cartesian,
+        }
+    }
+
+    pub fn is_cartesian(self) -> bool {
+        self == CoordSysKind::Cartesian
+    }
+}
+
 impl SeriesType {
     pub fn from_str(s: &str) -> Self {
         match s {
@@ -51,6 +85,14 @@ pub struct SeriesModel {
     pub data: Vec<DataPoint>,
     pub x_axis_index: usize,
     pub y_axis_index: usize,
+    pub coord_sys: CoordSysKind,
+    pub polar_index: usize,
+    pub radar_index: usize,
+    pub geo_index: usize,
+    pub calendar_index: usize,
+    pub single_axis_index: usize,
+    pub parallel_index: usize,
+    pub matrix_index: usize,
     pub stack: Option<String>,
     pub stack_strategy: StackStrategy,
     pub sampling: Sampling,

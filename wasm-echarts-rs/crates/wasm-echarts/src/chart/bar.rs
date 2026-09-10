@@ -2,11 +2,11 @@
 
 use rust_zrender::{
     ChildRef, DisplayableProps, EcData, FillStrokeStyle, Path, PathStyle, PathStylePatch, RectShape,
-    Shape, STATE_EMPHASIS, STATE_SELECT, TextAlign, TextBaseline, ZRenderer,
+    SectorShape, Shape, STATE_EMPHASIS, STATE_SELECT, TextAlign, TextBaseline, ZRenderer,
 };
 
 use crate::chart::label::add_label;
-use crate::coord::Cartesian2D;
+use crate::coord::{Cartesian2D, SeriesCoord};
 use crate::model::{GlobalModel, SeriesModel, SeriesType};
 use crate::option::OptionValue;
 use crate::utils::parse_percent;
@@ -127,7 +127,7 @@ pub fn render_bar_series(
     zr: &mut ZRenderer,
     group: usize,
     model: &GlobalModel,
-    coord: &Cartesian2D,
+    coord: &SeriesCoord,
     visual: &VisualContext,
     series: &SeriesModel,
     zoom_start: usize,
@@ -136,20 +136,86 @@ pub fn render_bar_series(
     if series.data.is_empty() {
         return;
     }
+    if let Some(polar) = coord.as_polar() {
+        render_polar_bars(zr, group, polar, visual, series, zoom_start, zoom_end);
+        return;
+    }
+    let Some(coord) = coord.as_cartesian() else {
+        return;
+    };
+    render_cartesian_bars(zr, group, model, coord, visual, series, zoom_start, zoom_end);
+}
 
+fn render_cartesian_bars(
+    zr: &mut ZRenderer,
+    group: usize,
+    model: &GlobalModel,
+    coord: &Cartesian2D,
+    visual: &VisualContext,
+    series: &SeriesModel,
+    zoom_start: usize,
+    zoom_end: usize,
+) {
     let series_opt = visual.series_option(series.index);
     let band = coord.category_band_width();
     let layout = bar_column_layout(model, series, visual, band);
     let bar_w = layout.width.max(0.5);
     let min_height = parse_percent(series_opt.and_then(|s| s.get("barMinHeight")), 1.0, 0.0);
     let radius = border_radius(series_opt.and_then(|s| s.get("itemStyle")));
+    let horizontal = coord.is_horizontal();
     let zero_y = coord.base_y().min(coord.grid().y + coord.grid().height);
+    let zero_x = coord.base_x().max(coord.grid().x);
 
     for (i, point) in series.data.iter().enumerate() {
         if i < zoom_start || i >= zoom_end {
             continue;
         }
         if !point.value.is_finite() && !point.stacked_value.is_finite() {
+            continue;
+        }
+        let color = visual.resolve_item_color(series.index, i);
+        if horizontal {
+            let (top_x, cy) = coord.point_for(i, point.x_value, point.stacked_value);
+            let base_x = if point.stack_base.abs() > f64::EPSILON || series.stack.is_some() {
+                coord.point_for(i, point.x_value, point.stack_base).0
+            } else {
+                zero_x
+            };
+            let y = cy + layout.offset;
+            let mut x = top_x.min(base_x);
+            let mut w = (base_x - top_x).abs();
+            if w < min_height {
+                w = min_height;
+                if top_x <= base_x {
+                    x = base_x - w;
+                }
+            }
+            w = w.max(1.0);
+            add_bar_rect(
+                zr,
+                group,
+                series,
+                i,
+                x,
+                y,
+                w,
+                bar_w,
+                radius.clone(),
+                &color,
+            );
+            add_label(
+                zr,
+                group,
+                visual,
+                series.index,
+                i,
+                x + w + 4.0,
+                y + bar_w / 2.0,
+                TextAlign::Left,
+                TextBaseline::Middle,
+                &color,
+                series.index as f64 + 0.2,
+            );
             continue;
         }
         let (cx, top_y) = coord.point_for(i, point.x_value, point.stacked_value);
@@ -168,49 +234,18 @@ pub fn render_bar_series(
             }
         }
         h = h.max(1.0);
-
-        let color = visual.resolve_item_color(series.index, i);
-        let bar = zr.storage.create_path(
-            Path::new(
-                Shape::Rect(RectShape {
-                    x,
-                    y,
-                    width: bar_w,
-                    height: h,
-                    r: radius.clone(),
-                }),
-                PathStyle {
-                    fill: FillStrokeStyle::color(&color),
-                    ..Default::default()
-                },
-            )
-            .with_displayable(DisplayableProps {
-                z: series.index as f64,
-                ..Default::default()
-            })
-            .with_ec_data(EcData::new(series.index as i32, i as i32)),
+        add_bar_rect(
+            zr,
+            group,
+            series,
+            i,
+            x,
+            y,
+            bar_w,
+            h,
+            radius.clone(),
+            &color,
         );
-        zr.storage.group_add_child(group, ChildRef::Path(bar));
-
-        zr.set_path_state_style(
-            bar,
-            STATE_EMPHASIS,
-            PathStylePatch {
-                fill: Some(FillStrokeStyle::color(&color)),
-                line_width: Some(2.0),
-                ..Default::default()
-            },
-        );
-        zr.set_path_state_style(
-            bar,
-            STATE_SELECT,
-            PathStylePatch {
-                stroke: Some(FillStrokeStyle::color("#333")),
-                line_width: Some(2.0),
-                ..Default::default()
-            },
-        );
-
         add_label(
             zr,
             group,
@@ -224,6 +259,120 @@ pub fn render_bar_series(
             &color,
             series.index as f64 + 0.2,
         );
+    }
+}
+
+fn add_bar_rect(
+    zr: &mut ZRenderer,
+    group: usize,
+    series: &SeriesModel,
+    i: usize,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+    radius: Vec<f64>,
+    color: &str,
+) {
+    let bar = zr.storage.create_path(
+        Path::new(
+            Shape::Rect(RectShape {
+                x,
+                y,
+                width,
+                height,
+                r: radius,
+            }),
+            PathStyle {
+                fill: FillStrokeStyle::color(color),
+                ..Default::default()
+            },
+        )
+        .with_displayable(DisplayableProps {
+            z: series.index as f64,
+            ..Default::default()
+        })
+        .with_ec_data(EcData::new(series.index as i32, i as i32)),
+    );
+    zr.storage.group_add_child(group, ChildRef::Path(bar));
+    zr.set_path_state_style(
+        bar,
+        STATE_EMPHASIS,
+        PathStylePatch {
+            fill: Some(FillStrokeStyle::color(color)),
+            line_width: Some(2.0),
+            ..Default::default()
+        },
+    );
+    zr.set_path_state_style(
+        bar,
+        STATE_SELECT,
+        PathStylePatch {
+            stroke: Some(FillStrokeStyle::color("#333")),
+            line_width: Some(2.0),
+            ..Default::default()
+        },
+    );
+}
+
+fn render_polar_bars(
+    zr: &mut ZRenderer,
+    group: usize,
+    polar: &crate::coord::PolarCoord,
+    visual: &VisualContext,
+    series: &SeriesModel,
+    zoom_start: usize,
+    zoom_end: usize,
+) {
+    let band = polar.angle_band();
+    let half = band * 0.35;
+    for (i, point) in series.data.iter().enumerate() {
+        if i < zoom_start || i >= zoom_end {
+            continue;
+        }
+        if !point.stacked_value.is_finite() {
+            continue;
+        }
+        let (_, angle_val) = crate::model::polar_data_pair(
+            point,
+            i,
+            polar.angle_axis().axis_type.is_category(),
+        );
+        let r1 = polar.radius_to_pixel(point.stacked_value);
+        let r0 = if series.stack.is_some() || point.stack_base.abs() > f64::EPSILON {
+            polar.radius_to_pixel(point.stack_base)
+        } else {
+            polar.spec.r0
+        };
+        let mid = polar.angle_to_degree(angle_val);
+        let start = (mid - half) * std::f64::consts::PI / 180.0;
+        let end = (mid + half) * std::f64::consts::PI / 180.0;
+        let color = visual.resolve_item_color(series.index, i);
+        let bar = zr.storage.create_path(
+            Path::new(
+                Shape::Sector(SectorShape {
+                    cx: polar.spec.center_x,
+                    cy: polar.spec.center_y,
+                    r: r1.max(r0),
+                    r0: r0.min(r1),
+                    start_angle: start,
+                    end_angle: end,
+                    clockwise: true,
+                    corner_radius: Vec::new(),
+                    percent: 1.0,
+                }),
+                PathStyle {
+                    fill: FillStrokeStyle::color(&color),
+                    ..Default::default()
+                },
+            )
+            .with_displayable(DisplayableProps {
+                z: series.index as f64,
+                ..Default::default()
+            })
+            .with_ec_data(EcData::new(series.index as i32, i as i32)),
+        );
+        zr.storage.group_add_child(group, ChildRef::Path(bar));
     }
 }
 
@@ -259,7 +408,7 @@ mod tests {
             if series.series_type != SeriesType::Bar {
                 continue;
             }
-            let coord = Cartesian2D::for_series(&model, series);
+            let coord = SeriesCoord::for_series(&model, series);
             render_bar_series(
                 &mut zr,
                 group,

@@ -126,7 +126,7 @@ wasm-zrender  ✗ 不依赖  wasm-echarts
 
 - 入口：`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version`（`'6.1.0'`）/ `use`（提示实现）。
 - 实例方法 camelCase，签名对齐：`setOption` / `getOption` / `resize` / `dispatchAction` / `on` / `off` / `getWidth` / `getHeight` / `getDevicePixelRatio` / `isDisposed` / `clear` / `dispose`。
-- `convertToPixel` / `convertFromPixel` / `containPixel`：cartesian 多 grid / 多轴 finder（`gridIndex` / `xAxisIndex` / `yAxisIndex` / `seriesIndex`），含 `time` / `log` 轴。
+- `convertToPixel` / `convertFromPixel` / `containPixel`：cartesian 多 grid / 多轴 finder（`gridIndex` / `xAxisIndex` / `yAxisIndex` / `seriesIndex`），含 `time` / `log` 轴；以及 `polar` / `geo` / `calendar` / `singleAxis` / `parallel` / `matrix` / `radar` finder。
 - `setOption(option)` 与 `setOption(option, notMerge)` / `setOption(option, { notMerge, replaceMerge, silent })`。`notMerge` **不是** option 里的字段。
 - `resize()` 无参（读 canvas 尺寸）与 `resize({ width, height, devicePixelRatio })`。
 - `init(canvas)` 后指针事件由 facade 绑定；发出官方事件名 `click` / `mouseover` / `mouseout` / `globalout`。
@@ -200,7 +200,7 @@ site 示例 JS（创建 canvas；`echarts.init` / `setOption`）
 | **4b 回调桥** | CallbackDataParams、call0/1/2 | **部分完成**。`formatter` / `itemStyle.color` / `axisLabel.formatter` / `symbolSize` 回调可用；params 含 `componentType`/`seriesType`/`percent`/`data`。`renderItem`/`api`、per-series 缓存 **未完成** |
 | **5 echarts MVP** | GlobalModel、cartesian、line/bar、Scheduler | **部分完成**。line/bar 可渲染；`axisLabel.formatter`、`symbol`/`symbolSize`、`label.show`；`convertToPixel` 最小集。`replaceMerge` 仅为顶层 key；SeriesData/Source、media query **未完成** |
 | **6 交互完善** | hover/tooltip/dataZoom/axisPointer | **部分完成**。`init(canvas)` 绑指针；hover 高亮、`on('click')`、string tooltip DOM、`showTip`/`hideTip`、inside 滚轮 + slider 拖动手柄、十字 axisPointer、`tooltip.trigger: 'axis'`。pinch、HTMLElement tooltip **未完成** |
-| **7 扩展与优化** | pie/scatter、RichText、脏矩形、视觉回归 | **部分完成**。pie / scatter canvas option 族、轴标签 Text、title/legend（含点击筛选）、`fontFamily`、`benchmark_render`、feature flags。gauge、polar、RichText、脏矩形、golden PNG **未完成** |
+| **7 扩展与优化** | pie/scatter、RichText、脏矩形、视觉回归 | **部分完成**。pie / scatter canvas option 族、轴标签 Text、title/legend（含点击筛选）、`fontFamily`、`benchmark_render`、feature flags；polar 等坐标系已接线（第 5 波）。gauge 等其余图表、RichText、脏矩形、golden PNG **未完成** |
 
 ### wasm-zrender API 规范对齐（波次 0–6 + 文档验收已完成）
 
@@ -244,9 +244,9 @@ dispose(zr);
 
 规范已写入上文「目标与约束」；逐项清单以 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](../.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md) 为权威。JS facade 骨架在 `crates/wasm-echarts/js/`：`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version` / `use`（只 `console.info`）。site / README 从 `@wasm-echarts`（`js/index.js`）导入，`pkg/` 只作内部 handle。示例走官方 `init(canvas)` + `setOption`；`init(canvas)` 后自动 `putImageData` 并绑定指针。波次 2：`setOption(option, notMerge | opts)`、`getOption`、`resize()` / `resize({ width, height, devicePixelRatio })`、`clear` = `setOption({ series: [] }, true)`；`notMerge` 只作第二参数，不再从 option 根读取。波次 3：`on`/`off` 发出 `click` / `mouseover` / `mouseout` / `globalout`；内建 string tooltip DOM；`dispatchAction` 接 `showTip` / `hideTip`。波次 4：`axisLabel.formatter` 进轴 Text；pie `center`/`radius`/`startAngle`/`clockwise`；line/scatter `symbol`/`symbolSize`；`label.show` 画 Text；CallbackDataParams 补 `componentType`/`seriesType`/`percent`/`data`；`convertToPixel`/`convertFromPixel` cartesian 最小集。波次 5：文档四块（一致 / 不一致 / 非官方 API / 已实现与未实现）已写入 `site/echarts/docs/index.html`、根 README、本文件；示例 line/bar/pie/scatter/interactive/merge/bench 全部走 `init`；interactive 用 `on('click')` + `use()` 提示，不必 `handlePointer*`；merge 覆盖深合并、`notMerge: true`、dispose 后再 init。公开用法是官方 `init` / `setOption` / `on`，不要把 native `EChartsInstance` / `set_option` / `handlePointerMove` 当公开 API。
 
-### wasm-echarts Canvas 全量对齐（第 0–3 波已落地）
+### wasm-echarts Canvas 全量对齐（第 0–5 波已落地）
 
-权威计划：[`.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md`](../.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md)。废止「不是一次移植完官方全量 API」以及把 `graphic`/`util`/面积/`getZr` 当永久后置的写法。[折线缺口补齐](../.cursor/plans/折线缺口补齐_96423c21.plan.md) 已废弃并入本计划。第 0 波改文档口径；第 1 波已落地单 WASM、`getZr`、公开命名空间与挡脚本的实例 API。第 2 波已落地 dataset / transform / encode / stack / sampling、多 grid / 轴、`time` / `log`。第 3 波已接线 line/bar/pie/scatter 的 canvas option 族（`smooth`/`areaStyle`/`step`/`connectNulls`/`endLabel`/`lineStyle`、bar 宽距圆角、`roseType`/`selectedMode`、scatter `large` 与其余 symbol）。后续波次见该计划 YAML。
+权威计划：[`.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md`](../.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md)。废止「不是一次移植完官方全量 API」以及把 `graphic`/`util`/面积/`getZr` 当永久后置的写法。[折线缺口补齐](../.cursor/plans/折线缺口补齐_96423c21.plan.md) 已废弃并入本计划。第 0 波改文档口径；第 1 波已落地单 WASM、`getZr`、公开命名空间与挡脚本的实例 API。第 2 波已落地 dataset / transform / encode / stack / sampling、多 grid / 轴、`time` / `log`。第 3 波已接线 line/bar/pie/scatter 的 canvas option 族。第 4 波已接线 legend 筛选、mark*、graphic、visualMap、slider、axisPointer、brush、timeline、toolbox。第 5 波已接线 polar / radar / singleAxis / parallel / calendar / matrix / geo 坐标系，line/bar/scatter 可挂 polar，y 类目轴横画，`registerMap` + `parseGeoJSON` 供 geo 出图。后续波次见该计划 YAML。
 
 ---
 
@@ -604,7 +604,7 @@ chart-line, chart-bar, chart-pie, chart-scatter
 | `appendData` | `{ seriesIndex, data }` 追加到 `series.data` 后重绘 |
 | `connect` / `disconnect` | 按 `chart.group` 转发 `dispatchAction` |
 | `registerTheme` / `setTheme` | 主题表；`init(dom, theme)` 与首次 `setOption` 把主题当默认项合并 |
-| `registerMap` / `getMap` | 只存表结构（geoJSON / svg / specialAreas）；本波不画 map |
+| `registerMap` / `getMap` / `parseGeoJSON` | JS 表 + WASM 表；`geo` 组件按已注册 GeoJSON 画区域。`parseGeoJSON` / `parseGeoJson` 返回 `{ name, center, polygons }` |
 | `registerTransform` | 内置 `filter` / `sort`；外部 `{ type, transform }` 登记后可被 dataset 调用 |
 | `graphic` / `util` / `number` / `time` / `format` / `helper` / `matrix` / `vector` / `color` / `env` | 命名空间已导出 |
 
@@ -649,14 +649,14 @@ chart-line, chart-bar, chart-pie, chart-scatter
 | 范围 | 现状 |
 |------|------|
 | 图表 | `line` / `bar` / `pie` / `scatter`（feature flag 写死在 rust，不是 `echarts.use(BarChart)`） |
-| cartesian | 多 `grid` / `xAxis[]` / `yAxis[]`（`gridIndex` / `xAxisIndex` / `yAxisIndex`）；`type: category \| value \| time \| log`；`convertToPixel`/`convertFromPixel`/`containPixel` 按 finder 取轴 |
+| cartesian | 多 `grid` / `xAxis[]` / `yAxis[]`（`gridIndex` / `xAxisIndex` / `yAxisIndex`）；`type: category \| value \| time \| log`；y 类目 + x 数值时横画（bar 水平柱、line 对调）；`convertToPixel`/`convertFromPixel`/`containPixel` 按 finder 取轴 |
 | dataset | `source`（二维数组 / 对象行 / 列对象）/`dimensions` / `seriesLayoutBy` / `datasetIndex` / `datasetId` / `encode`；无 `series.data` 时从 dataset 取数 |
 | transform | 内置 `filter` / `sort`（`fromDatasetIndex` / `fromDatasetId`）；`registerTransform` 接外部 JS |
 | stack / sampling | `stack` + `stackStrategy`（samesign/all/positive/negative）line 与 bar 共用偏移；`sampling: lttb \| average` 按 grid 宽度降采样 |
-| line | Polyline；`smooth`（bool→0.5 或数字）/`step`（start/middle/end）/`connectNulls`（`null`/`'-'` 保留为 NaN 缺口）；`areaStyle`（默认透明度 0.7，色可为 `LinearGradient`，`origin`：auto/start/end/数值）；`lineStyle.width`/`type`（solid/dashed/dotted 或 dash 数组）；`endLabel.show`；`symbol`/`symbolSize`；`stack`/`sampling`；value/time/log 用 `x_value`。polar 仍未接 |
-| bar | Rect；同轴多系列并排（同 `stack` 共用列）；`barWidth`/`barGap`（默认 10%）/`barCategoryGap`/`barMinHeight`；`itemStyle.borderRadius`；`stack` 从 `stack_base` 画到 `stacked_value` |
+| line | Polyline；`smooth`（bool→0.5 或数字）/`step`（start/middle/end）/`connectNulls`（`null`/`'-'` 保留为 NaN 缺口）；`areaStyle`（默认透明度 0.7，色可为 `LinearGradient`，`origin`：auto/start/end/数值）；`lineStyle.width`/`type`（solid/dashed/dotted 或 dash 数组）；`endLabel.show`；`symbol`/`symbolSize`；`stack`/`sampling`；value/time/log 用 `x_value`；`coordinateSystem: 'polar'` 按 [radius, angle] 画 |
+| bar | Rect（cartesian，含 y 类目水平柱）；polar 下为 Sector；同轴多系列并排（同 `stack` 共用列）；`barWidth`/`barGap`（默认 10%）/`barCategoryGap`/`barMinHeight`；`itemStyle.borderRadius`；`stack` 从 `stack_base` 画到 `stacked_value` |
 | pie | Sector；`center`/`radius`/`startAngle`/`clockwise`；`roseType: radius\|area`；`selectedMode` + `selectedOffset`（含 data.`selected`）；`minShowLabelAngle`；label 同侧 y 间距跳过（不是官方完整避让）+ `labelLine` |
-| scatter | 双 value 轴；`symbol`（circle/rect/roundRect/triangle/diamond/pin/arrow/star/line 及 empty*）；`symbolSize`（默认 10）；`large` 且点数 ≥ `largeThreshold`（默认 2000）时终态一次画完、不挂 emphasis 状态、不画 label |
+| scatter | 双 value 轴；也可挂 polar / geo / calendar / single / matrix；`symbol`（circle/rect/roundRect/triangle/diamond/pin/arrow/star/line 及 empty*）；`symbolSize`（默认 10）；`large` 且点数 ≥ `largeThreshold`（默认 2000）时终态一次画完、不挂 emphasis 状态、不画 label |
 | tooltip.formatter | 返回 string 时可用；CallbackDataParams 含 `componentType`/`seriesType`/`percent`（pie）/`data` |
 | series.label | `label.show` + formatter（`{a}`/`{b}`/`{c}`/`{d}` 或函数）画 Text |
 | 轴标签 | `axisLabel.formatter` 函数或 `'{value}'` 模板真正进 Text |
@@ -676,8 +676,8 @@ chart-line, chart-bar, chart-pie, chart-scatter
 | showTip / hideTip | `dispatchAction({ type: 'showTip', seriesIndex, dataIndex })` 或 `{ x, y }`；`hideTip` 关 DOM，不改 hover |
 | `getZr` / 命名空间 | `getZr()` 共用 Storage；`graphic`（含 `LinearGradient`/`Rect`）/`util`/`time`/`format`/`number`/`helper`/`matrix`/`vector`/`color`/`env` |
 | Loading / 导出图 | `showLoading` 静态遮罩；`getDataURL` / `renderToCanvas`（canvas PNG/JPEG） |
-| 主题 / 地图表 / connect | `registerTheme`/`setTheme`；`registerMap`/`getMap` 存表不画；`connect` 转发 action |
-| `appendData` / `containPixel` | 追加 series.data；`containPixel` 按 finder 查对应 grid |
+| 主题 / 地图表 / connect | `registerTheme`/`setTheme`；`registerMap`/`getMap`/`parseGeoJSON`；`geo` 画已注册地图；`connect` 转发 action |
+| `appendData` / `containPixel` | 追加 series.data；`containPixel` 按 finder 查对应 grid / polar / geo 等 |
 
 **未实现（按 canvas 全量对齐计划补齐，不是永久例外）**
 
@@ -685,15 +685,15 @@ chart-line, chart-bar, chart-pie, chart-scatter
 
 实例上尚未做完：`convertToLayout` / `getVisual`。
 
-Charts：Radar、Map、Tree、Treemap、Graph、Chord、Gauge、Funnel、Parallel、Sankey、Boxplot、Candlestick、EffectScatter、Lines、Heatmap、PictorialBar、ThemeRiver、Sunburst、Custom（`renderItem`+`api`）。未接线的 `series.type` 不得再静默当 `Other` 后永远不管。
+Charts：Radar、Map、Tree、Treemap、Graph、Chord、Gauge、Funnel、Parallel、Sankey、Boxplot、Candlestick、EffectScatter、Lines、Heatmap、PictorialBar、ThemeRiver、Sunburst、Custom（`renderItem`+`api`）。未接线的 `series.type` 不得再静默当 `Other` 后永远不管。坐标系已就绪，这些图本身归第 6 波。
 
-Components：geo、polar、radar、singleAxis、calendar、matrix。aria 写 DOM 属性非绘制，可后置。
+Components：geo roam / SVG 地图源。aria 写 DOM 属性非绘制，可后置。toolbox DataView DOM / SaveAsImage 下载条明确不做。
 
 Actions：geo roam 等。
 
-其它：非 cartesian 的 `convertToPixel` finder、media query、完整 SeriesData。line `coordinateSystem: 'polar'`、`smoothMonotone` 未接。pie label 不是官方完整 `avoidLabelOverlap`。scatter `large` 仍每点一个 Path（跳过状态与 label，不是 IncrementalDisplayable）。官网折线 40 例的其余视觉缺口（y 类目轴对调、polar）归第 5 波，不在示例里 workaround。
+其它：media query、完整 SeriesData。`smoothMonotone` 未接。pie label 不是官方完整 `avoidLabelOverlap`。scatter `large` 仍每点一个 Path（跳过状态与 label，不是 IncrementalDisplayable）。
 
-**名字在 option 里出现但未按官方做：** line polar / `smoothMonotone`；色板不是官方 palette 全套；pie 完整标签避让。
+**名字在 option 里出现但未按官方做：** `smoothMonotone`；色板不是官方 palette 全套；pie 完整标签避让。
 
 ### 实现了哪些内容
 
@@ -703,8 +703,8 @@ Actions：geo roam 等。
 
 | 文件 | 职责 |
 |------|------|
-| `index.js` | 官方命名导出；`default` 仍是 `initWasm`；`version = '6.1.0'`；另导出 `registerFont` / 命名空间 |
-| `echarts.js` | `init` / `dispose` / `use`；`connect` / `registerTheme` / `registerMap` / `registerTransform`；命名空间再导出 |
+| `index.js` | 官方命名导出；`default` 仍是 `initWasm`；`version = '6.1.0'`；另导出 `registerFont` / 命名空间 / `parseGeoJSON` |
+| `echarts.js` | `init` / `dispose` / `use`；`connect` / `registerTheme` / `registerMap` / `parseGeoJSON` / `registerTransform`；命名空间再导出 |
 | `instance.js` | camelCase 实例；`getZr` / `showLoading` / `getDataURL` / `appendData` / `setTheme` / `containPixel`；指针与 tooltip |
 | `graphic.js` / `util.js` / `number.js` / `time.js` / `format.js` / `helper.js` / `env.js` | `export/api.ts` 命名空间 |
 | `native.js` | 加载 `pkg/wasm_echarts.js` 并 `setNative` 注入 wasm-zrender |
@@ -736,7 +736,7 @@ Actions：geo roam 等。
 | `benchmark_render(n)` | 全量 render+refresh 平均毫秒 |
 | `has_option()` / `option_has_functions()` / `dispose()` | 状态与释放（dispose 从 registry 卸 Zr） |
 | `width()` / `height()` / `dpr()` | 尺寸 |
-| `convert_to_pixel` / `convert_from_pixel` | cartesian 多轴 / time / log finder |
+| `convert_to_pixel` / `convert_from_pixel` | cartesian / polar / geo / calendar / single / parallel / matrix / radar finder |
 
 `dispatch_action` 已实现：`highlight`、`downplay`、`select`、`unselect`、`toggleSelect`、`dataZoom`（`start`/`end` 百分比）、`showTip`、`hideTip`、`legendToggleSelect` / `legendSelect` / `legendUnSelect`、`restore`、`timelineChange` / `timelinePlayChange`、`takeGlobalCursor`、`brush` / `brushEnd`。其它 type 会 `console.warn`。
 
@@ -769,28 +769,30 @@ Actions：geo roam 等。
 
 #### `model/` + `scheduler.rs` + `render.rs`
 
-- `GlobalModel`：`grids[]`、`x_axes[]` / `y_axes[]`（`gridIndex`）、`Vec<SeriesModel>`、dataZoom 窗口
+- `GlobalModel`：`grids[]`、`x_axes[]` / `y_axes[]`、`polars` / `radars` / `single_axes` / `parallels` / `calendars` / `matrices` / `geos`、`Vec<SeriesModel>`、dataZoom 窗口
 - `AxisType`：`category` / `value` / `time` / `log`（`logBase` 默认 10）
 - `DataPoint`：`value` / `x_value` / `name` / `raw` / `stack_base` / `stacked_value`；`null` / `'-'` 保留为 NaN（`connectNulls`）
 - Scheduler：单次全量 `run_update` → `render_chart`（`Storage::new()` 后 `rematerialize_mounted_roots`，再重建 `__ec_chart_root`，保留 `getZr().add` 的用户图元）
 
-#### `coord/` — `Cartesian2D`
+#### `coord/` — cartesian + 第 5 波坐标系
 
-- 按 series 的 `xAxisIndex` / `yAxisIndex` 取轴与 grid
+- `Cartesian2D`：按 series 的 `xAxisIndex` / `yAxisIndex` 取轴与 grid；y 类目 + x 数值时 `is_horizontal`
 - category / value / time / log → 像素；time 收 ISO 日期或时间戳；log 按 `logBase`
-- 配合 dataZoom 的可见类目窗口
-- `convertToPixel` / `convertFromPixel` / `containPixel`：`xAxis` / `yAxis` / `grid` / `seriesIndex` finder
-
-无 polar。
+- `PolarCoord`：`angleAxis` / `radiusAxis`，`center` / `radius` / `startAngle` / `clockwise`；data 维 `[radius, angle]`
+- `RadarCoord`：`indicator` 轴 + 蛛网；`convertToPixel` 收 `[indicatorIndex, value]`
+- `SingleCoord` / `ParallelCoord` / `CalendarCoord` / `MatrixCoord` / `GeoCoord`
+- `convertToPixel` / `convertFromPixel` / `containPixel`：cartesian finder 以及 `polarIndex` / `geoIndex` / `calendarIndex` / `singleAxisIndex` / `parallelIndex` / `matrixIndex` / `radarIndex`
+- `maps`：`registerMap` / `parseGeoJSON`（含官方 UTF8Encoding 解码）
 
 #### `chart/` — ChartView
 
 | 类型 | 图元 | 说明 |
 |------|------|------|
-| line | Polyline + Polygon（面积）+ symbol | `smooth`/`step`/`connectNulls`/`areaStyle`/`endLabel`/`lineStyle.width|type`；默认 emptyCircle；`stack`/`sampling` |
-| bar | Rect | `barWidth`/`barGap`/`barCategoryGap`/`borderRadius`/`barMinHeight`；同轴并排或 stack |
+| line | Polyline + Polygon（面积）+ symbol | `smooth`/`step`/`connectNulls`/`areaStyle`/`endLabel`/`lineStyle.width|type`；默认 emptyCircle；`stack`/`sampling`；polar / y 类目 |
+| bar | Rect / Sector（polar） | `barWidth`/`barGap`/`barCategoryGap`/`borderRadius`/`barMinHeight`；同轴并排或 stack；y 类目水平柱 |
 | pie | Sector | `center`/`radius`/`r0`/`startAngle`/`clockwise`/`roseType`/`selectedMode`；label 最小避让 + labelLine |
-| scatter | symbol | 双 value 轴；其余常用 symbol；`large` 终态一次画完 |
+| scatter | symbol | 双 value 轴；也可挂 polar/geo/calendar/single/matrix；其余常用 symbol；`large` 终态一次画完 |
+| 坐标系底图 | polar 圆环与辐线、radar 蛛网、single/parallel 轴、calendar 格子、matrix 格子、geo 多边形 | 有对应 option 组件即画 |
 | 组件 | 网格框、splitLine、轴标签/名称、title（padding/align）、legend（orient/selected/点击筛选）、markPoint/Line/Area、`option.graphic`、visualMap、dataZoom slider、十字 axisPointer、toolbox 按钮、timeline、brush 选区、thumbnail | `axisLabel.formatter` 已进 Text；`fontFamily` / `fontSize` / `color` 从 textStyle 读入 |
 
 轴标签走 `ChildRef::Text` 挂到 group，`silent = true`（不抢 hover）。

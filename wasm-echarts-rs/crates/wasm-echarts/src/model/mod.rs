@@ -3,8 +3,14 @@
 mod axis;
 mod series;
 
+mod coords;
+
 pub use axis::{AxisModel, AxisType};
-pub use series::{DataPoint, SeriesModel, SeriesType};
+pub use coords::{
+    option_index, parse_coord_kind, polar_data_pair, CalendarSpec, GeoRegion, GeoSpec, MatrixSpec,
+    ParallelAxisSpec, ParallelSpec, PolarSpec, RadarSpec, SingleAxisSpec,
+};
+pub use series::{CoordSysKind, DataPoint, SeriesModel, SeriesType};
 
 use crate::data::{build_series, cell_text, numeric_or_time};
 use crate::interaction::DataZoomRange;
@@ -36,6 +42,13 @@ pub struct GlobalModel {
     pub grids: Vec<GridRect>,
     pub x_axes: Vec<AxisModel>,
     pub y_axes: Vec<AxisModel>,
+    pub polars: Vec<PolarSpec>,
+    pub radars: Vec<RadarSpec>,
+    pub single_axes: Vec<SingleAxisSpec>,
+    pub parallels: Vec<ParallelSpec>,
+    pub calendars: Vec<CalendarSpec>,
+    pub matrices: Vec<MatrixSpec>,
+    pub geos: Vec<GeoSpec>,
     pub series: Vec<SeriesModel>,
     pub data_zoom: DataZoomRange,
     /// `None` = 所有 x 轴；`Some` 时只缩放这些轴（读 dataZoom.xAxisIndex）。
@@ -119,9 +132,17 @@ impl GlobalModel {
         fill_category_from_series(&mut x_axes, &series, true);
         fill_category_from_series(&mut y_axes, &series, false);
 
-        let mut x_axes = apply_axis_extents(x_axes, &series, true);
-        let mut y_axes = apply_axis_extents(y_axes, &series, false);
+        let mut x_axes = apply_axis_extents(x_axes, &series, true, &y_axes);
+        let mut y_axes = apply_axis_extents(y_axes, &series, false, &x_axes);
         let _ = (&mut x_axes, &mut y_axes);
+
+        let polars = coords::parse_polars(root, w, h, &series);
+        let radars = coords::parse_radars(root, w, h);
+        let single_axes = coords::parse_single_axes(root, w, h, &series);
+        let parallels = coords::parse_parallels(root, w, h, &series);
+        let calendars = coords::parse_calendars(root, w, h);
+        let matrices = coords::parse_matrices(root, w, h);
+        let geos = coords::parse_geos(root, w, h, |map| crate::maps::lookup_map_regions(map));
 
         Self {
             width,
@@ -129,6 +150,13 @@ impl GlobalModel {
             grids,
             x_axes,
             y_axes,
+            polars,
+            radars,
+            single_axes,
+            parallels,
+            calendars,
+            matrices,
+            geos,
             series,
             data_zoom,
             data_zoom_x_axes: parse_data_zoom_x_axes(root),
@@ -137,10 +165,11 @@ impl GlobalModel {
 
     pub fn has_cartesian_series(&self) -> bool {
         self.series.iter().any(|s| {
-            matches!(
-                s.series_type,
-                SeriesType::Line | SeriesType::Bar | SeriesType::Scatter
-            )
+            s.coord_sys.is_cartesian()
+                && matches!(
+                    s.series_type,
+                    SeriesType::Line | SeriesType::Bar | SeriesType::Scatter
+                )
         })
     }
 
@@ -396,6 +425,7 @@ fn apply_axis_extents(
     axes: Vec<AxisModel>,
     series: &[SeriesModel],
     is_x: bool,
+    other_axes: &[AxisModel],
 ) -> Vec<AxisModel> {
     axes.into_iter()
         .enumerate()
@@ -404,7 +434,7 @@ fn apply_axis_extents(
                 return axis;
             }
             let (min, max) = if is_x {
-                compute_x_extent_for(series, idx, axis.axis_type)
+                compute_x_extent_for(series, idx, axis.axis_type, other_axes)
             } else {
                 compute_y_extent_for(series, idx, axis.axis_type)
             };
@@ -413,12 +443,25 @@ fn apply_axis_extents(
         .collect()
 }
 
-fn compute_x_extent_for(series: &[SeriesModel], axis_index: usize, axis_type: AxisType) -> (f64, f64) {
+fn compute_x_extent_for(
+    series: &[SeriesModel],
+    axis_index: usize,
+    axis_type: AxisType,
+    y_axes: &[AxisModel],
+) -> (f64, f64) {
     let mut min = f64::INFINITY;
     let mut max = f64::NEG_INFINITY;
     for s in series.iter().filter(|s| s.x_axis_index == axis_index) {
+        let y_is_category = y_axes
+            .get(s.y_axis_index)
+            .map(|a| a.axis_type.is_category())
+            .unwrap_or(false);
         for (i, p) in s.data.iter().enumerate() {
-            let x = p.x_value.unwrap_or(i as f64);
+            let x = if y_is_category {
+                p.stacked_value
+            } else {
+                p.x_value.unwrap_or(i as f64)
+            };
             if axis_type == AxisType::Log && x <= 0.0 {
                 continue;
             }

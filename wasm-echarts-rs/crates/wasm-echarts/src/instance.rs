@@ -83,7 +83,7 @@ impl EChartsInstance {
         option_contains_function(self.option.root())
     }
 
-    /// `convertToPixel(finder, value)`：cartesian `xAxis` / `yAxis` / `grid` / `seriesIndex`，含 time / log。
+    /// `convertToPixel(finder, value)`：cartesian / polar / geo / calendar / single / parallel / matrix / radar finder。
     pub fn convert_to_pixel(&self, finder: JsValue, value: JsValue) -> JsValue {
         convert_pixel_js(&self.option, self.width, self.height, self.interaction.data_zoom, finder, value, true)
     }

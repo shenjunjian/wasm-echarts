@@ -214,24 +214,38 @@ export function registerTheme(name, theme) {
 }
 
 export function registerMap(mapName, geoJson, specialAreas) {
+  let record;
   if (
     geoJson &&
     typeof geoJson === 'object' &&
     (geoJson.geoJSON || geoJson.geoJson || geoJson.svg)
   ) {
-    maps.set(String(mapName), {
+    record = {
       geoJSON: geoJson.geoJSON || geoJson.geoJson || null,
       svg: geoJson.svg || null,
       specialAreas: geoJson.specialAreas || specialAreas || null,
-    });
-    return;
+    };
+  } else {
+    record = {
+      geoJSON: geoJson || null,
+      svg: null,
+      specialAreas: specialAreas || null,
+    };
   }
-  maps.set(String(mapName), {
-    geoJSON: geoJson || null,
-    svg: null,
-    specialAreas: specialAreas || null,
-  });
+  maps.set(String(mapName), record);
+  if (typeof native.registerMap === 'function') {
+    native.registerMap(String(mapName), record.geoJSON, record.specialAreas);
+  }
 }
+
+export function parseGeoJSON(geoJson, nameProperty) {
+  if (typeof native.parseGeoJSON === 'function') {
+    return native.parseGeoJSON(geoJson, nameProperty == null ? 'name' : nameProperty);
+  }
+  return [];
+}
+
+export const parseGeoJson = parseGeoJSON;
 
 export function getMap(mapName) {
   return maps.get(String(mapName));
