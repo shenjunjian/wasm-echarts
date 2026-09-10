@@ -244,9 +244,9 @@ dispose(zr);
 
 规范已写入上文「目标与约束」；逐项清单以 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](../.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md) 为权威。JS facade 骨架在 `crates/wasm-echarts/js/`：`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version` / `use`（只 `console.info`）。site / README 从 `@wasm-echarts`（`js/index.js`）导入，`pkg/` 只作内部 handle。示例走官方 `init(canvas)` + `setOption`；`init(canvas)` 后自动 `putImageData` 并绑定指针。波次 2：`setOption(option, notMerge | opts)`、`getOption`、`resize()` / `resize({ width, height, devicePixelRatio })`、`clear` = `setOption({ series: [] }, true)`；`notMerge` 只作第二参数，不再从 option 根读取。波次 3：`on`/`off` 发出 `click` / `mouseover` / `mouseout` / `globalout`；内建 string tooltip DOM；`dispatchAction` 接 `showTip` / `hideTip`。波次 4：`axisLabel.formatter` 进轴 Text；pie `center`/`radius`/`startAngle`/`clockwise`；line/scatter `symbol`/`symbolSize`；`label.show` 画 Text；CallbackDataParams 补 `componentType`/`seriesType`/`percent`/`data`；`convertToPixel`/`convertFromPixel` cartesian 最小集。波次 5：文档四块（一致 / 不一致 / 非官方 API / 已实现与未实现）已写入 `site/echarts/docs/index.html`、根 README、本文件；示例 line/bar/pie/scatter/interactive/merge/bench 全部走 `init`；interactive 用 `on('click')` + `use()` 提示，不必 `handlePointer*`；merge 覆盖深合并、`notMerge: true`、dispose 后再 init。公开用法是官方 `init` / `setOption` / `on`，不要把 native `EChartsInstance` / `set_option` / `handlePointerMove` 当公开 API。
 
-### wasm-echarts Canvas 全量对齐（第 0–2 波已落地）
+### wasm-echarts Canvas 全量对齐（第 0–3 波已落地）
 
-权威计划：[`.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md`](../.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md)。废止「不是一次移植完官方全量 API」以及把 `graphic`/`util`/面积/`getZr` 当永久后置的写法。[折线缺口补齐](../.cursor/plans/折线缺口补齐_96423c21.plan.md) 已废弃并入本计划。第 0 波改文档口径；第 1 波已落地单 WASM、`getZr`、公开命名空间与挡脚本的实例 API。第 2 波已落地 dataset / transform / encode / stack / sampling、多 grid / 轴、`time` / `log`。后续波次见该计划 YAML。
+权威计划：[`.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md`](../.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md)。废止「不是一次移植完官方全量 API」以及把 `graphic`/`util`/面积/`getZr` 当永久后置的写法。[折线缺口补齐](../.cursor/plans/折线缺口补齐_96423c21.plan.md) 已废弃并入本计划。第 0 波改文档口径；第 1 波已落地单 WASM、`getZr`、公开命名空间与挡脚本的实例 API。第 2 波已落地 dataset / transform / encode / stack / sampling、多 grid / 轴、`time` / `log`。第 3 波已接线 line/bar/pie/scatter 的 canvas option 族（`smooth`/`areaStyle`/`step`/`connectNulls`/`endLabel`/`lineStyle`、bar 宽距圆角、`roseType`/`selectedMode`、scatter `large` 与其余 symbol）。后续波次见该计划 YAML。
 
 ---
 
@@ -653,10 +653,10 @@ chart-line, chart-bar, chart-pie, chart-scatter
 | dataset | `source`（二维数组 / 对象行 / 列对象）/`dimensions` / `seriesLayoutBy` / `datasetIndex` / `datasetId` / `encode`；无 `series.data` 时从 dataset 取数 |
 | transform | 内置 `filter` / `sort`（`fromDatasetIndex` / `fromDatasetId`）；`registerTransform` 接外部 JS |
 | stack / sampling | `stack` + `stackStrategy`（samesign/all/positive/negative）line 与 bar 共用偏移；`sampling: lttb \| average` 按 grid 宽度降采样 |
-| line | Polyline + `symbol`（circle/rect/emptyCircle）/`symbolSize`；`itemStyle.color` / `lineStyle.color` 可为函数；`stack` / `sampling`；value/time/log 轴用 `x_value` |
-| bar | Rect，带宽 0.6；`label.show` 画 Text；`stack` 从 `stack_base` 画到 `stacked_value` |
-| pie | Sector；读 `center` / `radius`（含 `[r0, r]` 环形）/ `startAngle` / `clockwise`；默认 startAngle 90° 顺时针；`label.show`（默认 true）+ 简单 `labelLine` |
-| scatter | 双 value 轴；`symbol` / `symbolSize`（默认 10） |
+| line | Polyline；`smooth`（bool→0.5 或数字）/`step`（start/middle/end）/`connectNulls`（`null`/`'-'` 保留为 NaN 缺口）；`areaStyle`（默认透明度 0.7，色可为 `LinearGradient`，`origin`：auto/start/end/数值）；`lineStyle.width`/`type`（solid/dashed/dotted 或 dash 数组）；`endLabel.show`；`symbol`/`symbolSize`；`stack`/`sampling`；value/time/log 用 `x_value`。polar 仍未接 |
+| bar | Rect；同轴多系列并排（同 `stack` 共用列）；`barWidth`/`barGap`（默认 10%）/`barCategoryGap`/`barMinHeight`；`itemStyle.borderRadius`；`stack` 从 `stack_base` 画到 `stacked_value` |
+| pie | Sector；`center`/`radius`/`startAngle`/`clockwise`；`roseType: radius\|area`；`selectedMode` + `selectedOffset`（含 data.`selected`）；`minShowLabelAngle`；label 同侧 y 间距跳过（不是官方完整避让）+ `labelLine` |
+| scatter | 双 value 轴；`symbol`（circle/rect/roundRect/triangle/diamond/pin/arrow/star/line 及 empty*）；`symbolSize`（默认 10）；`large` 且点数 ≥ `largeThreshold`（默认 2000）时终态一次画完、不挂 emphasis 状态、不画 label |
 | tooltip.formatter | 返回 string 时可用；CallbackDataParams 含 `componentType`/`seriesType`/`percent`（pie）/`data` |
 | series.label | `label.show` + formatter（`{a}`/`{b}`/`{c}`/`{d}` 或函数）画 Text |
 | 轴标签 | `axisLabel.formatter` 函数或 `'{value}'` 模板真正进 Text |
@@ -682,9 +682,9 @@ Components：legend 点击筛选与复杂布局、title 复杂布局、toolbox�
 
 Actions：legend\*、restore、brush、timeline、geo roam 等。
 
-其它：非 cartesian 的 `convertToPixel` finder、media query、完整 SeriesData。line 的 `smooth`/`areaStyle`/`step`/`endLabel` 等 canvas option 仍未接线。`option.graphic` 组件（与 getZr 图元不同）在第 4 波。
+其它：非 cartesian 的 `convertToPixel` finder、media query、完整 SeriesData。`option.graphic` 组件（与 getZr 图元不同）在第 4 波。line `coordinateSystem: 'polar'`、`smoothMonotone`、分段 visualMap 上色未接。pie label 不是官方完整 `avoidLabelOverlap`。scatter `large` 仍每点一个 Path（跳过状态与 label，不是 IncrementalDisplayable）。官网折线 40 例的其余视觉缺口（mark*、slider、`tooltip.trigger: 'axis'`、y 类目轴对调）归第 4–5 波，不在示例里 workaround。
 
-**名字在 option 里出现但未按官方做：** line `smooth` / `areaStyle` / `step` / `endLabel`；pie `roseType`；`tooltip.trigger: 'axis'`；色板不是官方 palette 全套；`symbol` 仅 circle/rect/emptyCircle。
+**名字在 option 里出现但未按官方做：** line polar / `smoothMonotone` / visualMap 分段色；`tooltip.trigger: 'axis'`；色板不是官方 palette 全套；pie 完整标签避让。
 
 ### 实现了哪些内容
 
@@ -760,7 +760,7 @@ Actions：legend\*、restore、brush、timeline、geo roam 等。
 
 - `GlobalModel`：`grids[]`、`x_axes[]` / `y_axes[]`（`gridIndex`）、`Vec<SeriesModel>`、dataZoom 窗口
 - `AxisType`：`category` / `value` / `time` / `log`（`logBase` 默认 10）
-- `DataPoint`：`value` / `x_value` / `name` / `raw` / `stack_base` / `stacked_value`
+- `DataPoint`：`value` / `x_value` / `name` / `raw` / `stack_base` / `stacked_value`；`null` / `'-'` 保留为 NaN（`connectNulls`）
 - Scheduler：单次全量 `run_update` → `render_chart`（`Storage::new()` 后 `rematerialize_mounted_roots`，再重建 `__ec_chart_root`，保留 `getZr().add` 的用户图元）
 
 #### `coord/` — `Cartesian2D`
@@ -776,10 +776,10 @@ Actions：legend\*、restore、brush、timeline、geo roam 等。
 
 | 类型 | 图元 | 说明 |
 |------|------|------|
-| line | Polyline + symbol | `symbol` circle/rect/emptyCircle（默认 emptyCircle）；`symbolSize`；label Text；`stack` / `sampling` |
-| bar | Rect | 带宽 0.6、stack 基线、ECData、label Text |
-| pie | Sector | `center`/`radius`/`r0`/`startAngle`/`clockwise`；label + 简单 labelLine；无 roseType |
-| scatter | symbol | 双 value 轴；`symbol`/`symbolSize`（默认 10） |
+| line | Polyline + Polygon（面积）+ symbol | `smooth`/`step`/`connectNulls`/`areaStyle`/`endLabel`/`lineStyle.width|type`；默认 emptyCircle；`stack`/`sampling` |
+| bar | Rect | `barWidth`/`barGap`/`barCategoryGap`/`borderRadius`/`barMinHeight`；同轴并排或 stack |
+| pie | Sector | `center`/`radius`/`r0`/`startAngle`/`clockwise`/`roseType`/`selectedMode`；label 最小避让 + labelLine |
+| scatter | symbol | 双 value 轴；其余常用 symbol；`large` 终态一次画完 |
 | 组件 | 网格框、y 向 splitLine、轴标签 Text、轴名称、title / subtext、legend 色块+系列名、竖线 axisPointer | `axisLabel.formatter` 已进 Text；`fontFamily` / `fontSize` / `color` 从 textStyle、nameTextStyle、axisLabel 读入；legend 无点击筛选 |
 
 轴标签走 `ChildRef::Text` 挂到 group，`silent = true`（不抢 hover）。
@@ -1110,7 +1110,7 @@ npm run dev
 
 - 第 1 波（已落地）：单 WASM、`getZr` 共享 Storage、`graphic`/`util`/`time` 等命名空间、挡脚本的实例 API
 - 第 2 波（已落地）：dataset / transform / encode / stack / sampling；多 grid / 轴；time / log
-- 第 3 波：已有 4 类图的 canvas option 族（含 line `smooth`/`areaStyle`）
+- 第 3 波（已落地）：line/bar/pie/scatter canvas option 族（`smooth`/`areaStyle`/`step`/`connectNulls`/`endLabel`、bar 宽距圆角、`roseType`/`selectedMode`、scatter `large` 与其余 symbol）
 - 第 4–7 波：canvas 组件、其余坐标系与图表、扩展注册
 - 第 8 波：官网画廊按类同步 + probe
 - 视觉回归（echarts `test/*.html` → golden PNG）；JS vs WASM 基准报告

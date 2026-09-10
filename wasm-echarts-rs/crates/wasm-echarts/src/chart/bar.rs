@@ -1,21 +1,132 @@
-//! 柱状图 ChartView
+//! 柱状图 ChartView：barWidth / barGap / barCategoryGap / borderRadius / barMinHeight
 
 use rust_zrender::{
-    ChildRef, DisplayableProps, EcData, FillStrokeStyle, Path, PathStyle, RectShape, Shape,
-    PathStylePatch, STATE_EMPHASIS, STATE_SELECT, TextAlign, TextBaseline, ZRenderer,
+    ChildRef, DisplayableProps, EcData, FillStrokeStyle, Path, PathStyle, PathStylePatch, RectShape,
+    Shape, STATE_EMPHASIS, STATE_SELECT, TextAlign, TextBaseline, ZRenderer,
 };
 
 use crate::chart::label::add_label;
 use crate::coord::Cartesian2D;
-use crate::model::{GlobalModel, SeriesModel};
+use crate::model::{GlobalModel, SeriesModel, SeriesType};
+use crate::option::OptionValue;
+use crate::utils::parse_percent;
 use crate::visual::VisualContext;
 
-const BAR_WIDTH_RATIO: f64 = 0.6;
+#[derive(Debug, Clone, Copy)]
+pub struct BarColumnLayout {
+    pub offset: f64,
+    pub width: f64,
+}
+
+pub fn bar_column_layout(
+    model: &GlobalModel,
+    series: &SeriesModel,
+    visual: &VisualContext,
+    band: f64,
+) -> BarColumnLayout {
+    let peers: Vec<&SeriesModel> = model
+        .series
+        .iter()
+        .filter(|s| {
+            s.series_type == SeriesType::Bar
+                && s.x_axis_index == series.x_axis_index
+                && s.y_axis_index == series.y_axis_index
+        })
+        .collect();
+    if peers.is_empty() {
+        return BarColumnLayout {
+            offset: -band * 0.3,
+            width: band * 0.6,
+        };
+    }
+
+    let mut columns: Vec<(String, Option<f64>)> = Vec::new();
+    let mut bar_gap = OptionValue::String("10%".into());
+    let mut bar_category_gap: Option<&OptionValue> = None;
+    for s in &peers {
+        let opt = visual.series_option(s.index);
+        if let Some(g) = opt.and_then(|o| o.get("barGap")) {
+            bar_gap = g.clone();
+        }
+        if let Some(g) = opt.and_then(|o| o.get("barCategoryGap")) {
+            bar_category_gap = Some(g);
+        }
+        let stack_id = s
+            .stack
+            .clone()
+            .unwrap_or_else(|| format!("__ec_stack_{}", s.index));
+        if !columns.iter().any(|(id, _)| id == &stack_id) {
+            let width = opt.and_then(|o| o.get("barWidth")).map(|w| parse_percent(Some(w), band, 0.0));
+            columns.push((stack_id, width.filter(|n| *n > 0.0)));
+        }
+    }
+
+    let n = columns.len().max(1);
+    let category_gap = match bar_category_gap {
+        Some(v) => parse_percent(Some(v), band, 0.0),
+        None => {
+            let pct = (35.0 - n as f64 * 4.0).max(15.0);
+            band * pct / 100.0
+        }
+    };
+    let gap_ratio = parse_percent(Some(&bar_gap), 1.0, 0.1);
+    let auto_count = columns.iter().filter(|(_, w)| w.is_none()).count() as f64;
+    let mut remained = (band - category_gap).max(0.0);
+    for (_, w) in &columns {
+        if let Some(width) = w {
+            remained -= *width;
+        }
+    }
+    let auto_width = if auto_count > 0.0 {
+        (remained / (auto_count + (auto_count - 1.0).max(0.0) * gap_ratio)).max(0.0)
+    } else {
+        0.0
+    };
+
+    let widths: Vec<f64> = columns
+        .iter()
+        .map(|(_, w)| w.unwrap_or(auto_width).max(0.0))
+        .collect();
+    let mut width_sum = 0.0;
+    for (i, w) in widths.iter().enumerate() {
+        width_sum += *w;
+        if i + 1 < widths.len() {
+            width_sum += *w * gap_ratio;
+        }
+    }
+    let mut offset = -width_sum / 2.0;
+    let own_id = series
+        .stack
+        .clone()
+        .unwrap_or_else(|| format!("__ec_stack_{}", series.index));
+    for (i, (id, _)) in columns.iter().enumerate() {
+        let w = widths[i];
+        if *id == own_id {
+            return BarColumnLayout {
+                offset,
+                width: w,
+            };
+        }
+        offset += w * (1.0 + gap_ratio);
+    }
+    BarColumnLayout {
+        offset: -band * 0.3,
+        width: band * 0.6,
+    }
+}
+
+fn border_radius(item_style: Option<&OptionValue>) -> Vec<f64> {
+    match item_style.and_then(|s| s.get("borderRadius")) {
+        Some(OptionValue::Number(n)) if *n > 0.0 => vec![*n],
+        Some(OptionValue::Array(arr)) => arr.iter().filter_map(|v| v.as_f64()).collect(),
+        _ => Vec::new(),
+    }
+}
 
 pub fn render_bar_series(
     zr: &mut ZRenderer,
     group: usize,
-    _model: &GlobalModel,
+    model: &GlobalModel,
     coord: &Cartesian2D,
     visual: &VisualContext,
     series: &SeriesModel,
@@ -26,23 +137,37 @@ pub fn render_bar_series(
         return;
     }
 
+    let series_opt = visual.series_option(series.index);
     let band = coord.category_band_width();
-    let bar_w = band * BAR_WIDTH_RATIO;
+    let layout = bar_column_layout(model, series, visual, band);
+    let bar_w = layout.width.max(0.5);
+    let min_height = parse_percent(series_opt.and_then(|s| s.get("barMinHeight")), 1.0, 0.0);
+    let radius = border_radius(series_opt.and_then(|s| s.get("itemStyle")));
     let zero_y = coord.base_y().min(coord.grid().y + coord.grid().height);
 
     for (i, point) in series.data.iter().enumerate() {
         if i < zoom_start || i >= zoom_end {
             continue;
         }
+        if !point.value.is_finite() && !point.stacked_value.is_finite() {
+            continue;
+        }
         let (cx, top_y) = coord.point_for(i, point.x_value, point.stacked_value);
-        let base_y = if point.stack_base.abs() > f64::EPSILON {
+        let base_y = if point.stack_base.abs() > f64::EPSILON || series.stack.is_some() {
             coord.point_for(i, point.x_value, point.stack_base).1
         } else {
             zero_y
         };
-        let x = cx - bar_w / 2.0;
-        let y = top_y.min(base_y);
-        let h = (base_y - top_y).abs().max(1.0);
+        let x = cx + layout.offset;
+        let mut y = top_y.min(base_y);
+        let mut h = (base_y - top_y).abs();
+        if h < min_height {
+            h = min_height;
+            if top_y <= base_y {
+                y = base_y - h;
+            }
+        }
+        h = h.max(1.0);
 
         let color = visual.resolve_item_color(series.index, i);
         let bar = zr.storage.create_path(
@@ -52,7 +177,7 @@ pub fn render_bar_series(
                     y,
                     width: bar_w,
                     height: h,
-                    ..Default::default()
+                    r: radius.clone(),
                 }),
                 PathStyle {
                     fill: FillStrokeStyle::color(&color),
@@ -92,12 +217,190 @@ pub fn render_bar_series(
             visual,
             series.index,
             i,
-            cx,
+            x + bar_w / 2.0,
             y - 4.0,
             TextAlign::Center,
             TextBaseline::Bottom,
             &color,
             series.index as f64 + 0.2,
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::option::{OptionModel, OptionValue, SetOptionFlags};
+    use indexmap::IndexMap;
+    use rust_zrender::ZRenderer;
+
+    fn obj(pairs: Vec<(&str, OptionValue)>) -> OptionValue {
+        let mut m = IndexMap::new();
+        for (k, v) in pairs {
+            m.insert(k.into(), v);
+        }
+        OptionValue::Object(m)
+    }
+
+    fn render(root: OptionValue) -> (ZRenderer, GlobalModel) {
+        let mut option = OptionModel::new();
+        option.apply(
+            root,
+            SetOptionFlags {
+                not_merge: true,
+                replace_merge: vec![],
+            },
+        );
+        let model = GlobalModel::from_option(&option, 400, 300);
+        let visual = VisualContext::new(&option, &model);
+        let mut zr = ZRenderer::new(400, 300).unwrap();
+        let group = zr.storage.create_group();
+        for series in &model.series {
+            if series.series_type != SeriesType::Bar {
+                continue;
+            }
+            let coord = Cartesian2D::for_series(&model, series);
+            render_bar_series(
+                &mut zr,
+                group,
+                &model,
+                &coord,
+                &visual,
+                series,
+                0,
+                series.data.len(),
+            );
+        }
+        (zr, model)
+    }
+
+    fn axes_and_series(series: Vec<OptionValue>) -> OptionValue {
+        obj(vec![
+            (
+                "xAxis",
+                obj(vec![
+                    ("type", OptionValue::String("category".into())),
+                    (
+                        "data",
+                        OptionValue::Array(vec![OptionValue::String("A".into())]),
+                    ),
+                ]),
+            ),
+            ("yAxis", obj(vec![("type", OptionValue::String("value".into()))])),
+            ("series", OptionValue::Array(series)),
+        ])
+    }
+
+    fn bar_data(extra: Vec<(&str, OptionValue)>) -> OptionValue {
+        let mut pairs = vec![
+            ("type", OptionValue::String("bar".into())),
+            ("data", OptionValue::Array(vec![OptionValue::Number(10.0)])),
+        ];
+        pairs.extend(extra);
+        obj(pairs)
+    }
+
+    fn first_rect(zr: &ZRenderer) -> &RectShape {
+        zr.storage
+            .paths()
+            .iter()
+            .find_map(|p| match &p.shape {
+                Shape::Rect(r) => Some(r),
+                _ => None,
+            })
+            .expect("rect")
+    }
+
+    #[test]
+    fn bar_width_pixels() {
+        let (zr, _) = render(axes_and_series(vec![bar_data(vec![(
+            "barWidth",
+            OptionValue::Number(20.0),
+        )])]));
+        assert!((first_rect(&zr).width - 20.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn two_series_side_by_side_not_same_x() {
+        let (zr, _) = render(axes_and_series(vec![
+            bar_data(vec![]),
+            bar_data(vec![]),
+        ]));
+        let xs: Vec<f64> = zr
+            .storage
+            .paths()
+            .iter()
+            .filter_map(|p| match &p.shape {
+                Shape::Rect(r) => Some(r.x),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(xs.len(), 2);
+        assert!(
+            (xs[0] - xs[1]).abs() > 1.0,
+            "bars should sit side by side: {:?}",
+            xs
+        );
+    }
+
+    #[test]
+    fn stacked_bars_share_x() {
+        let (zr, _) = render(axes_and_series(vec![
+            bar_data(vec![("stack", OptionValue::String("t".into()))]),
+            bar_data(vec![("stack", OptionValue::String("t".into()))]),
+        ]));
+        let xs: Vec<f64> = zr
+            .storage
+            .paths()
+            .iter()
+            .filter_map(|p| match &p.shape {
+                Shape::Rect(r) => Some(r.x),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(xs.len(), 2);
+        assert!(
+            (xs[0] - xs[1]).abs() < 1e-6,
+            "stacked bars share x: {:?}",
+            xs
+        );
+    }
+
+    #[test]
+    fn border_radius_and_min_height() {
+        let (zr, _) = render(obj(vec![
+            (
+                "xAxis",
+                obj(vec![
+                    ("type", OptionValue::String("category".into())),
+                    (
+                        "data",
+                        OptionValue::Array(vec![OptionValue::String("A".into())]),
+                    ),
+                ]),
+            ),
+            (
+                "yAxis",
+                obj(vec![
+                    ("type", OptionValue::String("value".into())),
+                    ("min", OptionValue::Number(0.0)),
+                    ("max", OptionValue::Number(100.0)),
+                ]),
+            ),
+            (
+                "series",
+                OptionValue::Array(vec![bar_data(vec![
+                    ("barMinHeight", OptionValue::Number(12.0)),
+                    (
+                        "itemStyle",
+                        obj(vec![("borderRadius", OptionValue::Number(4.0))]),
+                    ),
+                    ("data", OptionValue::Array(vec![OptionValue::Number(0.01)])),
+                ])]),
+            ),
+        ]));
+        let rect = first_rect(&zr);
+        assert!(rect.height >= 12.0 - 1e-6);
+        assert_eq!(rect.r, vec![4.0]);
     }
 }

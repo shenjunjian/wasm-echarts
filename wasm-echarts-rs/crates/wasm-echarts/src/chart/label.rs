@@ -42,3 +42,35 @@ pub fn add_label(
     zr.storage.text_mut(idx).silent = true;
     zr.storage.group_add_child(group, ChildRef::Text(idx));
 }
+
+pub fn add_plain_label(
+    zr: &mut ZRenderer,
+    group: usize,
+    text: String,
+    x: f64,
+    y: f64,
+    align: TextAlign,
+    baseline: TextBaseline,
+    color: &str,
+    z: f64,
+) {
+    if text.is_empty() {
+        return;
+    }
+    let idx = zr.storage.create_text(
+        Text::new(text, x, y)
+            .with_style(TextStyle {
+                fill: color.into(),
+                font_size: 12.0,
+                align,
+                baseline,
+                ..Default::default()
+            })
+            .with_displayable(rust_zrender::DisplayableProps {
+                z,
+                ..Default::default()
+            }),
+    );
+    zr.storage.text_mut(idx).silent = true;
+    zr.storage.group_add_child(group, ChildRef::Text(idx));
+}

@@ -160,9 +160,6 @@ fn row_points(table: &DataTable, encode: &EncodeMap, series_slot: usize) -> Vec<
     for dim in start..table.dim_count() {
         let cell = row.get(dim).unwrap_or(&OptionValue::Null);
         let value = cell_number(cell).unwrap_or(f64::NAN);
-        if !value.is_finite() {
-            continue;
-        }
         let name = Some(table.dimensions[dim].clone());
         let series_name = row
             .get(name_dim)
@@ -195,10 +192,7 @@ fn row_to_point(
         }
     });
     let y_cell = row.get(y_dim).unwrap_or(&OptionValue::Null);
-    let value = cell_number(y_cell)?;
-    if !value.is_finite() {
-        return None;
-    }
+    let value = cell_number(y_cell).unwrap_or(f64::NAN);
     let x_value = encode.x.and_then(|d| {
         let cell = row.get(d)?;
         cell_number(cell).or_else(|| parse_time_value(cell))

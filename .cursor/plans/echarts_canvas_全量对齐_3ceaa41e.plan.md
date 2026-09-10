@@ -13,7 +13,7 @@ todos:
     status: completed
   - id: wave3-four-charts
     content: 第 3 波：line/bar/pie/scatter canvas option 族画全；折线 40 例 probe
-    status: pending
+    status: completed
   - id: wave4-components
     content: 第 4 波：legend 筛选、mark*、graphic、visualMap、slider、axisPointer、brush、timeline、toolbox（无 DataView）
     status: pending

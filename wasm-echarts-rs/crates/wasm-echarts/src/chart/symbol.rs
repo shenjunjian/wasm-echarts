@@ -1,8 +1,9 @@
-//! line / scatter 的 symbol 图元：circle / rect / emptyCircle
+//! line / scatter 的 symbol：官方常用形状 + empty* 空心
 
 use rust_zrender::{
-    ChildRef, CircleShape, DisplayableProps, EcData, FillStrokeStyle, Path, PathStyle,
-    PathStylePatch, RectShape, Shape, STATE_EMPHASIS, STATE_SELECT, ZRenderer,
+    ChildRef, CircleShape, DisplayableProps, DropletShape, EcData, FillStrokeStyle, LineShape, Path,
+    PathStyle, PathStylePatch, PolygonShape, RectShape, Shape, StarShape, STATE_EMPHASIS,
+    STATE_SELECT, ZRenderer,
 };
 
 pub struct SymbolSpec {
@@ -13,6 +14,28 @@ pub struct SymbolSpec {
     pub color: String,
     pub series_index: usize,
     pub data_index: usize,
+    pub attach_states: bool,
+}
+
+fn empty_kind(kind: &str) -> (String, bool) {
+    if let Some(rest) = kind.strip_prefix("empty") {
+        if rest.is_empty() {
+            return (kind.to_string(), false);
+        }
+        let mut chars = rest.chars();
+        let first = chars.next().map(|c| c.to_ascii_lowercase()).unwrap_or('c');
+        let body: String = std::iter::once(first).chain(chars).collect();
+        (body, true)
+    } else {
+        (kind.to_string(), false)
+    }
+}
+
+fn polygon(points: Vec<(f64, f64)>) -> Shape {
+    Shape::Polygon(PolygonShape {
+        points,
+        ..Default::default()
+    })
 }
 
 pub fn add_symbol(zr: &mut ZRenderer, group: usize, spec: &SymbolSpec) -> Option<usize> {
@@ -20,8 +43,11 @@ pub fn add_symbol(zr: &mut ZRenderer, group: usize, spec: &SymbolSpec) -> Option
         return None;
     }
     let r = spec.size / 2.0;
-    let (shape, fill, stroke, line_width) = match spec.kind.as_str() {
-        "none" => return None,
+    let (base_kind, empty) = empty_kind(&spec.kind);
+    if base_kind == "none" {
+        return None;
+    }
+    let (shape, mut fill, mut stroke, mut line_width) = match base_kind.as_str() {
         "rect" | "square" => (
             Shape::Rect(RectShape {
                 x: spec.cx - r,
@@ -34,15 +60,87 @@ pub fn add_symbol(zr: &mut ZRenderer, group: usize, spec: &SymbolSpec) -> Option
             FillStrokeStyle::color("#fff"),
             1.0,
         ),
-        "emptyCircle" => (
-            Shape::Circle(CircleShape {
+        "roundRect" => (
+            Shape::Rect(RectShape {
+                x: spec.cx - r,
+                y: spec.cy - r,
+                width: spec.size,
+                height: spec.size,
+                r: vec![spec.size / 4.0],
+            }),
+            FillStrokeStyle::color(&spec.color),
+            FillStrokeStyle::color("#fff"),
+            1.0,
+        ),
+        "triangle" => (
+            polygon(vec![
+                (spec.cx, spec.cy - r),
+                (spec.cx + r, spec.cy + r),
+                (spec.cx - r, spec.cy + r),
+            ]),
+            FillStrokeStyle::color(&spec.color),
+            FillStrokeStyle::color("#fff"),
+            1.0,
+        ),
+        "diamond" => (
+            polygon(vec![
+                (spec.cx, spec.cy - r),
+                (spec.cx + r, spec.cy),
+                (spec.cx, spec.cy + r),
+                (spec.cx - r, spec.cy),
+            ]),
+            FillStrokeStyle::color(&spec.color),
+            FillStrokeStyle::color("#fff"),
+            1.0,
+        ),
+        "arrow" => (
+            polygon(vec![
+                (spec.cx, spec.cy - r),
+                (spec.cx + r * 0.7, spec.cy + r * 0.1),
+                (spec.cx + r * 0.22, spec.cy + r * 0.1),
+                (spec.cx + r * 0.22, spec.cy + r),
+                (spec.cx - r * 0.22, spec.cy + r),
+                (spec.cx - r * 0.22, spec.cy + r * 0.1),
+                (spec.cx - r * 0.7, spec.cy + r * 0.1),
+            ]),
+            FillStrokeStyle::color(&spec.color),
+            FillStrokeStyle::color("#fff"),
+            1.0,
+        ),
+        "pin" => (
+            Shape::Droplet(DropletShape {
                 cx: spec.cx,
                 cy: spec.cy,
+                width: r,
+                height: r * 1.4,
+            }),
+            FillStrokeStyle::color(&spec.color),
+            FillStrokeStyle::color("#fff"),
+            1.0,
+        ),
+        "star" => (
+            Shape::Star(StarShape {
+                cx: spec.cx,
+                cy: spec.cy,
+                n: 5,
                 r,
+                r0: None,
+            }),
+            FillStrokeStyle::color(&spec.color),
+            FillStrokeStyle::color("#fff"),
+            1.0,
+        ),
+        "line" => (
+            Shape::Line(LineShape {
+                x1: spec.cx - r,
+                y1: spec.cy,
+                x2: spec.cx + r,
+                y2: spec.cy,
+                percent: 1.0,
             }),
             FillStrokeStyle::none(),
             FillStrokeStyle::color(&spec.color),
-            1.5,
+            2.0,
         ),
         _ => (
             Shape::Circle(CircleShape {
@@ -55,6 +153,11 @@ pub fn add_symbol(zr: &mut ZRenderer, group: usize, spec: &SymbolSpec) -> Option
             1.0,
         ),
     };
+    if empty {
+        fill = FillStrokeStyle::none();
+        stroke = FillStrokeStyle::color(&spec.color);
+        line_width = 1.5;
+    }
     let symbol = zr.storage.create_path(
         Path::new(
             shape,
@@ -72,23 +175,56 @@ pub fn add_symbol(zr: &mut ZRenderer, group: usize, spec: &SymbolSpec) -> Option
         .with_ec_data(EcData::new(spec.series_index as i32, spec.data_index as i32)),
     );
     zr.storage.group_add_child(group, ChildRef::Path(symbol));
-    zr.set_path_state_style(
-        symbol,
-        STATE_EMPHASIS,
-        PathStylePatch {
-            fill: Some(FillStrokeStyle::color(&spec.color)),
-            line_width: Some(2.0),
-            ..Default::default()
-        },
-    );
-    zr.set_path_state_style(
-        symbol,
-        STATE_SELECT,
-        PathStylePatch {
-            stroke: Some(FillStrokeStyle::color("#333")),
-            line_width: Some(3.0),
-            ..Default::default()
-        },
-    );
+    if spec.attach_states {
+        zr.set_path_state_style(
+            symbol,
+            STATE_EMPHASIS,
+            PathStylePatch {
+                fill: Some(FillStrokeStyle::color(&spec.color)),
+                line_width: Some(2.0),
+                ..Default::default()
+            },
+        );
+        zr.set_path_state_style(
+            symbol,
+            STATE_SELECT,
+            PathStylePatch {
+                stroke: Some(FillStrokeStyle::color("#333")),
+                line_width: Some(3.0),
+                ..Default::default()
+            },
+        );
+    }
     Some(symbol)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rust_zrender::ZRenderer;
+
+    fn spec(kind: &str) -> SymbolSpec {
+        SymbolSpec {
+            kind: kind.into(),
+            size: 10.0,
+            cx: 20.0,
+            cy: 20.0,
+            color: "#5470c6".into(),
+            series_index: 0,
+            data_index: 0,
+            attach_states: true,
+        }
+    }
+
+    #[test]
+    fn extra_symbols_create_paths() {
+        let mut zr = ZRenderer::new(80, 80).unwrap();
+        let group = zr.storage.create_group();
+        for kind in ["triangle", "diamond", "roundRect", "star", "pin", "arrow", "emptyDiamond"] {
+            add_symbol(&mut zr, group, &spec(kind));
+        }
+        assert_eq!(zr.storage.paths().len(), 7);
+        let empty = zr.storage.paths().last().unwrap();
+        assert!(empty.style.fill.is_none());
+    }
 }

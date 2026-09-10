@@ -5,11 +5,12 @@ mod legend;
 mod line;
 mod text_opt;
 mod title;
+mod style;
+mod symbol;
 #[cfg(feature = "chart-pie")]
 mod pie;
 #[cfg(feature = "chart-scatter")]
 mod scatter;
-mod symbol;
 
 #[cfg(feature = "chart-bar")]
 pub use bar::render_bar_series;
@@ -72,7 +73,7 @@ pub fn render_components(
             }
             #[cfg(feature = "chart-pie")]
             SeriesType::Pie => {
-                render_pie_series(zr, group, model, &visual, series);
+                render_pie_series(zr, group, model, &visual, series, interaction);
             }
             #[cfg(feature = "chart-scatter")]
             SeriesType::Scatter => {
