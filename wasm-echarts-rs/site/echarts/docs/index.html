@@ -141,8 +141,8 @@ chart.on('click', (params) => {
             <td>按 group 转发 action；主题表；注册并绘制 geo；解析 GeoJSON；dataset 外部 transform</td>
           </tr>
           <tr>
-            <td><code>graphic</code> / <code>util</code> / <code>time</code> / <code>format</code> / <code>number</code> / <code>helper</code> / <code>matrix</code> / <code>vector</code> / <code>color</code> / <code>env</code></td>
-            <td>已从 wasm-zrender 再导出或按官方签名重写。<code>LinearGradient</code> 可进 <code>setOption</code></td>
+            <td><code>graphic</code> / <code>util</code> / <code>time</code> / <code>format</code> / <code>number</code> / <code>helper</code> / <code>matrix</code> / <code>vector</code> / <code>color</code> / <code>env</code> / <code>throttle</code></td>
+            <td>已从 wasm-zrender 再导出或按官方签名重写。<code>LinearGradient</code> 可进 <code>setOption</code>；<code>throttle(fn, delay?, debounce?)</code></td>
           </tr>
         </tbody>
       </table>
@@ -341,7 +341,7 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td><code>getZr</code> / 命名空间</td>
-            <td>与 ChartView 共用 Storage；<code>graphic</code>（含 <code>LinearGradient</code>）/<code>util</code>/<code>time</code>/<code>format</code>/<code>number</code>/<code>helper</code>/<code>matrix</code>/<code>vector</code>/<code>color</code>/<code>env</code></td>
+            <td>与 ChartView 共用 Storage；<code>graphic</code>（含 <code>LinearGradient</code>）/<code>util</code>/<code>time</code>/<code>format</code>/<code>number</code>/<code>helper</code>/<code>matrix</code>/<code>vector</code>/<code>color</code>/<code>env</code>；<code>throttle</code></td>
           </tr>
           <tr>
             <td>实例 API</td>
@@ -365,7 +365,7 @@ chart.on('click', (params) => {
         <li>tooltip HTMLElement formatter / <code>confine</code> / <code>renderMode: 'richText'</code></li>
         <li><code>UniversalTransition</code> 只跳终态，不做系列间插值</li>
         <li>bar 未接 <code>large</code>：官网 <code>bar-large</code>（50 万柱）会卡死主线程，probe 判 timeout</li>
-        <li>官网 scatter 6 条回归/聚类示例依赖全局 <code>ecStat</code>（<code>echarts-stat</code>），本宿主未注入</li>
+        <li>官网 scatter 6 条回归/聚类示例与 custom <code>bar-histogram</code> 依赖全局 <code>ecStat</code>（<code>echarts-stat</code>），本宿主未注入</li>
         <li><code>scatter-weibo</code> 海量 geo 散点：scatter <code>large</code> 仍每点 Path，probe 判 timeout</li>
         <li><code>candlestick-large</code>：20 万 OHLC，无增量绘制，probe 判 timeout</li>
         <li><code>heatmap-bmap</code>：依赖百度地图扩展 <code>bmap</code>；表面错误 <code>getModel</code> 未实现（同 <code>effectScatter-bmap</code>）</li>
@@ -374,8 +374,9 @@ chart.on('click', (params) => {
         <li><code>parallel-nutrients</code>：官网 <code>nutrients.json</code> 约 1.4 万行；parallel 每条数据一条 Path、未接 <code>progressive</code>，主线程卡死，probe 判 timeout</li>
         <li><code>lines-ny</code>：官网 <code>links_ny_*.bin</code> 分片 URL 为字符串拼接，sync 未拉到资源；404 HTML 被当 arraybuffer，<code>Float32Array</code> 报 byte length 不是 4 的倍数</li>
         <li><code>map-usa-projection</code>：依赖 CDN <code>d3-geo</code> 的全局 <code>d3.geoAlbersUsa</code>；本宿主不注入 d3</li>
+        <li><code>bar-histogram</code>：依赖官网统计插件 <code>echarts-stat</code> 全局 <code>ecStat</code>；本宿主未注入</li>
       </ul>
-      <p>官网同步：折线 40、柱状 46、饼图 19、散点 36、K 线 10、盒须 4、热力 7、象形柱 8、仪表盘 12、雷达 5、漏斗 4、和弦 4、旭日 7、树图 7、矩形树 7、关系图 13、桑基 7、主题河流 2、日历 9、矩阵 14、平行坐标 4、地图 25、地理 1、路径图 5。第 8.1 波 bar+pie probe 65 条中 64 <code>ok</code>（失败 <code>bar-large</code>）。第 8.2 波 scatter probe 36 条中 29 <code>ok</code>；失败 6 条缺 <code>ecStat</code> + <code>scatter-weibo</code> 超时。第 8.3 波 candlestick/boxplot/heatmap/pictorialBar probe 29 条中 27 <code>ok</code>（失败 <code>candlestick-large</code> / <code>heatmap-bmap</code>，不改官方 option）。第 8.4 波 gauge 12 + radar 5 已进画廊，本轮只同步未跑 probe。第 8.5 波 funnel/chord/sunburst/tree/treemap/graph/sankey/themeRiver probe 51 条中 48 <code>ok</code>（失败 3 条 treemap WASM panic，不改官方 option）。第 8.6 波 calendar/matrix/parallel probe 27 条中 26 <code>ok</code>（失败 <code>parallel-nutrients</code> 超时，不改官方 option）。第 8.7 波 map/geo/lines catalog 31 条、去重 probe 26 条中 24 <code>ok</code>（失败 <code>lines-ny</code> / <code>map-usa-projection</code>，不改官方 option）。仍可能有视觉缺口（能 <code>setOption</code>、不在示例里 workaround）：<code>smoothMonotone</code>、<code>padAngle</code>、<code>roundCap</code>、<code>showBackground</code>、<code>realtimeSort</code> 只终态、force 布局不迭代、<code>effectScatter-bmap</code> 无百度地图扩展、SVG 地图源 / <code>china</code>·<code>world</code> 底图未预注册等。</p>
+      <p>官网同步：折线 40、柱状 46、饼图 19、散点 36、K 线 10、盒须 4、热力 7、象形柱 8、仪表盘 12、雷达 5、漏斗 4、和弦 4、旭日 7、树图 7、矩形树 7、关系图 13、桑基 7、主题河流 2、日历 9、矩阵 14、平行坐标 4、地图 25、地理 1、路径图 5、自定义系列 20、数据集 9、图形组件 5。第 8.1 波 bar+pie probe 65 条中 64 <code>ok</code>（失败 <code>bar-large</code>）。第 8.2 波 scatter probe 36 条中 29 <code>ok</code>；失败 6 条缺 <code>ecStat</code> + <code>scatter-weibo</code> 超时。第 8.3 波 candlestick/boxplot/heatmap/pictorialBar probe 29 条中 27 <code>ok</code>（失败 <code>candlestick-large</code> / <code>heatmap-bmap</code>，不改官方 option）。第 8.4 波 gauge 12 + radar 5 已进画廊，本轮只同步未跑 probe。第 8.5 波 funnel/chord/sunburst/tree/treemap/graph/sankey/themeRiver probe 51 条中 48 <code>ok</code>（失败 3 条 treemap WASM panic，不改官方 option）。第 8.6 波 calendar/matrix/parallel probe 27 条中 26 <code>ok</code>（失败 <code>parallel-nutrients</code> 超时，不改官方 option）。第 8.7 波 map/geo/lines catalog 31 条、去重 probe 26 条中 24 <code>ok</code>（失败 <code>lines-ny</code> / <code>map-usa-projection</code>，不改官方 option）。第 8.8 波 custom/dataset/graphic catalog 34 条中 33 <code>ok</code>（失败 <code>bar-histogram</code> 缺 <code>ecStat</code>，不改官方 option；本轮补 <code>echarts.throttle</code>）。仍可能有视觉缺口（能 <code>setOption</code>、不在示例里 workaround）：<code>smoothMonotone</code>、<code>padAngle</code>、<code>roundCap</code>、<code>showBackground</code>、<code>realtimeSort</code> 只终态、force 布局不迭代、<code>effectScatter-bmap</code> 无百度地图扩展、SVG 地图源 / <code>china</code>·<code>world</code> 底图未预注册、graphic 动画跳终态等。</p>
     </div>
 
     <div class="doc-section">
@@ -405,7 +406,7 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td><a href="../examples/#line-simple">官网折线</a> / <a href="../examples/#bar-simple">官网柱状</a> / <a href="../examples/#pie-simple">官网饼图</a> / <a href="../examples/#scatter-simple">官网散点</a></td>
-            <td>同步官网 line 40 + bar 46 + pie 19 + scatter 36 + candlestick 10 + boxplot 4 + heatmap 7 + pictorialBar 8 + gauge 12 + radar 5 + funnel 4 + chord 4 + sunburst 7 + tree 7 + treemap 7 + graph 13 + sankey 7 + themeRiver 2 + calendar 9 + matrix 14 + parallel 4 + map 25 + geo 1 + lines 5。catalog 一经生成即自动进画廊。能力补在库里，不在示例里 workaround。<code>bar-large</code> / <code>scatter-weibo</code> / <code>candlestick-large</code> / <code>parallel-nutrients</code> 会卡死（见未实现表）；缺 <code>ecStat</code> / <code>bmap</code> / <code>d3.geoAlbersUsa</code> 等仍会报错，预览层展示错误</td>
+            <td>同步官网 line 40 + bar 46 + pie 19 + scatter 36 + candlestick 10 + boxplot 4 + heatmap 7 + pictorialBar 8 + gauge 12 + radar 5 + funnel 4 + chord 4 + sunburst 7 + tree 7 + treemap 7 + graph 13 + sankey 7 + themeRiver 2 + calendar 9 + matrix 14 + parallel 4 + map 25 + geo 1 + lines 5 + custom 20 + dataset 9 + graphic 5。catalog 一经生成即自动进画廊。能力补在库里，不在示例里 workaround。<code>bar-large</code> / <code>scatter-weibo</code> / <code>candlestick-large</code> / <code>parallel-nutrients</code> 会卡死（见未实现表）；缺 <code>ecStat</code> / <code>bmap</code> / <code>d3.geoAlbersUsa</code> 等仍会报错，预览层展示错误</td>
           </tr>
           <tr>
             <td><a href="../examples/#merge">merge</a></td>

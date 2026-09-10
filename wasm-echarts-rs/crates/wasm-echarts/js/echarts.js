@@ -16,9 +16,10 @@ import * as matrix from '../../wasm-zrender/js/tool/matrix.js';
 import * as vector from '../../wasm-zrender/js/tool/vector.js';
 import * as color from '../../wasm-zrender/js/tool/color.js';
 import env from './env.js';
+import { throttle } from './throttle.js';
 import { registerCustomSeries as registerCustomSeriesImpl } from './extension.js';
 
-export { ECharts, graphic, util, number, time, format, helper, matrix, vector, color, env };
+export { ECharts, graphic, util, number, time, format, helper, matrix, vector, color, env, throttle };
 export const version = '6.1.0';
 
 function refreshLiveFontDatabases() {

@@ -1,11 +1,11 @@
 /**
- * 官网折线示例：自定义图形组件
+ * 官网示例：自定义图形组件
  * https://echarts.apache.org/examples/zh/editor.html?c=line-graphic
  * 未实现的官方 API 保持报错，不在本文件里补齐。
  */
 import { runOfficialExample } from '../../src/echarts/official-runtime.js';
 
-runOfficialExample(async ({ echarts, myChart, ROOT_PATH, $, app }) => {
+runOfficialExample(async ({ echarts, myChart, ROOT_PATH, CDN_PATH, $, app }) => {
   let option;
   try {
     /*

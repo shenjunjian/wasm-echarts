@@ -52,7 +52,7 @@ todos:
     status: completed
   - id: wave8-custom
     content: 第 8.8 波：custom / dataset / graphic
-    status: pending
+    status: completed
   - id: wave8-docs-gate
     content: 第 8.9 波：全量 probe 表、getZr 说明、文档四块与源码一致
     status: pending

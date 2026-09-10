@@ -47,4 +47,5 @@ export {
   vector,
   color,
   env,
+  throttle,
 } from './echarts.js';
