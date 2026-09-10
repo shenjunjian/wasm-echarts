@@ -14,7 +14,9 @@ mod gauge;
 mod graphic;
 mod heatmap;
 mod hierarchy;
+mod jitter;
 mod label;
+mod label_layout;
 pub(crate) mod layout;
 pub(crate) mod legend;
 mod line;
@@ -200,6 +202,8 @@ pub fn render_components(
         }
         mark::render_marks(zr, group, model, option, &visual, series);
     }
+
+    label_layout::apply_label_layout(zr, &visual);
 
     if model.has_cartesian_series() {
         axis_pointer::render_axis_pointer(zr, group, model, option, interaction);

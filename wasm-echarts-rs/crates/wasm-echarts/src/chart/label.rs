@@ -25,6 +25,11 @@ pub fn add_label(
     if text.is_empty() {
         return;
     }
+    let layout = crate::chart::label_layout::resolve_label_layout(visual, series_index, data_index);
+    let x = layout.x.unwrap_or(x) + layout.dx;
+    let y = layout.y.unwrap_or(y) + layout.dy;
+    let align = layout.align.unwrap_or(align);
+    let baseline = layout.baseline.unwrap_or(baseline);
     let idx = zr.storage.create_text(
         Text::new(text, x, y)
             .with_style(TextStyle {
@@ -40,6 +45,7 @@ pub fn add_label(
             }),
     );
     zr.storage.text_mut(idx).silent = true;
+    zr.storage.text_mut(idx).base.name = crate::chart::label_layout::series_label_name(series_index);
     zr.storage.group_add_child(group, ChildRef::Text(idx));
 }
 

@@ -1,5 +1,6 @@
 //! ECharts option 解析与合并（保留 JsFunction，不用 serde 整包反序列化）
 
+mod media;
 mod merge;
 mod parse;
 
@@ -303,9 +304,20 @@ impl OptionModel {
         }
     }
 
-    /// timeline：`merge(baseOption 或去掉 options 的根, options[index])`。
-    pub fn effective_root(&self, timeline_index: usize) -> OptionValue {
-        effective_timeline_root(&self.root, timeline_index)
+    /// timeline + media：base → timeline `options[index]` → 匹配的 media（后者优先）。
+    pub fn effective_root(&self, timeline_index: usize, width: f64, height: f64) -> OptionValue {
+        effective_option_root(&self.root, timeline_index, width, height)
+    }
+
+    pub fn set_axis_break_expanded(
+        &mut self,
+        axis_key: &str,
+        axis_index: usize,
+        start: f64,
+        end: f64,
+        expanded: Option<bool>,
+    ) {
+        set_break_expanded(&mut self.root, axis_key, axis_index, start, end, expanded);
     }
 }
 
@@ -318,30 +330,85 @@ fn first_mut_component<'a>(root: &'a mut OptionValue, key: &str) -> Option<&'a m
 }
 
 pub fn effective_timeline_root(root: &OptionValue, timeline_index: usize) -> OptionValue {
-    let options = root
+    effective_option_root(root, timeline_index, 0.0, 0.0)
+}
+
+pub fn effective_option_root(
+    root: &OptionValue,
+    timeline_index: usize,
+    width: f64,
+    height: f64,
+) -> OptionValue {
+    let has_media = root
+        .get("media")
+        .and_then(|v| v.as_array())
+        .map(|a| !a.is_empty())
+        .unwrap_or(false);
+    let has_timeline = root
         .get("options")
         .and_then(|v| v.as_array())
-        .filter(|a| !a.is_empty());
-    let Some(options) = options else {
+        .map(|a| !a.is_empty())
+        .unwrap_or(false)
+        || root.get("baseOption").is_some();
+    if !has_media && !has_timeline {
         return root.clone();
-    };
-    let overlay = &options[timeline_index.min(options.len() - 1)];
-    let base = if let Some(b) = root.get("baseOption") {
-        b.clone()
-    } else {
-        let mut b = root.clone();
-        if let Some(map) = b.as_object_mut() {
-            map.shift_remove("options");
+    }
+
+    let mut base = media::extract_base_option(root);
+    if has_timeline {
+        if let Some(options) = root.get("options").and_then(|v| v.as_array()) {
+            if !options.is_empty() {
+                let overlay = &options[timeline_index.min(options.len() - 1)];
+                base = merge_option(
+                    &base,
+                    overlay,
+                    MergeMode {
+                        replace_merge: Vec::new(),
+                    },
+                );
+            }
         }
-        b
+    }
+    if has_media && width > 0.0 && height > 0.0 {
+        base = media::apply_media(base, root, width, height);
+    }
+    base
+}
+
+fn set_break_expanded(
+    root: &mut OptionValue,
+    axis_key: &str,
+    axis_index: usize,
+    start: f64,
+    end: f64,
+    expanded: Option<bool>,
+) {
+    let axis = match root.get_mut(axis_key) {
+        Some(OptionValue::Array(arr)) => arr.get_mut(axis_index),
+        Some(v) if axis_index == 0 => Some(v),
+        _ => None,
     };
-    merge_option(
-        &base,
-        overlay,
-        MergeMode {
-            replace_merge: Vec::new(),
-        },
-    )
+    let Some(axis) = axis else {
+        return;
+    };
+    let Some(breaks) = axis.get_mut("breaks").and_then(|v| v.as_array_mut()) else {
+        return;
+    };
+    for item in breaks {
+        let Some(map) = item.as_object_mut() else {
+            continue;
+        };
+        let b_start = map.get("start").and_then(|v| v.as_f64());
+        let b_end = map.get("end").and_then(|v| v.as_f64());
+        if b_start != Some(start) || b_end != Some(end) {
+            continue;
+        }
+        let next = match expanded {
+            Some(v) => v,
+            None => !map.get("isExpanded").and_then(|v| v.as_bool()).unwrap_or(false),
+        };
+        map.insert("isExpanded".into(), OptionValue::Bool(next));
+    }
 }
 
 #[cfg(test)]
@@ -622,7 +689,7 @@ mod tests {
             ]),
             SetOptionFlags::default(),
         );
-        let root = model.effective_root(1);
+        let root = model.effective_root(1, 400.0, 300.0);
         assert_eq!(
             root.get("title")
                 .and_then(|t| t.get("text"))
@@ -636,5 +703,50 @@ mod tests {
             .and_then(|t| t.get("currentIndex"))
             .and_then(|v| v.as_f64());
         assert_eq!(idx, Some(0.0));
+    }
+
+    #[test]
+    fn media_effective_root_switches_by_width() {
+        let mut model = OptionModel::new();
+        model.apply(
+            obj(vec![
+                (
+                    "title",
+                    obj(vec![("text", OptionValue::String("base".into()))]),
+                ),
+                (
+                    "media",
+                    OptionValue::Array(vec![
+                        obj(vec![
+                            ("query", obj(vec![("minWidth", OptionValue::Number(700.0))])),
+                            (
+                                "option",
+                                obj(vec![("title", obj(vec![("text", OptionValue::String("wide".into()))]))]),
+                            ),
+                        ]),
+                        obj(vec![(
+                            "option",
+                            obj(vec![("title", obj(vec![("text", OptionValue::String("narrow".into()))]))]),
+                        )]),
+                    ]),
+                ),
+            ]),
+            SetOptionFlags::default(),
+        );
+        let narrow = model.effective_root(0, 400.0, 300.0);
+        assert_eq!(
+            narrow
+                .get("title")
+                .and_then(|t| t.get("text"))
+                .and_then(|v| v.as_str()),
+            Some("narrow")
+        );
+        let wide = model.effective_root(0, 800.0, 300.0);
+        assert_eq!(
+            wide.get("title")
+                .and_then(|t| t.get("text"))
+                .and_then(|v| v.as_str()),
+            Some("wide")
+        );
     }
 }

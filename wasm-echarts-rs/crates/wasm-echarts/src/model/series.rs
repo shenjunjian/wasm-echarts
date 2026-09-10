@@ -1,5 +1,22 @@
+use std::cell::RefCell;
+use std::collections::HashSet;
+
 use crate::data::{Sampling, StackStrategy};
 use crate::option::OptionValue;
+
+thread_local! {
+    static CUSTOM_SERIES_TYPES: RefCell<HashSet<String>> = RefCell::new(HashSet::new());
+}
+
+pub fn register_custom_series_type(ty: impl Into<String>) {
+    CUSTOM_SERIES_TYPES.with(|set| {
+        set.borrow_mut().insert(ty.into());
+    });
+}
+
+pub fn is_custom_series_type(ty: &str) -> bool {
+    CUSTOM_SERIES_TYPES.with(|set| set.borrow().contains(ty))
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SeriesType {
@@ -89,6 +106,7 @@ impl SeriesType {
             "themeRiver" => SeriesType::ThemeRiver,
             "sunburst" => SeriesType::Sunburst,
             "custom" => SeriesType::Custom,
+            other if is_custom_series_type(other) => SeriesType::Custom,
             _ => SeriesType::Other,
         }
     }

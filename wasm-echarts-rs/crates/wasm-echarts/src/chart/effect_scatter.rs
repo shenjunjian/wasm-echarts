@@ -30,16 +30,20 @@ pub fn render_effect_scatter_series(
         .and_then(|v| v.as_f64())
         .unwrap_or(2.0)
         .clamp(1.0, 4.0) as usize;
+    let mut jitter = crate::chart::jitter::JitterState::default();
     for (i, point) in series.data.iter().enumerate() {
         if !point.value.is_finite() {
             continue;
         }
         let (cx, cy) = coord.map_point(point, i);
+        let size = visual.resolve_symbol_size_of(series.index, i);
+        let (cx, cy) = crate::chart::jitter::apply_scatter_jitter(
+            &mut jitter, coord, series, i, size, cx, cy,
+        );
         if !cx.is_finite() || !cy.is_finite() {
             continue;
         }
         let color = visual.resolve_item_color(series.index, i);
-        let size = visual.resolve_symbol_size_of(series.index, i);
         for k in 1..=period_rings {
             let t = k as f64 / period_rings as f64;
             let r = size * 0.5 * (1.0 + (scale - 1.0) * t);

@@ -192,6 +192,7 @@ fn parse_axis_from(comp: Option<&OptionValue>, fallback: AxisType) -> AxisModel 
             max: None,
             grid_index: 0,
             log_base: 10.0,
+            ..Default::default()
         };
     };
     let axis_type = comp
@@ -204,6 +205,7 @@ fn parse_axis_from(comp: Option<&OptionValue>, fallback: AxisType) -> AxisModel 
         .and_then(|v| v.as_array())
         .map(|arr| arr.iter().map(crate::data::cell_text).collect())
         .unwrap_or_default();
+    let (jitter, jitter_overlap, jitter_margin) = crate::model::axis::parse_axis_jitter(comp);
     AxisModel {
         axis_type,
         category_data: categories,
@@ -215,6 +217,10 @@ fn parse_axis_from(comp: Option<&OptionValue>, fallback: AxisType) -> AxisModel 
             .and_then(|v| v.as_f64())
             .filter(|n| *n > 1.0)
             .unwrap_or(10.0),
+        breaks: crate::model::axis::parse_axis_breaks(comp),
+        jitter,
+        jitter_overlap,
+        jitter_margin,
     }
 }
 

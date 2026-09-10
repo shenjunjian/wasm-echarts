@@ -114,7 +114,7 @@ wasm-zrender  ✗ 不依赖  wasm-echarts
 **允许例外（须在文档「与官方不一致」节列出）：**
 
 - 字体：WASM 不读系统字体；需要 `registerFont`（可挂在 echarts 命名空间）。
-- 动画：不播中间帧；`setOption` / `animation` / UniversalTransition / line grow / ripple 直接终态。`lazyUpdate` 可同步执行（等价立刻 flush）。
+- 动画：不播中间帧；`setOption` / `animation` / `universalTransition` / line grow / ripple 直接终态（第 7 波：`UniversalTransition` 只跳终态，不插值）。`lazyUpdate` 可同步执行（等价立刻 flush）。
 - 离屏：仅 canvas；`init(canvas)` 自动 `putImageData`。无 SVG（`renderToSVGString` / `getSvgDataURL` / `zr.painter.getSvgDom` 不实现）。
 - 宿主：`init(canvas, theme?, opts?)`；`init(null, null, { width, height, devicePixelRatio })` 允许离屏（官方客户端无 dom 会抛错）。
 - `use(...)`：**导出且签名对齐**，但不按需加载。实现只 `console.info` 提示：已开发的模块都在 WASM 里，不必 `use`。调用可忽略参数并立即返回。
@@ -130,9 +130,9 @@ wasm-zrender  ✗ 不依赖  wasm-echarts
 - `setOption(option)` 与 `setOption(option, notMerge)` / `setOption(option, { notMerge, replaceMerge, silent })`。`notMerge` **不是** option 里的字段。
 - `resize()` 无参（读 canvas 尺寸）与 `resize({ width, height, devicePixelRatio })`。
 - `init(canvas)` 后指针事件由 facade 绑定；发出官方事件名 `click` / `mouseover` / `mouseout` / `globalout`。
-- 已接线的 `dispatchAction` type 名保持官方字符串：`highlight` / `downplay` / `select` / `unselect` / `toggleSelect` / `dataZoom`；并补 `showTip` / `hideTip`、`legendToggleSelect` / `legendSelect` / `legendUnSelect`、`restore`、`timelineChange` / `timelinePlayChange`、`takeGlobalCursor`、`brush` / `brushEnd`。
+- 已接线的 `dispatchAction` type 名保持官方字符串：`highlight` / `downplay` / `select` / `unselect` / `toggleSelect` / `dataZoom`；并补 `showTip` / `hideTip`、`legendToggleSelect` / `legendSelect` / `legendUnSelect`、`restore`、`timelineChange` / `timelinePlayChange`、`takeGlobalCursor`、`brush` / `brushEnd`、`expandAxisBreak` / `collapseAxisBreak` / `toggleAxisBreak`。
 - `export/api.ts` 命名空间：`graphic` / `util` / `number` / `time` / `format` / `helper` / `matrix` / `vector` / `color`（第 1 波从 wasm-zrender 再导出或按签名重写）。
-- `getZr` / `getDataURL` / `renderToCanvas` / `appendData` / `setTheme` / `registerTheme` / `registerMap` / `connect` / `registerTransform`：按 canvas 全量对齐计划接线，不是永久例外。
+- `getZr` / `getDataURL` / `renderToCanvas` / `appendData` / `setTheme` / `registerTheme` / `registerMap` / `connect` / `registerTransform` / `registerPreprocessor` / `registerProcessor` / `registerLayout` / `registerVisual` / `registerAction` / `registerCoordinateSystem` / `registerCustomSeries`：按 canvas 全量对齐计划接线，不是永久例外。
 
 **文档硬规则（与实现对齐同等重要）：**
 
@@ -198,7 +198,7 @@ site 示例 JS（创建 canvas；`echarts.init` / `setOption`）
 | **3 交互基础** | Handler.findHover、ECData、emphasis/select | **已完成**。Path/Image/Text 均可命中 |
 | **4 JS 薄壳 + API 骨架** | init/setOption/resize/事件、`OptionValue` | **部分完成**。`js/` facade 已有 `init`/`setOption(option, notMerge\|opts)`/`getOption`/`resize`/`clear`/`dispose`/`use`/`on`/`off`；`init(canvas)` 绑指针并内建 string tooltip |
 | **4b 回调桥** | CallbackDataParams、call0/1/2 | **部分完成**。`formatter` / `itemStyle.color` / `axisLabel.formatter` / `symbolSize` 回调可用；params 含 `componentType`/`seriesType`/`percent`/`data`。`renderItem` + `api.coord`/`size`/`style`/`value` 已接线（第 6 波）；per-series 缓存 **未完成** |
-| **5 echarts MVP** | GlobalModel、cartesian、line/bar、Scheduler | **部分完成**。line/bar 可渲染；`axisLabel.formatter`、`symbol`/`symbolSize`、`label.show`；`convertToPixel` 最小集。`replaceMerge` 仅为顶层 key；SeriesData/Source、media query **未完成** |
+| **5 echarts MVP** | GlobalModel、cartesian、line/bar、Scheduler | **部分完成**。line/bar 可渲染；`axisLabel.formatter`、`symbol`/`symbolSize`、`label.show`；`convertToPixel` 最小集。`replaceMerge` 仅为顶层 key。media query 已在第 7 波落地；完整 SeriesData 仍简化 |
 | **6 交互完善** | hover/tooltip/dataZoom/axisPointer | **部分完成**。`init(canvas)` 绑指针；hover 高亮、`on('click')`、string tooltip DOM、`showTip`/`hideTip`、inside 滚轮 + slider 拖动手柄、十字 axisPointer、`tooltip.trigger: 'axis'`。pinch、HTMLElement tooltip **未完成** |
 | **7 扩展与优化** | pie/scatter、RichText、脏矩形、视觉回归 | **部分完成**。官方 `export/charts.ts` 23 种图（含 chord）canvas 终态已接线（第 6 波）；RichText、脏矩形、golden PNG **未完成** |
 
@@ -599,7 +599,7 @@ chart-map, chart-lines, chart-parallel, chart-custom
 | `resize` | `resize()` 无参读 canvas；`resize({ width, height, devicePixelRatio })`；`'auto'` 回退到 canvas；亦接受 native `resize(w, h, dpr)` |
 | `clear` | `setOption({ series: [] }, true)` |
 | `getWidth` / `getHeight` / `getDevicePixelRatio` / `isDisposed` / `dispose` | 实例方法 |
-| `dispatchAction` | 已接线 type：`highlight` / `downplay` / `select` / `unselect` / `toggleSelect` / `dataZoom` / `showTip` / `hideTip` / `legendToggleSelect` / `legendSelect` / `legendUnSelect` / `restore` / `timelineChange` / `timelinePlayChange` / `takeGlobalCursor` / `brush` / `brushEnd` |
+| `dispatchAction` | 已接线 type：`highlight` / `downplay` / `select` / `unselect` / `toggleSelect` / `dataZoom` / `showTip` / `hideTip` / `legendToggleSelect` / `legendSelect` / `legendUnSelect` / `restore` / `timelineChange` / `timelinePlayChange` / `takeGlobalCursor` / `brush` / `brushEnd` / `expandAxisBreak` / `collapseAxisBreak` / `toggleAxisBreak`；`registerAction` 登记的自定义 type 也会调用 |
 | `getDom` / `getId` | `init` 后可取 |
 | `getZr` | `getZr()` 返回与 ChartView 共用 Storage 的 wasm-zrender 实例；无 SVG painter / hover layer；动画终态 |
 | `showLoading` / `hideLoading` | 静态半透明遮罩 + 文案；不播旋转动画 |
@@ -610,6 +610,11 @@ chart-map, chart-lines, chart-parallel, chart-custom
 | `registerTheme` / `setTheme` | 主题表；`init(dom, theme)` 与首次 `setOption` 把主题当默认项合并 |
 | `registerMap` / `getMap` / `parseGeoJSON` | JS 表 + WASM 表；`geo` 组件按已注册 GeoJSON 画区域。`parseGeoJSON` / `parseGeoJson` 返回 `{ name, center, polygons }` |
 | `registerTransform` | 内置 `filter` / `sort`；外部 `{ type, transform }` 登记后可被 dataset 调用 |
+| `registerPreprocessor` / `registerProcessor` / `registerLayout` / `registerVisual` | 真表；preprocessor 在 `setOption` 前改 option；processor 同样在入 WASM 前跑；layout/visual 在 setOption 后跑。`PRIORITY` 与官方同名 |
+| `registerAction` | 真表；`dispatchAction` 先调登记 handler，内建 type 仍走 native |
+| `registerCoordinateSystem` | 真表；`create(ecModel, api)` 的实例若有 `dataToPoint` / `pointToData` / `containPoint`，`convertToPixel` / `containPixel` 会用 |
+| `registerCustomSeries` | 真表；登记的 `series.type` 当 custom，缺 `renderItem` 时注入登记函数 |
+| `setPlatformAPI` | 真表存储（WASM 不用 DOM canvas 2d，调用方可读回） |
 | `graphic` / `util` / `number` / `time` / `format` / `helper` / `matrix` / `vector` / `color` / `env` | 命名空间已导出 |
 
 #### 2. 与官方不一致 / 例外
@@ -618,7 +623,7 @@ chart-map, chart-lines, chart-parallel, chart-custom
 |----|-------------|
 | `use(...)` | 导出但不按需加载；只提示「已编进 WASM，不必 use」 |
 | `init(null)` | 允许离屏（官方客户端无 dom 会抛错） |
-| 动画 | 不播中间帧；`lazyUpdate` 同步执行 |
+| 动画 | 不播中间帧；`lazyUpdate` 同步执行。`universalTransition` / `echarts.use(UniversalTransition)` 只跳终态，不做系列间插值 |
 | 渲染 | 仅 canvas；无 SVG / `renderToSVGString` / `getSvgDataURL` |
 | 字体 | 须从 `@wasm-echarts` 调 `registerFont`；WASM 不读系统字体。echarts 页只一份 WASM，与 `getZr` 共用 fontdb。zrender 文档站的 `wasm-zrender/pkg` 仍是另一份内存 |
 | `notMerge` | 只作 `setOption` 第二参数；写在 option 根上不会当合并开关 |
@@ -629,6 +634,10 @@ chart-map, chart-lines, chart-parallel, chart-custom
 | default export | wasm-bindgen `initWasm`，不是 echarts 命名空间对象 |
 | tooltip DOM | facade 内建简单 string HTML；不是官方 TooltipView；HTMLElement formatter 未实现 |
 | DataView / SaveAsImage | toolbox DataView 浮层与 SaveAsImage 的 DOM 下载条明确不做 |
+| 扩展 StageHandler | `registerProcessor` / `Layout` / `Visual` 拿到简化 `ecModel`（`getOption` / `eachSeries`），不是官方 GlobalModel / List |
+| LabelLayout | 终态 AABB `hideOverlap` / `moveOverlap`（shiftX/Y、shuffleX/Y）与 `dx`/`dy`；不是官方完整 LabelManager / OBB |
+| AxisBreak | `axis.breaks` 折叠比例尺 + 轴上折线标记；`expandAxisBreak` 等改 `isExpanded` 后终态重绘，无展开动画 |
+| ScatterJitter | `axis.jitter` 终态错开；`jitterOverlap: true` 用稳定哈希而非 `Math.random` |
 
 #### 3. 多出来的非官方 API
 
@@ -653,14 +662,14 @@ chart-map, chart-lines, chart-parallel, chart-custom
 | 范围 | 现状 |
 |------|------|
 | 图表 | 官方 `export/charts.ts` 23 种（含 chord）均已接线 canvas 终态（feature flag 写死在 rust，不是 `echarts.use(BarChart)`）；默认全开 |
-| cartesian | 多 `grid` / `xAxis[]` / `yAxis[]`（`gridIndex` / `xAxisIndex` / `yAxisIndex`）；`type: category \| value \| time \| log`；y 类目 + x 数值时横画（bar 水平柱、line 对调）；`convertToPixel`/`convertFromPixel`/`containPixel` 按 finder 取轴 |
+| cartesian | 多 `grid` / `xAxis[]` / `yAxis[]`（`gridIndex` / `xAxisIndex` / `yAxisIndex`）；`type: category \| value \| time \| log`；`breaks` 折叠未展开区间；`jitter` 给 scatter 终态错开；y 类目 + x 数值时横画（bar 水平柱、line 对调）；`convertToPixel`/`convertFromPixel`/`containPixel` 按 finder 取轴 |
 | dataset | `source`（二维数组 / 对象行 / 列对象）/`dimensions` / `seriesLayoutBy` / `datasetIndex` / `datasetId` / `encode`；无 `series.data` 时从 dataset 取数 |
 | transform | 内置 `filter` / `sort`（`fromDatasetIndex` / `fromDatasetId`）；`registerTransform` 接外部 JS |
 | stack / sampling | `stack` + `stackStrategy`（samesign/all/positive/negative）line 与 bar 共用偏移；`sampling: lttb \| average` 按 grid 宽度降采样 |
 | line | Polyline；`smooth`（bool→0.5 或数字）/`step`（start/middle/end）/`connectNulls`（`null`/`'-'` 保留为 NaN 缺口）；`areaStyle`（默认透明度 0.7，色可为 `LinearGradient`，`origin`：auto/start/end/数值）；`lineStyle.width`/`type`（solid/dashed/dotted 或 dash 数组）；`endLabel.show`；`symbol`/`symbolSize`；`stack`/`sampling`；value/time/log 用 `x_value`；`coordinateSystem: 'polar'` 按 [radius, angle] 画 |
 | bar | Rect（cartesian，含 y 类目水平柱）；polar 下为 Sector；同轴多系列并排（同 `stack` 共用列）；`barWidth`/`barGap`（默认 10%）/`barCategoryGap`/`barMinHeight`；`itemStyle.borderRadius`；`stack` 从 `stack_base` 画到 `stacked_value` |
 | pie | Sector；`center`/`radius`/`startAngle`/`clockwise`；`roseType: radius\|area`；`selectedMode` + `selectedOffset`（含 data.`selected`）；`minShowLabelAngle`；label 同侧 y 间距跳过（不是官方完整避让）+ `labelLine` |
-| scatter | 双 value 轴；也可挂 polar / geo / calendar / single / matrix；`symbol`（circle/rect/roundRect/triangle/diamond/pin/arrow/star/line 及 empty*）；`symbolSize`（默认 10）；`large` 且点数 ≥ `largeThreshold`（默认 2000）时终态一次画完、不挂 emphasis 状态、不画 label |
+| scatter | 双 value 轴；也可挂 polar / geo / calendar / single / matrix；`symbol`（circle/rect/roundRect/triangle/diamond/pin/arrow/star/line 及 empty*）；`symbolSize`（默认 10）；`large` 且点数 ≥ `largeThreshold`（默认 2000）时终态一次画完、不挂 emphasis 状态、不画 label；类目轴 `jitter` / `jitterOverlap` / `jitterMargin` |
 | radar | 按 `radar.indicator` 把 `data[].value[]` 投到蛛网，画 Polygon；可读 `areaStyle` / `lineStyle` |
 | gauge | 轴环 Sector + 指针终态 + detail/label；`min`/`max`/`startAngle`/`endAngle`/`center`/`radius` |
 | candlestick / boxplot | cartesian；K 线 `[open,close,low,high]`（或带 x 的 5 项）；箱线 `[min,Q1,median,Q3,max]`；涨跌色 `itemStyle.color`/`color0` |
@@ -675,7 +684,7 @@ chart-map, chart-lines, chart-parallel, chart-custom
 | parallel | 平行坐标每条数据一条 Polyline |
 | custom | `renderItem(params, api)`；`api.coord`/`size`/`style`/`value`；产出 graphic 进同一 Zr |
 | tooltip.formatter | 返回 string 时可用；CallbackDataParams 含 `componentType`/`seriesType`/`percent`（pie）/`data` |
-| series.label | `label.show` + formatter（`{a}`/`{b}`/`{c}`/`{d}` 或函数）画 Text |
+| series.label | `label.show` + formatter（`{a}`/`{b}`/`{c}`/`{d}` 或函数）画 Text；`labelLayout` 终态 `hideOverlap` / `moveOverlap` / `dx`/`dy` |
 | 轴标签 | `axisLabel.formatter` 函数或 `'{value}'` 模板真正进 Text |
 | emphasis/select | 图元 state + `dispatchAction` 六个 type |
 | dataZoom | `type: 'inside'` 滚轮改 start/end；`type: 'slider'` canvas 手柄/填充条可拖；读 `xAxisIndex`（只缩放对应轴） |
@@ -695,20 +704,22 @@ chart-map, chart-lines, chart-parallel, chart-custom
 | Loading / 导出图 | `showLoading` 静态遮罩；`getDataURL` / `renderToCanvas`（canvas PNG/JPEG） |
 | 主题 / 地图表 / connect | `registerTheme`/`setTheme`；`registerMap`/`getMap`/`parseGeoJSON`；`geo` 画已注册地图；`connect` 转发 action |
 | `appendData` / `containPixel` | 追加 series.data；`containPixel` 按 finder 查对应 grid / polar / geo 等 |
+| media | `option.media` 按 `minWidth`/`maxWidth`/`minHeight`/`maxHeight`/`aspectRatio` 匹配；后者优先；无匹配用无 query 的默认项；`resize` 重算 |
+| 扩展注册 | `registerPreprocessor` / `Processor` / `Layout` / `Visual` / `Action` / `CoordinateSystem` / `CustomSeries` 真表；`PRIORITY` |
 
 **未实现（按 canvas 全量对齐计划补齐，不是永久例外）**
 
-已导出同名、内部只 `console.warn`：`registerLocale` / `setPlatformAPI` / `registerPreprocessor`。
+已导出同名、内部只 `console.warn`：`registerLocale`。
 
 实例上尚未做完：`convertToLayout` / `getVisual`。
 
-Charts：未识别的 `series.type` 会 `console.warn`（不再静默当 `Other`）。已接线图表的视觉/布局相对官方仍有简化（force 布局不迭代、桑基非完整节点平衡、tree 非 tidy、chord 用贝塞尔而非丝带、pictorialBar 非全部 symbolClip 语义）。
+Charts：未识别的 `series.type` 会 `console.warn`（不再静默当 `Other`；`registerCustomSeries` 登记过的 type 当 custom）。已接线图表的视觉/布局相对官方仍有简化（force 布局不迭代、桑基非完整节点平衡、tree 非 tidy、chord 用贝塞尔而非丝带、pictorialBar 非全部 symbolClip 语义）。
 
 Components：geo roam / SVG 地图源。aria 写 DOM 属性非绘制，可后置。toolbox DataView DOM / SaveAsImage 下载条明确不做。
 
 Actions：geo roam 等。
 
-其它：media query、完整 SeriesData。`smoothMonotone` 未接。pie label 不是官方完整 `avoidLabelOverlap`。scatter `large` 仍每点一个 Path（跳过状态与 label，不是 IncrementalDisplayable）。
+其它：完整 SeriesData。`smoothMonotone` 未接。pie label 不是官方完整 `avoidLabelOverlap`。scatter `large` 仍每点一个 Path（跳过状态与 label，不是 IncrementalDisplayable）。`UniversalTransition` 只终态。
 
 **名字在 option 里出现但未按官方做：** `smoothMonotone`；色板不是官方 palette 全套；pie 完整标签避让。
 
@@ -720,9 +731,10 @@ Actions：geo roam 等。
 
 | 文件 | 职责 |
 |------|------|
-| `index.js` | 官方命名导出；`default` 仍是 `initWasm`；`version = '6.1.0'`；另导出 `registerFont` / 命名空间 / `parseGeoJSON` |
-| `echarts.js` | `init` / `dispose` / `use`；`connect` / `registerTheme` / `registerMap` / `parseGeoJSON` / `registerTransform`；命名空间再导出 |
-| `instance.js` | camelCase 实例；`getZr` / `showLoading` / `getDataURL` / `appendData` / `setTheme` / `containPixel`；指针与 tooltip |
+| `index.js` | 官方命名导出；`default` 仍是 `initWasm`；`version = '6.1.0'`；另导出 `registerFont` / 命名空间 / `parseGeoJSON` / 扩展注册 |
+| `echarts.js` | `init` / `dispose` / `use`；`connect` / `registerTheme` / `registerMap` / `parseGeoJSON` / `registerTransform` / 扩展注册再导出；命名空间再导出 |
+| `extension.js` | `registerPreprocessor` / `Processor` / `Layout` / `Visual` / `Action` / `CoordinateSystem` / `CustomSeries` / `PRIORITY` / `setPlatformAPI` |
+| `instance.js` | camelCase 实例；`getZr` / `showLoading` / `getDataURL` / `appendData` / `setTheme` / `containPixel`；指针与 tooltip；setOption 跑 preprocessor/processor |
 | `graphic.js` / `util.js` / `number.js` / `time.js` / `format.js` / `helper.js` / `env.js` | `export/api.ts` 命名空间 |
 | `native.js` | 加载 `pkg/wasm_echarts.js` 并 `setNative` 注入 wasm-zrender |
 | `wasm_echarts.js` | 兼容旧路径 `@wasm-echarts/wasm_echarts.js` |
@@ -1157,7 +1169,7 @@ npm run dev
 - 第 4 波（已落地）：legend 点击筛选、title 布局、mark*、`option.graphic`、visualMap、dataZoom slider、axisPointer 十字 + `tooltip.trigger: 'axis'`、brush、timeline、toolbox canvas 按钮、thumbnail
 - 第 5 波（已落地）：polar / radar / singleAxis / parallel / calendar / matrix / geo
 - 第 6 波（已落地）：其余官方图表 + `custom` `renderItem`/`api`；feature 默认全开
-- 第 7 波：扩展注册与 LabelLayout / AxisBreak / media；UniversalTransition 终态
+- 第 7 波（已落地）：扩展注册真表、`labelLayout`、`axis.breaks`、`axis.jitter`、`option.media`；UniversalTransition 终态
 - 第 8 波：官网画廊按类同步 + probe
 - 视觉回归（echarts `test/*.html` → golden PNG）；JS vs WASM 基准报告
 

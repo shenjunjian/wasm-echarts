@@ -1,6 +1,9 @@
 //! 坐标轴刻度标签与轴名称（含多轴、time / log）
 
-use rust_zrender::{TextAlign, TextBaseline, ZRenderer};
+use rust_zrender::{
+    ChildRef, FillStrokeStyle, LineShape, Path, PathStyle, Shape, TextAlign, TextBaseline,
+    ZRenderer,
+};
 use wasm_bindgen::JsValue;
 
 use crate::bridge::resolve_axis_formatter;
@@ -47,6 +50,7 @@ pub fn render_axis_labels(
         render_one_y(zr, group, axis, &coord, opt);
         render_one_name(zr, group, coord.grid(), opt, false);
     }
+    render_axis_breaks(zr, group, model);
 }
 
 fn axis_option_at<'a>(option: &'a OptionModel, key: &str, index: usize) -> Option<&'a OptionValue> {
@@ -136,6 +140,9 @@ fn render_one_x(
     }
     let ticks = axis_ticks(axis);
     for (i, value) in ticks.iter().enumerate() {
+        if axis.is_inside_break(*value) {
+            continue;
+        }
         let fallback = format_axis_tick(axis, *value, None);
         let label = format_tick(formatter, &fallback, i as u32, Some(*value));
         let (x, _) = coord.value_to_point(*value, coord.y_axis().value_min());
@@ -156,6 +163,9 @@ fn render_one_y(
     let style = axis_label_style(axis_opt);
     let ticks = axis_ticks(axis);
     for (i, value) in ticks.iter().enumerate() {
+        if axis.is_inside_break(*value) {
+            continue;
+        }
         let fallback = format_axis_tick(axis, *value, None);
         let label = format_tick(formatter, &fallback, i as u32, Some(*value));
         let (_, y) = coord.value_to_point(coord.x_axis().value_min(), *value);
@@ -193,6 +203,77 @@ fn log_ticks(min: f64, max: f64, base: f64) -> Vec<f64> {
         ticks = vec![min, max];
     }
     ticks
+}
+
+fn render_axis_breaks(zr: &mut ZRenderer, group: usize, model: &GlobalModel) {
+    for (i, axis) in model.x_axes.iter().enumerate() {
+        if !axis.has_breaks() {
+            continue;
+        }
+        let y_idx = model
+            .y_axes
+            .iter()
+            .position(|y| y.grid_index == axis.grid_index)
+            .unwrap_or(0);
+        let coord = Cartesian2D::for_axes(model, i, y_idx);
+        let g = coord.grid();
+        for brk in axis.active_breaks() {
+            let x = coord.x_value_to_pixel(brk.start);
+            add_break_mark(zr, group, x - 4.0, g.y + g.height - 6.0, x + 4.0, g.y + g.height + 6.0);
+        }
+    }
+    for (i, axis) in model.y_axes.iter().enumerate() {
+        if !axis.has_breaks() {
+            continue;
+        }
+        let x_idx = model
+            .x_axes
+            .iter()
+            .position(|x| x.grid_index == axis.grid_index)
+            .unwrap_or(0);
+        let coord = Cartesian2D::for_axes(model, x_idx, i);
+        let g = coord.grid();
+        for brk in axis.active_breaks() {
+            let y = coord.y_value_to_pixel(brk.start);
+            add_break_mark(zr, group, g.x - 6.0, y - 4.0, g.x + 6.0, y + 4.0);
+        }
+    }
+}
+
+fn add_break_mark(zr: &mut ZRenderer, group: usize, x1: f64, y1: f64, x2: f64, y2: f64) {
+    let mid_x = (x1 + x2) * 0.5;
+    let idx1 = zr.storage.create_path(Path::new(
+        Shape::Line(LineShape {
+            x1,
+            y1: y2,
+            x2: mid_x,
+            y2: y1,
+            percent: 1.0,
+        }),
+        PathStyle {
+            fill: FillStrokeStyle::none(),
+            stroke: FillStrokeStyle::color("#333"),
+            line_width: 1.5,
+            ..Default::default()
+        },
+    ));
+    let idx2 = zr.storage.create_path(Path::new(
+        Shape::Line(LineShape {
+            x1: mid_x,
+            y1: y2,
+            x2,
+            y2: y1,
+            percent: 1.0,
+        }),
+        PathStyle {
+            fill: FillStrokeStyle::none(),
+            stroke: FillStrokeStyle::color("#333"),
+            line_width: 1.5,
+            ..Default::default()
+        },
+    ));
+    zr.storage.group_add_child(group, ChildRef::Path(idx1));
+    zr.storage.group_add_child(group, ChildRef::Path(idx2));
 }
 
 fn render_one_name(

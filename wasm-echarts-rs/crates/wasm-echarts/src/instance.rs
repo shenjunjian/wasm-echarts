@@ -480,6 +480,15 @@ impl EChartsInstance {
                     .unwrap_or("");
                 self.interaction.toolbox_zoom_select = key == "dataZoomSelect";
             }
+            "expandAxisBreak" | "collapseAxisBreak" | "toggleAxisBreak" => {
+                let expand = match action_type {
+                    "expandAxisBreak" => Some(true),
+                    "collapseAxisBreak" => Some(false),
+                    _ => None,
+                };
+                apply_axis_break_action(&mut self.option, &parsed, expand);
+                self.render_and_apply_states();
+            }
             "brush" | "brushEnd" => {
                 // 选区由指针拖拽写入；此处接受 payload.areas 最小集
                 if let Some(areas) = parsed.get("areas").and_then(|v| v.as_array()) {
@@ -572,7 +581,11 @@ impl EChartsInstance {
 
 impl EChartsInstance {
     fn effective_option(&self) -> OptionModel {
-        OptionModel::with_root(self.option.effective_root(self.interaction.timeline_index))
+        OptionModel::with_root(self.option.effective_root(
+            self.interaction.timeline_index,
+            self.width as f64,
+            self.height as f64,
+        ))
     }
 
     fn current_model(&self) -> GlobalModel {
@@ -745,6 +758,42 @@ fn apply_state_to_zr(zr: &mut ZRenderer, target: DataTarget, state: &str) {
             && ec.data_index == Some(target.data_index)
         {
             zr.set_path_state(i, state);
+        }
+    }
+}
+
+fn apply_axis_break_action(option: &mut OptionModel, parsed: &OptionValue, expanded: Option<bool>) {
+    let breaks = parsed
+        .get("breaks")
+        .and_then(|v| v.as_array())
+        .map(|a| a.to_vec())
+        .unwrap_or_default();
+    if breaks.is_empty() {
+        return;
+    }
+    let targets = [
+        ("xAxis", parsed.get("xAxisIndex").and_then(|v| v.as_f64()).map(|n| n.max(0.0) as usize)),
+        ("yAxis", parsed.get("yAxisIndex").and_then(|v| v.as_f64()).map(|n| n.max(0.0) as usize)),
+        (
+            "singleAxis",
+            parsed
+                .get("singleAxisIndex")
+                .and_then(|v| v.as_f64())
+                .map(|n| n.max(0.0) as usize),
+        ),
+    ];
+    let specified = targets.iter().any(|(_, idx)| idx.is_some());
+    for item in &breaks {
+        let start = item.get("start").and_then(|v| v.as_f64());
+        let end = item.get("end").and_then(|v| v.as_f64());
+        let (Some(start), Some(end)) = (start, end) else {
+            continue;
+        };
+        for (key, idx) in targets {
+            if specified && idx.is_none() {
+                continue;
+            }
+            option.set_axis_break_expanded(key, idx.unwrap_or(0), start, end, expanded);
         }
     }
 }

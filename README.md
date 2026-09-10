@@ -132,13 +132,14 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 
 #### 1. 与官方一致的公开 API
 
-`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version`（`'6.1.0'`）/ `use`（只提示）；`connect` / `disconnect` / `registerTheme` / `registerMap` / `getMap` / `parseGeoJSON`；命名空间 `graphic` / `util` / `number` / `time` / `format` / `helper` / `matrix` / `vector` / `color` / `env`。实例 `setOption` / `getOption` / `resize` / `clear` / `dispatchAction` / `on` / `off` / `getWidth` / `getHeight` / `getDevicePixelRatio` / `isDisposed` / `dispose` / `getDom` / `getId` / `convertToPixel` / `convertFromPixel` / `containPixel` / `getZr` / `showLoading` / `hideLoading` / `getDataURL` / `renderToCanvas` / `appendData` / `setTheme`。`init(canvas)` 后 `setOption` 自动上屏，并绑定指针（`click` / `mouseover` / `mouseout` / `globalout`）。`dispatchAction` 已接线：`highlight` / `downplay` / `select` / `unselect` / `toggleSelect` / `dataZoom` / `showTip` / `hideTip` / `legendToggleSelect` / `legendSelect` / `legendUnSelect` / `restore` / `timelineChange` / `brush`。
+`init` / `dispose` / `getInstanceByDom` / `getInstanceById` / `version`（`'6.1.0'`）/ `use`（只提示）；`connect` / `disconnect` / `registerTheme` / `registerMap` / `getMap` / `parseGeoJSON`；`registerPreprocessor` / `registerProcessor` / `registerLayout` / `registerVisual` / `registerAction` / `registerCoordinateSystem` / `registerCustomSeries` / `PRIORITY`；命名空间 `graphic` / `util` / `number` / `time` / `format` / `helper` / `matrix` / `vector` / `color` / `env`。实例 `setOption` / `getOption` / `resize` / `clear` / `dispatchAction` / `on` / `off` / `getWidth` / `getHeight` / `getDevicePixelRatio` / `isDisposed` / `dispose` / `getDom` / `getId` / `convertToPixel` / `convertFromPixel` / `containPixel` / `getZr` / `showLoading` / `hideLoading` / `getDataURL` / `renderToCanvas` / `appendData` / `setTheme`。`init(canvas)` 后 `setOption` 自动上屏，并绑定指针（`click` / `mouseover` / `mouseout` / `globalout`）。`dispatchAction` 已接线：`highlight` / `downplay` / `select` / `unselect` / `toggleSelect` / `dataZoom` / `showTip` / `hideTip` / `legendToggleSelect` / `legendSelect` / `legendUnSelect` / `restore` / `timelineChange` / `brush` / `expandAxisBreak` / `collapseAxisBreak` / `toggleAxisBreak`。
 
 #### 2. 与官方不一致 / 例外
 
 - `use(...)` 导出但不按需加载，只 `console.info` 提示已编进 WASM。
 - `init(null)` 允许离屏；仅 canvas，无 SVG。
-- 动画终态；`lazyUpdate` 同步。
+- 动画终态；`lazyUpdate` 同步。`universalTransition` 只跳终态，不插值。
+- 扩展 StageHandler 拿到简化 `ecModel`（`getOption` / `eachSeries`），不是官方 GlobalModel。`labelLayout` / `axis.breaks` / `axis.jitter` 是 canvas 终态实现。
 - 字体：WASM 不读系统字体。须从 `@wasm-echarts` 调 `registerFont`。echarts 页与 `getZr` 共用同一份 fontdb；zrender 文档站的 pkg 仍是另一份内存。
 - `getZr()` 返回与 ChartView 共用 Storage 的 wasm-zrender 实例；无 SVG painter / hover layer；动画终态。
 - `showLoading` / `hideLoading` 导出，静态半透明遮罩 + 文案，不播旋转动画。
@@ -163,8 +164,8 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 
 #### 4. 已实现 / 未实现
 
-- **已实现（部分生效）**：官方 `export/charts.ts` 23 种图（含 chord）canvas 终态；`custom` `renderItem` + `api.coord`/`size`/`style`；line / bar / pie / scatter 的 canvas option 族（含 polar 与 y 类目横画）；多 cartesian（grid / 轴 / time / log）；polar / radar / singleAxis / parallel / calendar / matrix / geo 坐标系；dataset / transform / encode / stack / sampling；`getZr` 共用 Storage；`graphic`/`util`/`time` 等命名空间；legend 点击筛选、title 布局、mark*、`option.graphic`、visualMap、dataZoom slider + inside、十字 axisPointer、`tooltip.trigger: 'axis'`、brush、timeline、toolbox canvas 按钮、thumbnail；`registerTransform`；`showLoading` 静态遮罩；`getDataURL`/`renderToCanvas`；`connect`/`registerTheme`/`registerMap`/`parseGeoJSON`；`appendData`/`containPixel`；`axisLabel.formatter`；series label；CallbackDataParams；`convertToPixel` 含非 cartesian finder；`on`/`off` 指针事件；内建 string tooltip；`showTip`/`hideTip`；hover / toggleSelect。
-- **未实现（按 canvas 全量对齐计划补齐，不是永久例外）**：已导出只 `console.warn` 的有 `registerPreprocessor` / `registerLocale` / `setPlatformAPI`。扩展注册、LabelLayout、media、`smoothMonotone` 见 [AGENT.md](AGENT.md) 与 [echarts 文档](wasm-echarts-rs/site/echarts/docs/index.html)。未识别的 `series.type` 会 warn，不再静默忽略。
+- **已实现（部分生效）**：官方 `export/charts.ts` 23 种图（含 chord）canvas 终态；`custom` `renderItem` + `api.coord`/`size`/`style`；line / bar / pie / scatter 的 canvas option 族（含 polar 与 y 类目横画）；多 cartesian（grid / 轴 / time / log / `breaks` / `jitter`）；polar / radar / singleAxis / parallel / calendar / matrix / geo 坐标系；dataset / transform / encode / stack / sampling；`option.media` 按宽高切 option；`labelLayout` 终态避让；`getZr` 共用 Storage；`graphic`/`util`/`time` 等命名空间；legend 点击筛选、title 布局、mark*、`option.graphic`、visualMap、dataZoom slider + inside、十字 axisPointer、`tooltip.trigger: 'axis'`、brush、timeline、toolbox canvas 按钮、thumbnail；`registerTransform` 与扩展注册真表（`registerPreprocessor` / `Processor` / `Layout` / `Visual` / `Action` / `CoordinateSystem` / `CustomSeries`）；`showLoading` 静态遮罩；`getDataURL`/`renderToCanvas`；`connect`/`registerTheme`/`registerMap`/`parseGeoJSON`；`appendData`/`containPixel`；`axisLabel.formatter`；series label；CallbackDataParams；`convertToPixel` 含非 cartesian finder；`on`/`off` 指针事件；内建 string tooltip；`showTip`/`hideTip`；hover / toggleSelect。
+- **未实现（按 canvas 全量对齐计划补齐，不是永久例外）**：已导出只 `console.warn` 的有 `registerLocale`。`smoothMonotone`、完整 SeriesData、pie 完整 `avoidLabelOverlap` 见 [AGENT.md](AGENT.md) 与 [echarts 文档](wasm-echarts-rs/site/echarts/docs/index.html)。未识别的 `series.type` 会 warn，不再静默忽略。
 
 native `EChartsInstance`（`wasm_echarts.d.ts`）是内部 handle，不要从 site 直接 `new`。
 

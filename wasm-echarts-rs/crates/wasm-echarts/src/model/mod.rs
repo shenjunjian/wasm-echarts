@@ -10,7 +10,7 @@ pub use coords::{
     option_index, parse_coord_kind, polar_data_pair, CalendarSpec, GeoRegion, GeoSpec, MatrixSpec,
     ParallelAxisSpec, ParallelSpec, PolarSpec, RadarSpec, SingleAxisSpec,
 };
-pub use series::{CoordSysKind, DataPoint, SeriesModel, SeriesType};
+pub use series::{register_custom_series_type, CoordSysKind, DataPoint, SeriesModel, SeriesType};
 
 use crate::data::{build_series, cell_text, numeric_or_time};
 use crate::interaction::DataZoomRange;
@@ -311,6 +311,7 @@ fn default_axis(fallback_type: AxisType, is_x: bool, root: &OptionValue) -> Axis
         max: None,
         grid_index: 0,
         log_base: 10.0,
+        ..Default::default()
     };
     if is_x && axis.axis_type.is_category() {
         axis.category_data = fallback_categories(root);
@@ -329,6 +330,7 @@ fn parse_one_axis(comp: &OptionValue, fallback_type: AxisType, _is_x: bool) -> A
         .and_then(|v| v.as_array())
         .map(|arr| arr.iter().map(cell_text).collect())
         .unwrap_or_default();
+    let (jitter, jitter_overlap, jitter_margin) = crate::model::axis::parse_axis_jitter(comp);
     AxisModel {
         axis_type,
         category_data: categories,
@@ -344,6 +346,10 @@ fn parse_one_axis(comp: &OptionValue, fallback_type: AxisType, _is_x: bool) -> A
             .and_then(|v| v.as_f64())
             .filter(|n| *n > 1.0)
             .unwrap_or(10.0),
+        breaks: crate::model::axis::parse_axis_breaks(comp),
+        jitter,
+        jitter_overlap,
+        jitter_margin,
     }
 }
 

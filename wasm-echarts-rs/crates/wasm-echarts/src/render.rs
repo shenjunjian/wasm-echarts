@@ -22,7 +22,11 @@ pub fn render_chart(
     if option.is_empty() {
         return;
     }
-    let effective = OptionModel::with_root(option.effective_root(interaction.timeline_index));
+    let effective = OptionModel::with_root(option.effective_root(
+        interaction.timeline_index,
+        width as f64,
+        height as f64,
+    ));
     let model = GlobalModel::from_option_with_zoom(&effective, width, height, interaction.data_zoom);
     let group = zr.storage.create_group();
     zr.storage.group_mut(group).base.name = CHART_ROOT_NAME.to_string();

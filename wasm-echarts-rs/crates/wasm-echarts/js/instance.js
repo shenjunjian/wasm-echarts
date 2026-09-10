@@ -1,6 +1,15 @@
 import { wrapZRender } from '../../wasm-zrender/js/zrender.js';
 import { clone, merge } from './util.js';
 import { connectedGroups, themes } from './shared.js';
+import {
+  prepareIncomingOption,
+  runProcessors,
+  runLayoutAndVisual,
+  dispatchRegisteredAction,
+  createRegisteredCoordSystems,
+  convertByRegisteredCoord,
+  containByRegisteredCoord,
+} from './extension.js';
 
 /** @type {Map<string, ECharts>} */
 export const instances = new Map();
@@ -199,6 +208,8 @@ export class ECharts {
     this._wheelZoomOn = false;
     this._zr = null;
     this._loadingEl = null;
+    /** @type {object[]} */
+    this._coordSysList = [];
     this._onMove = this._onPointerMove.bind(this);
     this._onClick = this._onPointerClick.bind(this);
     this._onLeave = this._onPointerLeave.bind(this);
@@ -562,11 +573,13 @@ export class ECharts {
     if (theme && (flags.notMerge || !this.hasOption())) {
       payload = merge(clone(theme), option);
     }
+    payload = prepareIncomingOption(payload, flags.notMerge || !this.hasOption());
+    runProcessors(this, payload);
     this._native.set_option(payload, {
       notMerge: flags.notMerge,
       replaceMerge: flags.replaceMerge,
     });
-    this._syncOptionFlags();
+    this._afterNativeOption();
     if (!this._tooltipOn) {
       this._hideTooltip();
     }
@@ -615,6 +628,7 @@ export class ECharts {
       dpr = toPositiveNumber(dprArg) ?? currentDpr;
     }
     this._native.resize(width, height, dpr);
+    this._refreshRegisteredCoords();
     this._paintIfBound();
   }
 
@@ -624,7 +638,10 @@ export class ECharts {
 
   dispatchAction(payload) {
     this._assertAlive();
-    this._native.dispatch_action(payload);
+    const registered = dispatchRegisteredAction(this, payload);
+    if (registered.runNative) {
+      this._native.dispatch_action(payload);
+    }
     this._paintIfBound();
     const type = payload && payload.type;
     if (type === 'showTip') {
@@ -633,6 +650,8 @@ export class ECharts {
     } else if (type === 'hideTip') {
       this._hideTooltip();
       this._emit('hideTip', payload);
+    } else if (registered.handled && registered.event) {
+      this._emit(registered.event, payload);
     }
     this._forwardConnect(payload);
   }
@@ -824,16 +843,28 @@ export class ECharts {
    */
   convertToPixel(finder, value) {
     this._assertAlive();
+    const custom = convertByRegisteredCoord(this, finder, value, true);
+    if (custom != null) {
+      return custom;
+    }
     return this._native.convert_to_pixel(finder, value);
   }
 
   convertFromPixel(finder, value) {
     this._assertAlive();
+    const custom = convertByRegisteredCoord(this, finder, value, false);
+    if (custom != null) {
+      return custom;
+    }
     return this._native.convert_from_pixel(finder, value);
   }
 
   containPixel(finder, value) {
     this._assertAlive();
+    const custom = containByRegisteredCoord(this, finder, value);
+    if (custom != null) {
+      return custom;
+    }
     return !!this._native.containPixel(finder, value);
   }
 
@@ -935,7 +966,18 @@ export class ECharts {
     const themeObj = resolveTheme(theme);
     const payload = themeObj ? merge(clone(themeObj), current) : current;
     this._native.set_option(payload, { notMerge: true, replaceMerge: [] });
-    this._syncOptionFlags();
+    this._afterNativeOption();
     this._paintIfBound();
+  }
+
+  _afterNativeOption() {
+    this._syncOptionFlags();
+    this._refreshRegisteredCoords();
+    const current = this.getOption();
+    runLayoutAndVisual(this, current);
+  }
+
+  _refreshRegisteredCoords() {
+    this._coordSysList = createRegisteredCoordSystems(this);
   }
 }

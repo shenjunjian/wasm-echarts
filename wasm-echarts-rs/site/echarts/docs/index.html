@@ -169,7 +169,7 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td>动画</td>
-            <td>不播中间帧；<code>setOption</code> / <code>animation</code> 直接终态。<code>lazyUpdate</code> / <code>silent</code> 同步 flush</td>
+            <td>不播中间帧；<code>setOption</code> / <code>animation</code> / <code>universalTransition</code> 直接终态（无系列间插值）。<code>lazyUpdate</code> / <code>silent</code> 同步 flush</td>
           </tr>
           <tr>
             <td>字体</td>
@@ -202,6 +202,14 @@ chart.on('click', (params) => {
           <tr>
             <td>tooltip</td>
             <td>facade 内建简单 string HTML DOM，不是官方 TooltipView；HTMLElement formatter 未实现</td>
+          </tr>
+          <tr>
+            <td>扩展 StageHandler</td>
+            <td><code>registerProcessor</code> / <code>Layout</code> / <code>Visual</code> 拿到简化 <code>ecModel</code>（<code>getOption</code> / <code>eachSeries</code>），不是官方 GlobalModel / List</td>
+          </tr>
+          <tr>
+            <td>LabelLayout / AxisBreak / Jitter</td>
+            <td>终态 AABB 避让、比例尺折叠 + 折线标记、稳定哈希 jitter；无官方展开动画 / OBB / <code>Math.random</code></td>
           </tr>
         </tbody>
       </table>
@@ -273,7 +281,7 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td>cartesian</td>
-            <td>多 <code>grid</code> / <code>xAxis[]</code> / <code>yAxis[]</code>；<code>type: category | value | time | log</code>；y 类目横画；<code>convertToPixel</code> / <code>convertFromPixel</code> / <code>containPixel</code> 按 finder 取轴</td>
+            <td>多 <code>grid</code> / <code>xAxis[]</code> / <code>yAxis[]</code>；<code>type: category | value | time | log</code>；<code>breaks</code> 折叠未展开区间；<code>jitter</code> 给 scatter 终态错开；y 类目横画；<code>convertToPixel</code> / <code>convertFromPixel</code> / <code>containPixel</code> 按 finder 取轴</td>
           </tr>
           <tr>
             <td>dataset / transform</td>
@@ -297,7 +305,7 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td>scatter</td>
-            <td>双 value 轴；也可挂 polar / geo / calendar / single / matrix；<code>symbol</code> 与 <code>symbolSize</code>；<code>large</code> 且点数 ≥ <code>largeThreshold</code> 时终态一次画完、不挂 emphasis、不画 label</td>
+            <td>双 value 轴；也可挂 polar / geo / calendar / single / matrix；<code>symbol</code> 与 <code>symbolSize</code>；<code>large</code> 且点数 ≥ <code>largeThreshold</code> 时终态一次画完、不挂 emphasis、不画 label；类目轴 <code>jitter</code></td>
           </tr>
           <tr>
             <td>第 6 波图表</td>
@@ -305,7 +313,7 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td>轴</td>
-            <td>轴标签 Text；<code>axisLabel.formatter</code>（函数或 <code>{value}</code> 模板）；<code>xAxis.name</code> / <code>yAxis.name</code>；polar / radar / singleAxis / parallel / calendar / matrix / geo 底图</td>
+            <td>轴标签 Text；<code>axisLabel.formatter</code>（函数或 <code>{value}</code> 模板）；<code>xAxis.name</code> / <code>yAxis.name</code>；<code>breaks</code> 折叠 + 折线标记；polar / radar / singleAxis / parallel / calendar / matrix / geo 底图</td>
           </tr>
           <tr>
             <td>title / legend</td>
@@ -329,7 +337,7 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td><code>dispatchAction</code></td>
-            <td><code>highlight</code> / <code>downplay</code> / <code>select</code> / <code>unselect</code> / <code>toggleSelect</code> / <code>dataZoom</code> / <code>showTip</code> / <code>hideTip</code> / <code>legendToggleSelect</code> / <code>legendSelect</code> / <code>legendUnSelect</code> / <code>restore</code> / <code>timelineChange</code> / <code>brush</code></td>
+            <td><code>highlight</code> / <code>downplay</code> / <code>select</code> / <code>unselect</code> / <code>toggleSelect</code> / <code>dataZoom</code> / <code>showTip</code> / <code>hideTip</code> / <code>legendToggleSelect</code> / <code>legendSelect</code> / <code>legendUnSelect</code> / <code>restore</code> / <code>timelineChange</code> / <code>brush</code> / <code>expandAxisBreak</code> / <code>collapseAxisBreak</code> / <code>toggleAxisBreak</code>；以及 <code>registerAction</code> 登记的 type</td>
           </tr>
           <tr>
             <td><code>getZr</code> / 命名空间</td>
@@ -337,23 +345,27 @@ chart.on('click', (params) => {
           </tr>
           <tr>
             <td>实例 API</td>
-            <td><code>showLoading</code>（静态遮罩）/<code>getDataURL</code>/<code>renderToCanvas</code>/<code>appendData</code>/<code>setTheme</code>/<code>containPixel</code>；全局 <code>connect</code>/<code>registerTheme</code>/<code>registerMap</code>/<code>parseGeoJSON</code>/<code>registerTransform</code></td>
+            <td><code>showLoading</code>（静态遮罩）/<code>getDataURL</code>/<code>renderToCanvas</code>/<code>appendData</code>/<code>setTheme</code>/<code>containPixel</code>；全局 <code>connect</code>/<code>registerTheme</code>/<code>registerMap</code>/<code>parseGeoJSON</code>/<code>registerTransform</code>；扩展注册真表（<code>registerPreprocessor</code> / <code>Processor</code> / <code>Layout</code> / <code>Visual</code> / <code>Action</code> / <code>CoordinateSystem</code> / <code>CustomSeries</code> / <code>PRIORITY</code>）</td>
+          </tr>
+          <tr>
+            <td>media / labelLayout</td>
+            <td><code>option.media</code> 按宽高匹配 <code>minWidth</code> 等，<code>resize</code> 重算；<code>series.labelLayout</code> 终态 <code>hideOverlap</code> / <code>moveOverlap</code> / <code>dx</code>/<code>dy</code></td>
           </tr>
         </tbody>
       </table>
 
       <h4>未实现（按 canvas 全量对齐计划补齐，不是永久例外）</h4>
-      <p>下列官方入口已导出同名，内部只 <code>console.warn</code>：<code>registerLocale</code> / <code>setPlatformAPI</code> / <code>registerPreprocessor</code>。</p>
+      <p>下列官方入口已导出同名，内部只 <code>console.warn</code>：<code>registerLocale</code>。</p>
       <p>实例上尚未做完：<code>convertToLayout</code> / <code>getVisual</code>。</p>
       <ul>
-        <li>Charts：未识别的 <code>series.type</code> 会 <code>console.warn</code>（不再静默当 Other）。已接线图表相对官方仍有简化（force 不迭代、桑基非完整节点平衡、tree 非 tidy、chord 用贝塞尔而非丝带、pictorialBar 非全部 symbolClip）。</li>
+        <li>Charts：未识别的 <code>series.type</code> 会 <code>console.warn</code>（不再静默当 Other；<code>registerCustomSeries</code> 登记过的 type 当 custom）。已接线图表相对官方仍有简化（force 不迭代、桑基非完整节点平衡、tree 非 tidy、chord 用贝塞尔而非丝带、pictorialBar 非全部 symbolClip）。</li>
         <li>Components：geo roam / SVG 地图源。toolbox DataView DOM / SaveAsImage 下载条明确不做。</li>
         <li>Actions：geo roam 等</li>
-        <li>media query</li>
         <li>option 名字在但未按官方做：<code>smoothMonotone</code>、pie 完整 <code>avoidLabelOverlap</code>、色板不是官方 palette 全套</li>
         <li>tooltip HTMLElement formatter / <code>confine</code> / <code>renderMode: 'richText'</code></li>
+        <li><code>UniversalTransition</code> 只跳终态，不做系列间插值</li>
       </ul>
-      <p>官网折线 40 例：第 5 波已接 polar 与 y 类目轴对调。第 6 波已接线其余官方图表与 custom <code>renderItem</code>。仍可能有视觉缺口（不在示例里 workaround）：<code>smoothMonotone</code>、force 布局不迭代等。</p>
+      <p>官网折线 40 例：第 5 波已接 polar 与 y 类目轴对调。第 6 波已接线其余官方图表与 custom <code>renderItem</code>。第 7 波已接扩展注册、media、<code>labelLayout</code>、<code>axis.breaks</code>、jitter。仍可能有视觉缺口（不在示例里 workaround）：<code>smoothMonotone</code>、force 布局不迭代等。</p>
     </div>
 
     <div class="doc-section">

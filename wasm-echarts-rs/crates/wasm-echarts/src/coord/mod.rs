@@ -164,6 +164,13 @@ impl<'a> SeriesCoord<'a> {
         }
     }
 
+    pub fn as_single(&self) -> Option<&SingleCoord<'a>> {
+        match self {
+            SeriesCoord::Single(c) => Some(c),
+            _ => None,
+        }
+    }
+
     pub fn is_horizontal(&self) -> bool {
         self.as_cartesian().map(|c| c.is_horizontal()).unwrap_or(false)
     }
@@ -365,42 +372,16 @@ fn pixel_to_axis_value(axis: &AxisModel, px: f64, origin: f64, size: f64, invert
 }
 
 pub(crate) fn scale_ratio(axis: &AxisModel, value: f64) -> f64 {
-    match axis.axis_type {
-        AxisType::Log => {
-            let base = axis.log_base.max(1.000_000_1);
-            let min = axis.value_min().max(f64::MIN_POSITIVE);
-            let max = axis.value_max().max(min * base);
-            let v = value.max(f64::MIN_POSITIVE);
-            let lmin = min.log(base);
-            let lmax = max.log(base);
-            let span = (lmax - lmin).abs().max(f64::EPSILON);
-            ((v.log(base) - lmin) / span).clamp(0.0, 1.0)
-        }
-        _ => {
-            let min = axis.value_min();
-            let max = axis.value_max();
-            let span = (max - min).abs().max(f64::EPSILON);
-            ((value - min) / span).clamp(0.0, 1.0)
-        }
-    }
+    let min = axis.elapsed_min();
+    let max = axis.elapsed_max();
+    let span = (max - min).abs().max(f64::EPSILON);
+    ((axis.elapse(value) - min) / span).clamp(0.0, 1.0)
 }
 
 pub(crate) fn scale_from_ratio(axis: &AxisModel, t: f64) -> f64 {
-    match axis.axis_type {
-        AxisType::Log => {
-            let base = axis.log_base.max(1.000_000_1);
-            let min = axis.value_min().max(f64::MIN_POSITIVE);
-            let max = axis.value_max().max(min * base);
-            let lmin = min.log(base);
-            let lmax = max.log(base);
-            base.powf(lmin + t * (lmax - lmin))
-        }
-        _ => {
-            let min = axis.value_min();
-            let max = axis.value_max();
-            min + t * (max - min)
-        }
-    }
+    let min = axis.elapsed_min();
+    let max = axis.elapsed_max();
+    axis.unelapse(min + t * (max - min))
 }
 
 fn parse_finder(finder: &OptionValue) -> FinderRef {

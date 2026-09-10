@@ -25,7 +25,7 @@ todos:
     status: completed
   - id: wave7-ext
     content: 第 7 波：扩展注册真表、LabelLayout/AxisBreak/media；UniversalTransition 终态
-    status: pending
+    status: completed
   - id: wave8-docs-probe
     content: 第 8 波：官网画廊按类同步 + probe；文档四块与源码一致
     status: pending

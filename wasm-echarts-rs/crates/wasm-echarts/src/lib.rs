@@ -29,6 +29,11 @@ pub fn register_transform(ty: String, func: js_sys::Function) {
     crate::data::register_transform(ty, func);
 }
 
+#[wasm_bindgen(js_name = registerCustomSeriesType)]
+pub fn register_custom_series_type(ty: String) {
+    crate::model::register_custom_series_type(ty);
+}
+
 #[wasm_bindgen(js_name = registerMap)]
 pub fn register_map(name: String, geo_json: JsValue, special_areas: JsValue) {
     let geo = crate::option::parse_option_value(&geo_json).unwrap_or(crate::option::OptionValue::Null);

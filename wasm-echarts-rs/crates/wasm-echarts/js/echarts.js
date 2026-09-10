@@ -16,6 +16,7 @@ import * as matrix from '../../wasm-zrender/js/tool/matrix.js';
 import * as vector from '../../wasm-zrender/js/tool/vector.js';
 import * as color from '../../wasm-zrender/js/tool/color.js';
 import env from './env.js';
+import { registerCustomSeries as registerCustomSeriesImpl } from './extension.js';
 
 export { ECharts, graphic, util, number, time, format, helper, matrix, vector, color, env };
 export const version = '6.1.0';
@@ -252,8 +253,23 @@ export function getMap(mapName) {
 }
 
 export const registerLocale = unimplemented('registerLocale');
-export const setPlatformAPI = unimplemented('setPlatformAPI');
-export const registerPreprocessor = unimplemented('registerPreprocessor');
+export {
+  PRIORITY,
+  registerPreprocessor,
+  registerProcessor,
+  registerLayout,
+  registerVisual,
+  registerAction,
+  registerCoordinateSystem,
+  setPlatformAPI,
+} from './extension.js';
+
+export function registerCustomSeries(seriesType, renderItem) {
+  registerCustomSeriesImpl(seriesType, renderItem);
+  if (typeof native.registerCustomSeriesType === 'function') {
+    native.registerCustomSeriesType(String(seriesType));
+  }
+}
 
 const TRANSFORM_REGISTRY = new Map();
 

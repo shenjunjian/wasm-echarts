@@ -31,16 +31,20 @@ pub fn render_scatter_series(
 ) {
     let kind = visual.resolve_symbol(series.index);
     let large = is_large_scatter(visual, series);
+    let mut jitter = crate::chart::jitter::JitterState::default();
     for (i, point) in series.data.iter().enumerate() {
         if !point.value.is_finite() {
             continue;
         }
         let (cx, cy) = coord.map_point(point, i);
+        let size = visual.resolve_symbol_size_of(series.index, i);
+        let (cx, cy) = crate::chart::jitter::apply_scatter_jitter(
+            &mut jitter, coord, series, i, size, cx, cy,
+        );
         if !cx.is_finite() || !cy.is_finite() {
             continue;
         }
         let color = visual.resolve_item_color(series.index, i);
-        let size = visual.resolve_symbol_size_of(series.index, i);
         add_symbol(
             zr,
             group,
