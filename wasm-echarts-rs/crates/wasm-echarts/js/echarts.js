@@ -6,6 +6,15 @@ import {
   setDomInstanceId,
 } from './instance.js';
 import { themes, maps, connectedGroups } from './shared.js';
+import {
+  ChartWorkerBridge,
+  rememberFont,
+  clearFontRecords,
+  notifyWorkerFonts,
+  notifyWorkerClearFonts,
+  notifyWorkerMap,
+  workerAvailable,
+} from './worker-bridge.js';
 import * as graphic from './graphic.js';
 import * as util from './util.js';
 import * as number from './number.js';
@@ -30,20 +39,33 @@ function refreshLiveFontDatabases() {
   }
 }
 
+function tryNative(fn) {
+  try {
+    fn();
+  } catch {
+    // 主线程尚未 initWasm 时（仅 Worker 路径）忽略
+  }
+}
+
 /**
  * 注册字体 bytes 到本模块全局 fontdb（WASM 不读系统字体）。
  * 轴标签 / series label 渲染前必调。已创建的实例会热更新。
+ * `useWorker` 时会把同一份 bytes postMessage 进 Worker（Worker 是另一份 WASM）。
  * @param {Uint8Array} data
  * @param {{ familyName?: string, sansSerif?: string[] }} [opts]
  */
 export function registerFont(data, opts) {
-  native.registerFont(data, opts);
+  rememberFont(data, opts);
+  tryNative(() => native.registerFont(data, opts));
+  notifyWorkerFonts(data, opts);
   refreshLiveFontDatabases();
 }
 
 /** 清空已注册字体（测试用）。 */
 export function clearFonts() {
-  native.clearFonts();
+  clearFontRecords();
+  tryNative(() => native.clearFonts());
+  notifyWorkerClearFonts();
   refreshLiveFontDatabases();
 }
 
@@ -142,7 +164,7 @@ export function getInstanceByDom(dom) {
 /**
  * @param {HTMLCanvasElement | null} dom
  * @param {string | object | null} [theme]
- * @param {{ width?: number, height?: number, devicePixelRatio?: number }} [opts]
+ * @param {{ width?: number, height?: number, devicePixelRatio?: number, useWorker?: boolean }} [opts]
  */
 export function init(dom, theme, opts) {
   if (dom) {
@@ -156,9 +178,28 @@ export function init(dom, theme, opts) {
   }
 
   const { width, height, dpr } = resolveSize(dom, opts);
-  const handle = new native.EChartsInstance(width, height, dpr);
+  const wantWorker = !!(opts && opts.useWorker);
+  const useWorker = wantWorker && workerAvailable();
+  if (wantWorker && !useWorker) {
+    console.warn('[wasm-echarts] 当前环境没有 Worker，useWorker 已回退主线程');
+  }
   const id = `ec_${idBase++}`;
-  const chart = new ECharts(handle, { id, dom: dom || null, theme, opts });
+  const handle = useWorker
+    ? new ChartWorkerBridge({
+        chartId: id,
+        width,
+        height,
+        dpr,
+        maps,
+      })
+    : new native.EChartsInstance(width, height, dpr);
+  const chart = new ECharts(handle, {
+    id,
+    dom: dom || null,
+    theme,
+    opts,
+    useWorker,
+  });
   instances.set(id, chart);
   if (dom) {
     setDomInstanceId(dom, id);
@@ -236,8 +277,11 @@ export function registerMap(mapName, geoJson, specialAreas) {
   }
   maps.set(String(mapName), record);
   if (typeof native.registerMap === 'function') {
-    native.registerMap(String(mapName), record.geoJSON, record.specialAreas);
+    tryNative(() =>
+      native.registerMap(String(mapName), record.geoJSON, record.specialAreas),
+    );
   }
+  notifyWorkerMap(String(mapName), record.geoJSON, record.specialAreas);
 }
 
 export function parseGeoJSON(geoJson, nameProperty) {

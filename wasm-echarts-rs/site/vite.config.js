@@ -21,10 +21,19 @@ function collectHtmlEntries(dir = root, acc = {}) {
   return acc;
 }
 
+const COOP_COEP_HEADERS = {
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Embedder-Policy': 'require-corp',
+};
+
 export default defineConfig({
   root,
   server: {
     fs: { allow: [repoRoot] },
+    headers: COOP_COEP_HEADERS,
+  },
+  preview: {
+    headers: COOP_COEP_HEADERS,
   },
   resolve: {
     alias: {

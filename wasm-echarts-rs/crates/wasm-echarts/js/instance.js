@@ -186,17 +186,21 @@ function tooltipAllowed(option) {
  */
 export class ECharts {
   /**
-   * @param {import('../pkg/wasm_echarts.js').EChartsInstance} handle
-   * @param {{ id: string, dom?: HTMLElement | null, theme?: unknown, opts?: object }} meta
+   * @param {import('../pkg/wasm_echarts.js').EChartsInstance | import('./worker-bridge.js').ChartWorkerBridge} handle
+   * @param {{ id: string, dom?: HTMLElement | null, theme?: unknown, opts?: object, useWorker?: boolean }} meta
    */
   constructor(handle, meta) {
-    this._native = handle;
+    this._useWorker = !!meta.useWorker;
+    this._bridge = this._useWorker ? handle : null;
+    this._native = this._useWorker ? null : handle;
     this.id = meta.id;
     this.group = '';
     this._dom = meta.dom || null;
     this._theme = meta.theme;
     this._opts = meta.opts || {};
     this._disposed = false;
+    this._optionCache = null;
+    this._blitScratch = null;
     /** @type {Map<string, { handler: Function, query?: unknown }[]>} */
     this._listeners = new Map();
     this._hoverKey = null;
@@ -220,6 +224,9 @@ export class ECharts {
     this._didDrag = false;
     this._moveRaf = 0;
     this._pendingMove = null;
+    if (this._useWorker && this._bridge) {
+      this._bridge.setFrameHandler((frame) => this._blitFrame(frame));
+    }
     this._bindHost();
   }
 
@@ -229,7 +236,49 @@ export class ECharts {
     }
   }
 
+  _blitFrame(frame) {
+    const canvas = this._dom;
+    if (!canvas || !isCanvas(canvas) || !frame || !frame.pixels) {
+      return;
+    }
+    const width = frame.width;
+    const height = frame.height;
+    const need = width * height * 4;
+    if (canvas.width !== width) {
+      canvas.width = width;
+    }
+    if (canvas.height !== height) {
+      canvas.height = height;
+    }
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      return;
+    }
+    let clamped = frame.pixels;
+    if (!(clamped instanceof Uint8ClampedArray) || clamped.length < need) {
+      if (!this._blitScratch || this._blitScratch.length !== need) {
+        this._blitScratch = new Uint8ClampedArray(need);
+      }
+      this._blitScratch.set(
+        clamped.length >= need ? clamped.subarray(0, need) : clamped,
+      );
+      clamped = this._blitScratch;
+    }
+    try {
+      ctx.putImageData(new ImageData(clamped, width, height), 0, 0);
+    } catch {
+      if (!this._blitScratch || this._blitScratch.length !== need) {
+        this._blitScratch = new Uint8ClampedArray(need);
+      }
+      this._blitScratch.set(clamped.subarray(0, need));
+      ctx.putImageData(new ImageData(this._blitScratch, width, height), 0, 0);
+    }
+  }
+
   _paintIfBound() {
+    if (this._useWorker) {
+      return;
+    }
     const canvas = this._dom;
     const handle = this._native;
     if (!canvas || !handle || !isCanvas(canvas)) {
@@ -432,35 +481,45 @@ export class ECharts {
     const { x, y, clientX, clientY, event } = pending;
     this._lastClientX = clientX;
     this._lastClientY = clientY;
+    const apply = (result) => {
+      if (this.isDisposed()) {
+        return result;
+      }
+      const hit = result && result.hit;
+      const key = hoverKey(hit);
+      if (key !== this._hoverKey) {
+        if (this._hoverKey != null) {
+          this._emit(
+            'mouseout',
+            this._packEvent('mouseout', event, this._hoverHit),
+          );
+        }
+        if (key != null) {
+          this._emit('mouseover', this._packEvent('mouseover', event, hit));
+        }
+        this._hoverKey = key;
+        this._hoverHit = hit || null;
+      }
+      this._syncCursor(hit);
+      if (this._pointerDown) {
+        const dx = x - this._pointerDown.x;
+        const dy = y - this._pointerDown.y;
+        if (dx * dx + dy * dy > 16) {
+          this._didDrag = true;
+        }
+      }
+      if (this._tooltipOn && result && result.tooltip) {
+        this._showTooltip(result.tooltip, clientX, clientY);
+      } else {
+        this._hideTooltip();
+      }
+      return result;
+    };
     const result = this.handlePointerMove(x, y);
-    const hit = result && result.hit;
-    const key = hoverKey(hit);
-    if (key !== this._hoverKey) {
-      if (this._hoverKey != null) {
-        this._emit(
-          'mouseout',
-          this._packEvent('mouseout', event, this._hoverHit),
-        );
-      }
-      if (key != null) {
-        this._emit('mouseover', this._packEvent('mouseover', event, hit));
-      }
-      this._hoverKey = key;
-      this._hoverHit = hit || null;
+    if (result && typeof result.then === 'function') {
+      return result.then(apply);
     }
-    this._syncCursor(hit);
-    if (this._pointerDown && this._native && typeof this._native.handlePointerMove === 'function') {
-      const dx = x - this._pointerDown.x;
-      const dy = y - this._pointerDown.y;
-      if (dx * dx + dy * dy > 16) {
-        this._didDrag = true;
-      }
-    }
-    if (this._tooltipOn && result && result.tooltip) {
-      this._showTooltip(result.tooltip, clientX, clientY);
-    } else {
-      this._hideTooltip();
-    }
+    return apply(result);
   }
 
   _onPointerDown(event) {
@@ -470,6 +529,10 @@ export class ECharts {
     const { x, y } = eventPoint(this._dom, event);
     this._pointerDown = { x, y };
     this._didDrag = false;
+    if (this._useWorker) {
+      this._bridge.pointerDown(x, y);
+      return;
+    }
     if (this._native && typeof this._native.handlePointerDown === 'function') {
       this._native.handlePointerDown(x, y);
       this._paintIfBound();
@@ -481,6 +544,10 @@ export class ECharts {
       return;
     }
     const { x, y } = eventPoint(this._dom, event);
+    if (this._useWorker) {
+      this._bridge.pointerUp(x, y);
+      return;
+    }
     if (this._native && typeof this._native.handlePointerUp === 'function') {
       this._native.handlePointerUp(x, y);
       this._paintIfBound();
@@ -497,16 +564,23 @@ export class ECharts {
       this._didDrag = false;
       return;
     }
+    const emitClick = (hit) => {
+      this._pointerDown = null;
+      if (this.isDisposed() || hoverKey(hit) == null) {
+        return;
+      }
+      this._emit('click', this._packEvent('click', event, hit));
+    };
+    if (this._useWorker) {
+      this._bridge.pointerClick(x, y).then(emitClick);
+      return;
+    }
     let hit = this.findHover(x, y);
     if (this._native && typeof this._native.handlePointerClick === 'function') {
       hit = this._native.handlePointerClick(x, y) || hit;
       this._paintIfBound();
     }
-    this._pointerDown = null;
-    if (hoverKey(hit) == null) {
-      return;
-    }
-    this._emit('click', this._packEvent('click', event, hit));
+    emitClick(hit);
   }
 
   _onPointerLeave(event) {
@@ -540,7 +614,7 @@ export class ECharts {
     this.applyDataZoomWheel(x, event.deltaY);
   }
 
-  _showTipFromPayload(payload) {
+  async _showTipFromPayload(payload) {
     if (!this._tooltipOn) {
       return;
     }
@@ -552,14 +626,14 @@ export class ECharts {
       payload.x != null &&
       payload.y != null
     ) {
-      const hit = this.findHover(payload.x, payload.y);
+      const hit = await Promise.resolve(this.findHover(payload.x, payload.y));
       seriesIndex = hit && hit.seriesIndex;
       dataIndex = hit && hit.dataIndex;
     }
     if (seriesIndex == null || dataIndex == null) {
       return;
     }
-    const html = this.getTooltipContent(seriesIndex, dataIndex);
+    const html = await Promise.resolve(this.getTooltipContent(seriesIndex, dataIndex));
     let clientX = this._lastClientX;
     let clientY = this._lastClientY;
     if (payload.x != null && payload.y != null && this._dom) {
@@ -584,27 +658,37 @@ export class ECharts {
 
   getWidth() {
     this._assertAlive();
+    if (this._useWorker) {
+      return this._bridge.width();
+    }
     return this._native.width();
   }
 
   getHeight() {
     this._assertAlive();
+    if (this._useWorker) {
+      return this._bridge.height();
+    }
     return this._native.height();
   }
 
   getDevicePixelRatio() {
     this._assertAlive();
+    if (this._useWorker) {
+      return this._bridge.dpr();
+    }
     return this._native.dpr();
   }
 
   isDisposed() {
-    return this._disposed || !this._native;
+    return this._disposed || (!this._native && !this._bridge);
   }
 
   /**
    * `setOption(option)` / `setOption(option, notMerge, lazyUpdate?)` /
    * `setOption(option, { notMerge, replaceMerge, silent, lazyUpdate })`。
    * `notMerge` 不是 option 里的字段。`lazyUpdate` 同步 flush。
+   * `init(..., { useWorker: true })` 时返回 Promise，option 经 postMessage 进 Worker。
    */
   setOption(option, notMerge, lazyUpdate) {
     this._assertAlive();
@@ -616,6 +700,20 @@ export class ECharts {
     }
     payload = prepareIncomingOption(payload, flags.notMerge || !this.hasOption());
     runProcessors(this, payload);
+    if (this._useWorker) {
+      this._optionCache = payload;
+      return this._bridge
+        .setOption(payload, {
+          notMerge: flags.notMerge,
+          replaceMerge: flags.replaceMerge,
+        })
+        .then(() => {
+          this._afterNativeOption();
+          if (!this._tooltipOn) {
+            this._hideTooltip();
+          }
+        });
+    }
     this._native.set_option(payload, {
       notMerge: flags.notMerge,
       replaceMerge: flags.replaceMerge,
@@ -629,6 +727,9 @@ export class ECharts {
 
   getOption() {
     this._assertAlive();
+    if (this._useWorker) {
+      return this._bridge.getCachedOption() ?? this._optionCache;
+    }
     return this._native.get_option();
   }
 
@@ -668,6 +769,11 @@ export class ECharts {
       height = resolveDim(heightArg, currentH);
       dpr = toPositiveNumber(dprArg) ?? currentDpr;
     }
+    if (this._useWorker) {
+      return this._bridge.resize(width, height, dpr).then(() => {
+        this._refreshRegisteredCoords();
+      });
+    }
     this._native.resize(width, height, dpr);
     this._refreshRegisteredCoords();
     this._paintIfBound();
@@ -679,22 +785,32 @@ export class ECharts {
 
   dispatchAction(payload) {
     this._assertAlive();
+    const finish = () => {
+      const type = payload && payload.type;
+      if (type === 'showTip') {
+        this._showTipFromPayload(payload);
+        this._emit('showTip', payload);
+      } else if (type === 'hideTip') {
+        this._hideTooltip();
+        this._emit('hideTip', payload);
+      } else if (registered.handled && registered.event) {
+        this._emit(registered.event, payload);
+      }
+      this._forwardConnect(payload);
+    };
     const registered = dispatchRegisteredAction(this, payload);
+    if (this._useWorker) {
+      if (!registered.runNative) {
+        finish();
+        return;
+      }
+      return this._bridge.dispatchAction(payload).then(finish);
+    }
     if (registered.runNative) {
       this._native.dispatch_action(payload);
     }
     this._paintIfBound();
-    const type = payload && payload.type;
-    if (type === 'showTip') {
-      this._showTipFromPayload(payload);
-      this._emit('showTip', payload);
-    } else if (type === 'hideTip') {
-      this._hideTooltip();
-      this._emit('hideTip', payload);
-    } else if (registered.handled && registered.event) {
-      this._emit(registered.event, payload);
-    }
-    this._forwardConnect(payload);
+    finish();
   }
 
   _forwardConnect(payload) {
@@ -772,11 +888,16 @@ export class ECharts {
     this._disposeTooltip();
     this.hideLoading();
     this._zr = null;
-    if (this._native && typeof this._native.dispose === 'function') {
-      this._native.dispose();
-    }
-    if (typeof this._native?.free === 'function') {
-      this._native.free();
+    if (this._useWorker && this._bridge) {
+      this._bridge.dispose();
+      this._bridge = null;
+    } else {
+      if (this._native && typeof this._native.dispose === 'function') {
+        this._native.dispose();
+      }
+      if (typeof this._native?.free === 'function') {
+        this._native.free();
+      }
     }
     this._native = null;
     this._disposed = true;
@@ -793,6 +914,9 @@ export class ECharts {
 
   refresh() {
     this._assertAlive();
+    if (this._useWorker) {
+      return this._bridge.refresh();
+    }
     return this._native.refresh();
   }
 
@@ -801,11 +925,17 @@ export class ECharts {
    */
   updateFontDatabase() {
     this._assertAlive();
+    if (this._useWorker) {
+      return this._bridge.updateFontDatabase();
+    }
     this._native.update_font_database();
   }
 
   findHover(x, y) {
     this._assertAlive();
+    if (this._useWorker) {
+      return this._bridge.findHover(x, y);
+    }
     return this._native.find_hover(x, y);
   }
 
@@ -814,6 +944,9 @@ export class ECharts {
    */
   handlePointerMove(x, y) {
     this._assertAlive();
+    if (this._useWorker) {
+      return this._bridge.pointerMove(x, y);
+    }
     const result = this._native.handle_pointer_move(x, y);
     if (!result || result.dirty !== false) {
       this._paintIfBound();
@@ -823,6 +956,9 @@ export class ECharts {
 
   handlePointerDown(x, y) {
     this._assertAlive();
+    if (this._useWorker) {
+      return this._bridge.pointerDown(x, y);
+    }
     const hit = this._native.handlePointerDown(x, y);
     this._paintIfBound();
     return hit;
@@ -830,12 +966,18 @@ export class ECharts {
 
   handlePointerUp(x, y) {
     this._assertAlive();
+    if (this._useWorker) {
+      return this._bridge.pointerUp(x, y);
+    }
     this._native.handlePointerUp(x, y);
     this._paintIfBound();
   }
 
   handlePointerClick(x, y) {
     this._assertAlive();
+    if (this._useWorker) {
+      return this._bridge.pointerClick(x, y);
+    }
     const hit = this._native.handlePointerClick(x, y);
     this._paintIfBound();
     return hit;
@@ -846,6 +988,9 @@ export class ECharts {
    */
   handlePointerLeave() {
     this._assertAlive();
+    if (this._useWorker) {
+      return this._bridge.pointerLeave();
+    }
     this._native.handle_pointer_leave();
     this._paintIfBound();
   }
@@ -855,17 +1000,26 @@ export class ECharts {
    */
   applyDataZoomWheel(x, deltaY) {
     this._assertAlive();
+    if (this._useWorker) {
+      return this._bridge.applyDataZoomWheel(x, deltaY);
+    }
     this._native.apply_data_zoom_wheel(x, deltaY);
     this._paintIfBound();
   }
 
   getTooltipContent(seriesIndex, dataIndex) {
     this._assertAlive();
+    if (this._useWorker) {
+      return this._bridge.getTooltipContent(seriesIndex, dataIndex);
+    }
     return this._native.get_tooltip_content(seriesIndex, dataIndex);
   }
 
   benchmarkRender(iterations) {
     this._assertAlive();
+    if (this._useWorker) {
+      return this._bridge.benchmarkRender(iterations);
+    }
     const avg = this._native.benchmark_render(iterations);
     this._paintIfBound();
     return avg;
@@ -873,11 +1027,17 @@ export class ECharts {
 
   hasOption() {
     this._assertAlive();
+    if (this._useWorker) {
+      return this._bridge.hasOption() || this._optionCache != null;
+    }
     return this._native.has_option();
   }
 
   optionHasFunctions() {
     this._assertAlive();
+    if (this._useWorker) {
+      return false;
+    }
     return this._native.option_has_functions();
   }
 
@@ -891,6 +1051,9 @@ export class ECharts {
     if (custom != null) {
       return custom;
     }
+    if (this._useWorker) {
+      return this._bridge.convertToPixel(finder, value);
+    }
     return this._native.convert_to_pixel(finder, value);
   }
 
@@ -899,6 +1062,9 @@ export class ECharts {
     const custom = convertByRegisteredCoord(this, finder, value, false);
     if (custom != null) {
       return custom;
+    }
+    if (this._useWorker) {
+      return this._bridge.convertFromPixel(finder, value);
     }
     return this._native.convert_from_pixel(finder, value);
   }
@@ -909,15 +1075,23 @@ export class ECharts {
     if (custom != null) {
       return custom;
     }
+    if (this._useWorker) {
+      return this._bridge.containPixel(finder, value);
+    }
     return !!this._native.containPixel(finder, value);
   }
 
   /**
    * 与 ChartView 共用同一份 wasm-zrender 实例（同一 WASM / Storage）。
    * 无 SVG painter / hover layer；动画写终态。`painter.getSvgDom` 只 warn。
+   * `useWorker` 时 ZRender 在 Worker 里，主线程不可用。
    */
   getZr() {
     this._assertAlive();
+    if (this._useWorker) {
+      console.warn('[wasm-echarts] getZr() 在 useWorker 下不可用（ZRender 在 Worker 里）');
+      return undefined;
+    }
     if (!this._zr) {
       this._zr = wrapZRender(this._native.getZr());
     }
@@ -1016,11 +1190,22 @@ export class ECharts {
     this._loadingEl = null;
   }
 
+  _paintCanvasFromRgba(canvas, rgba, width, height) {
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (ctx && rgba) {
+      const clamped =
+        rgba instanceof Uint8ClampedArray
+          ? rgba
+          : new Uint8ClampedArray(rgba);
+      ctx.putImageData(new ImageData(clamped, width, height), 0, 0);
+    }
+    return canvas;
+  }
+
   renderToCanvas(opts) {
     this._assertAlive();
-    const rgba = this.refresh();
-    const width = this.getWidth();
-    const height = this.getHeight();
     let canvas = opts && opts.canvas;
     if (!canvas || typeof canvas.getContext !== 'function') {
       if (typeof document === 'undefined') {
@@ -1028,17 +1213,12 @@ export class ECharts {
       }
       canvas = document.createElement('canvas');
     }
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    if (ctx && rgba) {
-      ctx.putImageData(
-        new ImageData(new Uint8ClampedArray(rgba), width, height),
-        0,
-        0,
-      );
+    const paint = (rgba) =>
+      this._paintCanvasFromRgba(canvas, rgba, this.getWidth(), this.getHeight());
+    if (this._useWorker) {
+      return this._bridge.refresh().then((rgba) => paint(rgba));
     }
-    return canvas;
+    return paint(this.refresh());
   }
 
   getDataURL(opts) {
@@ -1048,13 +1228,24 @@ export class ECharts {
       console.warn('[wasm-echarts] getDataURL(type: "svg") 未实现（无 SVG painter）');
       return '';
     }
+    const toUrl = (canvas) => {
+      const type = o.type === 'jpeg' ? 'image/jpeg' : 'image/png';
+      return canvas.toDataURL(type, o.quality);
+    };
     const canvas = this.renderToCanvas(o);
-    const type = o.type === 'jpeg' ? 'image/jpeg' : 'image/png';
-    return canvas.toDataURL(type, o.quality);
+    if (canvas && typeof canvas.then === 'function') {
+      return canvas.then(toUrl);
+    }
+    return toUrl(canvas);
   }
 
   appendData(params) {
     this._assertAlive();
+    if (this._useWorker) {
+      return this._bridge.appendData(params).then(() => {
+        this._syncOptionFlags();
+      });
+    }
     this._native.appendData(params);
     this._syncOptionFlags();
     this._paintIfBound();
@@ -1069,6 +1260,14 @@ export class ECharts {
     const current = this.getOption();
     const themeObj = resolveTheme(theme);
     const payload = themeObj ? merge(clone(themeObj), current) : current;
+    if (this._useWorker) {
+      this._optionCache = payload;
+      return this._bridge
+        .setOption(payload, { notMerge: true, replaceMerge: [] })
+        .then(() => {
+          this._afterNativeOption();
+        });
+    }
     this._native.set_option(payload, { notMerge: true, replaceMerge: [] });
     this._afterNativeOption();
     this._paintIfBound();

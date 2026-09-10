@@ -7,7 +7,7 @@ todos:
     status: completed
   - id: worker-facade
     content: facade 增加 opts.useWorker：Worker 持 WASM，主线程 blit/事件/tooltip；option 一律 postMessage，仅回传图像可用 SAB
-    status: pending
+    status: completed
   - id: worker-large-examples
     content: 仅 bar-large / scatter-large 等卡死例开 useWorker，验证不再页面无响应
     status: pending
