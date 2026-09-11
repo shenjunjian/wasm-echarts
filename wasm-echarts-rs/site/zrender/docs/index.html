@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>wasm-zrender 文档</title>
+  <title>快速上手 · wasm-zrender 文档</title>
   <link rel="stylesheet" href="/src/shared/layout.css" />
 </head>
 <body>
   <header class="site-header"></header>
-
-  <main class="page page-narrow">
+  <div class="docs-layout">
+    <aside class="docs-sidebar"></aside>
+    <main class="docs-main">
     <h1>wasm-zrender 文档</h1>
     <p class="lead">对齐官方 zrender <code>export.ts</code> 的 WASM 命名空间导出，底层封装 <code>rust_zrender::ZRenderer</code>。</p>
 
@@ -182,7 +183,8 @@ let mut zr = ZRenderer::new(480, 360)?;</pre>
         echarts 图表管线不经过 wasm-zrender，而是内部直接使用 <code>ZRenderer</code>。
       </p>
     </div>
-  </main>
-  <script type="module" src="/src/shared/site-header.js"></script>
+    </main>
+  </div>
+  <script type="module" src="/src/shared/docs-shell.js"></script>
 </body>
 </html>

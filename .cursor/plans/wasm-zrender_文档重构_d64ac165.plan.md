@@ -7,7 +7,7 @@ todos:
     status: completed
   - id: docs-shell
     content: 新增 docs-shell.js + layout.css 侧栏布局（当前页高亮、移动端折叠、徽章）；顶栏与首页同一套产品菜单
-    status: pending
+    status: completed
   - id: ch-start-fonts
     content: 写快速上手 / 字体引用；/zrender/docs/ 默认落在快速上手（不再放起因介绍）
     status: pending
