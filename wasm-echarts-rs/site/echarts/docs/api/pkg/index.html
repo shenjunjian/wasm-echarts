@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>总览与何时使用 · wasm-echarts 文档</title>
+  <link rel="stylesheet" href="/src/shared/layout.css" />
+</head>
+<body>
+  <header class="site-header"></header>
+  <div class="docs-layout">
+    <aside class="docs-sidebar"></aside>
+    <main class="docs-main">
+      <h1>总览与何时使用</h1>
+      <p class="lead">
+        业务代码走 JS facade（<code>@wasm-echarts</code>）。
+        <code>pkg/</code> 是 wasm-bindgen 产出的 handle，给调试或绕过包装。
+      </p>
+
+      <div class="notice">
+        <p>
+          不要从业务 <code>import '../pkg/wasm_echarts.js'</code>，也不要
+          <code>new EChartsInstance</code>。echarts 页不要再加载
+          <code>wasm-zrender/pkg</code>：本模块的 pkg 已经
+          <code>setNative</code> 进同一套 zrender facade。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3>何时才碰 pkg</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>场景</th>
+              <th>怎么用</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>文档站 / 业务图表</td>
+              <td>只 import <code>@wasm-echarts</code>。<code>init</code> 会创建并包装 handle。</td>
+            </tr>
+            <tr>
+              <td>Worker</td>
+              <td><code>chart.worker.js</code> 在 Worker 里 <code>new EChartsInstance</code>。开发者仍写 facade，不必碰 pkg。</td>
+            </tr>
+            <tr>
+              <td>调试 / 绕过包装</td>
+              <td>直接调 native 方法。没有指针绑定、没有 tooltip DOM、没有 <code>useWorker</code> 桥。</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>// 推荐（facade）
+import initWasm, { init } from '@wasm-echarts';
+await initWasm();
+const chart = init(canvas);
+chart.setOption(option);
+
+// 不要（pkg 构造）
+import { EChartsInstance } from '@wasm-echarts';
+const handle = new EChartsInstance(480, 360, 1); // 没有 canvas / tooltip</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3>两层对照</h3>
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th>JS facade</th>
+              <th>pkg handle</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>导入</td>
+              <td><code>@wasm-echarts</code> → <code>js/</code></td>
+              <td><code>pkg/wasm_echarts.js</code>（内部）</td>
+            </tr>
+            <tr>
+              <td>创建</td>
+              <td><code>init(canvas, theme?, opts?)</code></td>
+              <td><code>new EChartsInstance(width, height, dpr)</code></td>
+            </tr>
+            <tr>
+              <td><code>setOption</code></td>
+              <td>三种官方签名；Worker 返回 Promise</td>
+              <td><code>set_option(option, opts?)</code>；<code>opts</code> 只有 <code>notMerge</code> / <code>replaceMerge</code></td>
+            </tr>
+            <tr>
+              <td>上屏 / 指针</td>
+              <td>有 canvas 时自动 blit + 绑事件</td>
+              <td>没有。需自己 <code>refresh</code> + <code>putImageData</code></td>
+            </tr>
+            <tr>
+              <td>命名空间</td>
+              <td><code>graphic</code> / <code>util</code> 等有实现</td>
+              <td>图元类随 wasm 再导出；工具请走 facade</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="doc-section">
+        <h3>pkg 分页</h3>
+        <ul>
+          <li><a href="./instance.html">EChartsInstance</a> — native 方法对照</li>
+          <li><a href="./unused.html">不要直接用的符号</a> — 构造、仅 pkg、空壳</li>
+        </ul>
+      </div>
+
+      <p>
+        返回 <a href="../">API 参考</a>
+        · 对照
+        <a href="../facade/">JS facade 总览</a>
+        · 下一步
+        <a href="./instance.html">EChartsInstance</a>
+      </p>
+    </main>
+  </div>
+  <script type="module" src="/src/shared/docs-shell.js"></script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API 参考 · wasm-echarts 文档</title>
+  <link rel="stylesheet" href="/src/shared/layout.css" />
+</head>
+<body>
+  <header class="site-header"></header>
+  <div class="docs-layout">
+    <aside class="docs-sidebar"></aside>
+    <main class="docs-main">
+      <h1>API 参考</h1>
+      <p class="lead">
+        默认走 JS facade（<code>@wasm-echarts</code>）。
+        <code>pkg/</code> 是 wasm-bindgen handle，单独成章。
+      </p>
+
+      <div class="doc-section">
+        <h3>两层入口</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>层</th>
+              <th>导入</th>
+              <th>给谁用</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><a href="./facade/">JS facade</a></td>
+              <td><code>import initWasm, { init } from '@wasm-echarts'</code></td>
+              <td>业务代码。官方 <code>init</code> / <code>setOption</code> / <code>on</code>。</td>
+            </tr>
+            <tr>
+              <td><a href="./pkg/">pkg 导出</a></td>
+              <td>不要从业务直接 <code>import '../pkg/wasm_echarts.js'</code></td>
+              <td>调试，或绕过 facade 包装。不要 <code>new EChartsInstance</code>。</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          每条 API 带徽章：<span class="doc-badge doc-badge-official">官方</span>
+          对齐官方 <code>core.ts</code> / <code>export/api.ts</code>；
+          <span class="doc-badge doc-badge-extra">补充</span> 是 wasm-echarts 多出来的；
+          <span class="doc-badge doc-badge-degraded">降级</span> 签名在、语义弱于官方。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3>JS facade 分页</h3>
+        <ul>
+          <li><a href="./facade/">总览与约定</a> — 导入、<code>initWasm</code> vs 命名导出、<code>useWorker</code> 只在 <code>init</code> 的 opts</li>
+          <li><a href="./facade/lifecycle.html">生命周期</a> — <code>init</code> / <code>dispose</code> / <code>use</code> / <code>registerFont</code></li>
+          <li><a href="./facade/instance.html">实例方法</a> — <code>setOption</code> / <code>resize</code> / Loading</li>
+          <li><a href="./facade/events.html">事件与 dispatchAction</a> — <code>on</code> / <code>off</code> / 已接线 action</li>
+          <li><a href="./facade/coord.html">坐标、导出与 getZr</a> — <code>convertToPixel</code> / <code>getDataURL</code> / <code>getZr</code></li>
+          <li><a href="./facade/extension.html">命名空间与扩展</a> — <code>graphic</code> / <code>registerMap</code> / hatch</li>
+        </ul>
+      </div>
+
+      <div class="doc-section">
+        <h3>pkg 导出分页</h3>
+        <ul>
+          <li><a href="./pkg/">总览与何时使用</a> — 业务走 facade；pkg 给调试</li>
+          <li><a href="./pkg/instance.html">EChartsInstance</a> — native 方法与 facade camelCase 对照</li>
+          <li><a href="./pkg/unused.html">不要直接用的符号</a> — 不要 <code>new</code>、空壳与仅 pkg</li>
+        </ul>
+      </div>
+
+      <p>
+        返回 <a href="../runtime.html">运行模式</a>
+        · 下一步
+        <a href="./facade/">JS facade API</a>
+      </p>
+    </main>
+  </div>
+  <script type="module" src="/src/shared/docs-shell.js"></script>
+</body>
+</html>

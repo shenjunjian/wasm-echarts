@@ -26,7 +26,7 @@ wasm-echarts/
 │   ├── site/                     # 文档站：首页介绍仓库定位；顶栏进 wasm-zrender / wasm-echarts
 │   │   ├── index.html            # 起因 + 三层定位（无产品卡片）
 │   │   ├── zrender/docs/         # 五章文档，默认快速上手
-│   │   └── echarts/examples/     # 每个示例直接 import @wasm-echarts
+│   │   └── echarts/docs/         # 七章文档，默认快速上手（含运行模式）
 │   └── crates/
 │       ├── rust-zrender/         # 纯 Rust lib：zrender 渲染核心（底层依赖）
 │       ├── wasm-zrender/         # wasm-pack：对齐 zrender export.ts 的 init/Group/Rect API
@@ -128,7 +128,7 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 
 ### wasm-echarts 公开 API（对齐官方 core.ts）
 
-公开 JS 表面与官方 `echarts.init` / `chart.setOption` 同名同签名。入口清单见 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md)；canvas 能力补齐见 [`.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md`](.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md)。site 从 `@wasm-echarts`（`js/index.js`）导入；`pkg/` 只作内部 handle。
+公开 JS 表面与官方 `echarts.init` / `chart.setOption` 同名同签名。入口清单见 [`.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md`](.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md)；canvas 能力补齐见 [`.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md`](.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md)。site 从 `@wasm-echarts`（`js/index.js`）导入；`pkg/` 只作内部 handle。分章文档从 [`/echarts/docs/`](wasm-echarts-rs/site/echarts/docs/index.html) 进入（默认快速上手；侧栏进字体 / 运行模式 / API / 差异 / 覆盖 / 原理）。
 
 #### 1. 与官方一致的公开 API
 
@@ -169,7 +169,7 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 #### 4. 已实现 / 未实现
 
 - **已实现（部分生效）**：官方 `export/charts.ts` 23 种图（含 chord）canvas 终态；`custom` `renderItem` + `api.coord`/`size`/`style`；line / bar / pie / scatter 的 canvas option 族（含 polar 与 y 类目横画）；多 cartesian（grid / 轴 / time / log / `breaks` / `jitter`）；polar / radar / singleAxis / parallel / calendar / matrix / geo 坐标系；dataset / transform / encode / stack / sampling；`option.media` 按宽高切 option；`labelLayout` 终态避让；`getZr` 共用 Storage；`graphic`/`util`/`time` 等命名空间与 `throttle`；legend 点击筛选、title 布局、mark*、`option.graphic`、visualMap、dataZoom slider + inside、十字 axisPointer、`tooltip.trigger: 'axis'`、brush、timeline、toolbox canvas 按钮、thumbnail；`registerTransform` 与扩展注册真表（`registerPreprocessor` / `Processor` / `Layout` / `Visual` / `Action` / `CoordinateSystem` / `CustomSeries`）；`showLoading` 静态遮罩；`getDataURL`/`renderToCanvas`；`connect`/`registerTheme`/`registerMap`/`parseGeoJSON`；`appendData`/`containPixel`；`axisLabel.formatter`；series label；CallbackDataParams；`convertToPixel` 含非 cartesian finder；`on`/`off` 指针事件；内建 string tooltip；`showTip`/`hideTip`；hover / toggleSelect；可选 `useWorker`（大数据示例）。
-- **未实现（不是永久例外）**：已导出只 `console.warn` 的有 `registerLocale` / `convertToLayout` / `getVisual` / `renderToSVGString` / `getSvgDataURL` / `getModel`。`smoothMonotone`、完整 SeriesData、pie 完整 `avoidLabelOverlap` / `padAngle`、bar `large`（无增量绘制；画廊 `bar-large` 走 `useWorker` 避免主线程卡死）、scatter 统计插件 `ecStat`、`candlestick-large` / `parallel-nutrients`（同样走 `useWorker`，Worker 内仍是长任务）、`heatmap-bmap` 无百度地图扩展、treemap 大树 / `levels` 色映射 WASM panic、`lines-ny` 分片 bin 未同步，见 [AGENT.md](AGENT.md) 与 [echarts 文档](wasm-echarts-rs/site/echarts/docs/index.html)。未识别的 `series.type` 会 warn，不再静默忽略。官网 27 类 catalog 去重 296 条已进画廊；第 8.9 波全量 probe **281/296 ok**。每个 `examples/*.js` 自己 `init`/`setOption`，不经 `runOfficialExample`。
+- **未实现（不是永久例外）**：已导出只 `console.warn` 的有 `registerLocale` / `convertToLayout` / `getVisual` / `renderToSVGString` / `getSvgDataURL` / `getModel`。`smoothMonotone`、完整 SeriesData、pie 完整 `avoidLabelOverlap` / `padAngle`、bar `large`（无增量绘制；画廊 `bar-large` 走 `useWorker` 避免主线程卡死）、scatter 统计插件 `ecStat`、`candlestick-large` / `parallel-nutrients`（同样走 `useWorker`，Worker 内仍是长任务）、`heatmap-bmap` 无百度地图扩展、treemap 大树 / `levels` 色映射 WASM panic、`lines-ny` 分片 bin 未同步，见 [AGENT.md](AGENT.md) 与 [echarts 文档 · 已实现 / 未实现](wasm-echarts-rs/site/echarts/docs/coverage.html)。未识别的 `series.type` 会 warn，不再静默忽略。官网 catalog 已进画廊。每个 `examples/*.js` 自己 `init`/`setOption`，不经 `runOfficialExample`。
 
 native `EChartsInstance`（`wasm_echarts.d.ts`）是内部 handle，不要从 site 直接 `new`。
 
@@ -306,7 +306,7 @@ npm run dev
 - 首页（起因 + 三层定位）：http://127.0.0.1:5173/
 - wasm-zrender 文档（快速上手）：http://127.0.0.1:5173/zrender/docs/
 - wasm-zrender 实例：http://127.0.0.1:5173/zrender/examples/
-- wasm-echarts 文档：http://127.0.0.1:5173/echarts/docs/
+- wasm-echarts 文档（快速上手）：http://127.0.0.1:5173/echarts/docs/
 - wasm-echarts 实例：http://127.0.0.1:5173/echarts/examples/
 
 ### 2. 在页面中接入（`@wasm-echarts`）

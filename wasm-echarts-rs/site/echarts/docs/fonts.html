@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>字体引用 · wasm-echarts 文档</title>
+  <link rel="stylesheet" href="/src/shared/layout.css" />
+</head>
+<body>
+  <header class="site-header"></header>
+  <div class="docs-layout">
+    <aside class="docs-sidebar"></aside>
+    <main class="docs-main">
+      <h1>字体引用</h1>
+      <p class="lead">
+        WASM 离屏 cosmic-text 读不到操作系统字体。轴标签、series label、title、legend
+        都走这份 fontdb，必须从 <code>@wasm-echarts</code> 注册。
+      </p>
+
+      <div class="notice">
+        <p>
+          这是允许例外，不是可省略步骤。未注册任何字体时，含文字的
+          <code>setOption</code> / <code>refresh()</code> 会报
+          <code>no default font found</code>。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3>必须从本模块注册</h3>
+        <p>
+          echarts 页与 <code>getZr()</code> 共用<strong>同一份</strong> WASM / fontdb。
+          不要从 <code>@wasm-zrender</code> 再 <code>registerFont</code> 并指望本模块生效：
+          那是另一份内存里的 wasm。
+        </p>
+        <p>
+          口径与
+          <a href="/zrender/docs/fonts.html">wasm-zrender 字体章</a>
+          相同（离屏读不到 OS 字体、禁止把默认 TTF 打进 <code>.wasm</code>），只是入口换成
+          <code>@wasm-echarts</code>。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3>调用顺序</h3>
+        <ol>
+          <li><code>await initWasm()</code></li>
+          <li><code>registerFont(bytes, opts?)</code> — TTF / OTF / WOFF（TTC 须带 <code>familyName</code>）</li>
+          <li><code>init(...)</code> → <code>setOption</code></li>
+        </ol>
+        <p>
+          可在任意时刻再次调用。全局 fontdb 会同步到<strong>已创建</strong>的实例（热更新）。
+          <code>useWorker</code> 时 facade 把同一份 bytes <code>postMessage</code> 进 Worker：
+          Worker 是另一份 WASM 实例，必须单独注入，开发者不必发第二份消息。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>registerFont(data, opts?)</code> <span class="doc-badge doc-badge-extra">补充</span></h3>
+        <table>
+          <thead>
+            <tr>
+              <th>参数</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>data</code></td>
+              <td><code>Uint8Array</code></td>
+              <td>字体文件原始 bytes</td>
+            </tr>
+            <tr>
+              <td><code>opts.familyName</code></td>
+              <td><code>string?</code></td>
+              <td>覆盖字体族名。不传则读字体 name table</td>
+            </tr>
+            <tr>
+              <td><code>opts.sansSerif</code></td>
+              <td><code>string[]?</code></td>
+              <td>把 CSS <code>sans-serif</code> 映射到这些族名（按优先级）</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          <code>clearFonts()</code> 清空已注册字体，主要用于测试；同样会热更新已有实例，
+          并通知已创建的 Worker。
+        </p>
+
+        <h4><code>sans-serif</code> 映射</h4>
+        <ul>
+          <li>显式传 <code>sansSerif</code>：覆盖当前映射</li>
+          <li>只传 <code>familyName</code>、且尚无映射：默认映射到该族名</li>
+          <li>后续再注册其它字体且不传 <code>sansSerif</code>：<strong>不覆盖</strong>已有映射</li>
+        </ul>
+        <pre>import initWasm, { init, registerFont } from '@wasm-echarts';
+
+await initWasm();
+
+const bytes = new Uint8Array(
+  await (await fetch('/fonts/NotoSansSC-Regular.ttf')).arrayBuffer()
+);
+registerFont(bytes, {
+  familyName: 'Noto Sans SC',
+  sansSerif: ['Noto Sans SC'],
+});
+
+const chart = init(canvas);
+chart.setOption({
+  title: { text: '中文标题', textStyle: { fontFamily: 'Noto Sans SC' } },
+  xAxis: { type: 'category', data: ['一', '二'] },
+  yAxis: { type: 'value' },
+  series: [{ type: 'bar', data: [1, 2] }],
+});</pre>
+        <p>
+          多字体对照
+          <a href="/echarts/examples/#fonts">fonts 示例</a>。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3>site 辅助，不是库 API</h3>
+        <p>
+          文档站提供 <code>site/src/echarts/fonts.js</code>，方便示例少写 fetch：
+        </p>
+        <ul>
+          <li><code>loadFontFromUrl(url, opts?)</code></li>
+          <li><code>ensureDefaultFont()</code> — 拉取 <code>/fonts/NotoSansSC-Regular.ttf</code></li>
+        </ul>
+        <p>
+          业务项目应自己 <code>fetch</code> 字体再调 facade 的 <code>registerFont</code>。
+          这不是 <code>@wasm-echarts</code> 的导出。
+        </p>
+      </div>
+
+      <p>
+        返回 <a href="./">快速上手</a>
+        · 下一步
+        <a href="./runtime.html">运行模式</a>
+      </p>
+    </main>
+  </div>
+  <script type="module" src="/src/shared/docs-shell.js"></script>
+</body>
+</html>

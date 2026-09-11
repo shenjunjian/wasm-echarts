@@ -149,14 +149,17 @@ wasm-zrender  ✗ 不依赖  wasm-echarts
 
 **文档硬规则（与实现对齐同等重要）：**
 
-公开文档（`site/echarts/docs/index.html`、根 README、本文件）必须始终有这四块，实现变更时同步改：
+公开文档（`site/echarts/docs/`、根 README、本文件）必须始终有这七章，实现变更时同步改。`/echarts/docs/` 默认落在快速上手。**公开文档不含 probe**：不写 ok/error/timeout 计数、波次编号、「第 x 波 YAML」。能力缺口用「库现在画不了 / 缺插件 / 缺增量绘制」表述。同步示例的 agent 仍可在本文件保留 probe 操作说明。
 
-1. **与官方一致的公开 API**：可按官方文档调用的方法与签名。
-2. **与官方不一致 / 例外**：`use` 提示语义、`init(null)`、无 SVG、动画终态、字体、`lazyUpdate` 同步、Loading 无旋转、DataView DOM、`opts.useWorker`（函数 option 限制、option 不用 SAB、仅回图可用 SAB）等。
-3. **多出来的非官方 API**：`refresh`、`findHover` / `handlePointerMove` 等 WASM hatch；写清用途、何时该用、何时不该当官方 API。
-4. **已实现 / 未实现**：图表类型、组件、`dispatchAction` type、option 字段生效范围。未实现的官方方法仍尽量导出同名，内部 `console.warn`，在此表标「未实现」并按 canvas 全量对齐计划补齐。
+1. **快速上手**：pkg 与 JS facade 分工；推荐顺序 `initWasm` → `registerFont`（有文字时）→ `init` → `setOption`；绑定 canvas / 离屏 `refresh()` 两段示例。默认主线程，回链运行模式。
+2. **字体引用**：必须从 `@wasm-echarts` 注册；echarts 页与 `getZr` 共用同一份 WASM / fontdb；`useWorker` 时同一份 bytes 进另一份 WASM。
+3. **运行模式**：为何要 Worker、默认主线程、`opts.useWorker` 用法、函数 / DOM / `getZr` / SAB 限制。不要自己 `new Worker`。
+4. **API 参考**：facade（`@wasm-echarts` → `js/`）为默认公开面；pkg 单独成章。每条有官方 / 补充 / 降级徽章 + 参数表 + 短示例。不要直接 `new EChartsInstance`。
+5. **与官方差异**：允许例外 / 已对齐 / 降级后置 / 补充 API 分表。禁止把后置未做写成允许例外。Worker 开关是补充 API，限制写进运行模式，差异页只留一行回链。
+6. **已实现 / 未实现**：图表 / 坐标系 / 组件 / 实例 API 能力表。未实现的官方方法仍导出同名 + `console.warn`。不写 probe 报表。
+7. **底层原理**：option 管线、单 WASM、JS↔WASM 过桥、Worker 数据流。三层定位回链首页。
 
-剩余缺口写进「未实现」表（probe 失败、视觉简化、刻意不做的 SVG/DOM）。不要把「图类型还没做」写成「canvas 能力永久例外」。
+剩余缺口写进「未实现」表（视觉简化、缺插件、刻意不做的 SVG/DOM）。不要把「图类型还没做」写成「canvas 能力永久例外」。
 
 ---
 
@@ -267,7 +270,11 @@ dispose(zr);
 
 ### wasm-zrender 文档重构（已完成）
 
-权威计划：[`.cursor/plans/wasm-zrender_文档重构_d64ac165.plan.md`](../.cursor/plans/wasm-zrender_文档重构_d64ac165.plan.md)。首页改为起因介绍 + rust-zrender / wasm-zrender / wasm-echarts 三层定位，去掉产品卡片。全站顶栏（`site-header.js`）品牌回首页，产品名进文档默认页，进入产品后旁挂「文档 / 实例」。zrender 文档拆成五章多页 + 侧栏（`docs-shell.js`）：`/zrender/docs/` 默认快速上手；字体、JS facade / pkg API、与官方差异、底层原理各成页。echarts 文档正文本波不动。
+权威计划：[`.cursor/plans/wasm-zrender_文档重构_d64ac165.plan.md`](../.cursor/plans/wasm-zrender_文档重构_d64ac165.plan.md)。首页改为起因介绍 + rust-zrender / wasm-zrender / wasm-echarts 三层定位，去掉产品卡片。全站顶栏（`site-header.js`）品牌回首页，产品名进文档默认页，进入产品后旁挂「文档 / 实例」。zrender 文档拆成五章多页 + 侧栏（`docs-shell.js`）：`/zrender/docs/` 默认快速上手；字体、JS facade / pkg API、与官方差异、底层原理各成页。该波 echarts 文档正文不动（已由后续 echarts 文档重构拆成七章）。
+
+### wasm-echarts 文档重构（已完成）
+
+权威计划：[`.cursor/plans/wasm-echarts_文档重构_a2537acd.plan.md`](../.cursor/plans/wasm-echarts_文档重构_a2537acd.plan.md)。`/echarts/docs/` 默认快速上手；侧栏七章：上手 / 字体 / 运行模式 / API（facade + pkg）/ 差异 / 覆盖 / 原理。公开文档不含 probe。`docs-shell.js` 按路径切 `ECHARTS_DOC_NAV`。
 
 ---
 
@@ -604,7 +611,7 @@ chart-map, chart-lines, chart-parallel, chart-custom
 
 可按需裁剪以减小 WASM 体积。`echarts.use` **不为体积做动态加载**（见硬规则）。
 
-### 文档四块（随实现更新）
+### 实现口径（随实现更新；公开文档七章见 `site/echarts/docs/`）
 
 #### 1. 与官方一致的公开 API
 
@@ -1016,8 +1023,15 @@ site/
 │       ├── text.html / text.js
 │       └── …
 └── echarts/
-    ├── index.html
-    ├── docs/index.html        # 四块文档（本波正文不动）
+    ├── index.html             # 薄枢纽：文档 / 实例卡片
+    ├── docs/
+    │   ├── index.html         # 快速上手（文档默认页）
+    │   ├── fonts.html
+    │   ├── runtime.html       # 主线程 vs Worker
+    │   ├── differences.html
+    │   ├── coverage.html      # 已实现 / 未实现
+    │   ├── internals.html
+    │   └── api/               # facade / pkg 分页
     └── examples/              # 每个示例 = html + 完整 js
         ├── gallery.js
         ├── official-line-catalog.js / official-bar-catalog.js / official-pie-catalog.js / official-scatter-catalog.js
@@ -1029,7 +1043,7 @@ site/
 - 全站顶栏（`src/shared/site-header.js`）：品牌 → `/`；**wasm-zrender** → `/zrender/docs/`；**wasm-echarts** → `/echarts/docs/`。进入产品后旁挂「文档 / 实例」
 - 首页 = 起因介绍 + 三层定位 + 已知限制；**没有**产品卡片，不写 API 长文、不嵌 canvas
 - zrender 文档五章 + 侧栏（`docs-shell.js`）：快速上手（默认）/ 字体引用 / API 参考（facade + pkg）/ 与官方差异 / 底层原理。正文不再是单页全集，也不复述首页长文
-- echarts 文档仍是单页四块（一致 / 不一致 / 非官方 API / 已实现与未实现），本波正文本不动
+- echarts 文档七章 + 侧栏（`docs-shell.js` 按 `/echarts/docs` 切 `ECHARTS_DOC_NAV`）：快速上手（默认）/ 字体引用 / 运行模式 / API 参考（facade + pkg）/ 与官方差异 / 已实现 / 未实现 / 底层原理。公开正文不含 probe / 波次 / ok 计数
 - 实例画廊：左侧菜单 + 源码（即该示例 `.js` 全文），右侧 iframe 预览。echarts 为二级菜单（类别 → 示例）；zrender 为扁平列表
 - 每个示例 JS 自包含：导入、构图、绘制、交互都写在同一个文件里。官网同步页自己 `init`/`setOption`，不经 `runOfficialExample`
 
@@ -1088,7 +1102,7 @@ npm run preview      # 预览构建结果
 | 首页 | http://127.0.0.1:5173/ |
 | zrender 文档 | http://127.0.0.1:5173/zrender/docs/ |
 | zrender 实例 | http://127.0.0.1:5173/zrender/examples/ |
-| echarts 文档 | http://127.0.0.1:5173/echarts/docs/ |
+| echarts 文档（快速上手） | http://127.0.0.1:5173/echarts/docs/ |
 | echarts 实例 | http://127.0.0.1:5173/echarts/examples/ |
 
 `scripts/serve-demo.sh` 仍 `wasm-pack` wasm-echarts 后用 `python -m http.server` 指到已不存在的 `demo/`，不要用它启动文档站。

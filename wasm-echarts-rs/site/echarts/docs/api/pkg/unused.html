@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>不要直接用的符号 · wasm-echarts 文档</title>
+  <link rel="stylesheet" href="/src/shared/layout.css" />
+</head>
+<body>
+  <header class="site-header"></header>
+  <div class="docs-layout">
+    <aside class="docs-sidebar"></aside>
+    <main class="docs-main">
+      <h1>不要直接用的符号</h1>
+      <p class="lead">
+        pkg 为了对齐 wasm-bindgen 与 zrender 图元表，会导出一批业务不该碰的符号。
+        有内容的公开 API 在 JS facade。
+      </p>
+
+      <div class="notice">
+        <p>
+          <code>@wasm-echarts</code> 也再导出了 <code>EChartsInstance</code>，那是给内部 / 调试看的。
+          业务请用 <code>init()</code>。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3>不要直接构造 <span class="doc-badge doc-badge-pkg">仅 pkg</span></h3>
+        <table>
+          <thead>
+            <tr>
+              <th>符号</th>
+              <th>请改用</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>new EChartsInstance(width, height, dpr)</code></td>
+              <td><code>init(canvas | null, theme?, opts?)</code></td>
+            </tr>
+            <tr>
+              <td><code>attachHost(dom)</code></td>
+              <td>facade 在 <code>init(canvas)</code> 时内部绑定</td>
+            </tr>
+            <tr>
+              <td><code>registerCustomSeriesType(type)</code></td>
+              <td><code>registerCustomSeries(type, renderItem)</code></td>
+            </tr>
+            <tr>
+              <td>pkg 顶层 <code>registerTransform</code> / <code>registerMap</code> / <code>parseGeoJSON</code></td>
+              <td>同名 facade 导出（会同步 Worker、包装 upstream）</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="doc-section">
+        <h3>随包再导出的 zrender 类</h3>
+        <p>
+          echarts 的 <code>.wasm</code> 编进了 wasm-zrender 的图元绑定（<code>Rect</code> /
+          <code>Group</code> / <code>LinearGradient</code> 等），供 <code>getZr</code> 与
+          <code>graphic</code> 使用。从 pkg 直接 <code>new Rect</code> 没有 JS 原型链。
+          请用 <code>import { graphic } from '@wasm-echarts'</code>，或 zrender 文档站的
+          <code>@wasm-zrender</code>（那是另一份 wasm，echarts 页不要加载）。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3>仅 Rust、JS 看不到</h3>
+        <p>
+          <code>insert_renderer</code> / <code>attach_host</code> / <code>with_zr</code> 等
+          crate 函数<strong>没有</strong> <code>#[wasm_bindgen]</code>，pkg 里没有这些名字。
+          ChartView 用它们把系列图画进同一份 <code>ZRenderer</code>。
+        </p>
+      </div>
+
+      <p>
+        上一章 <a href="./instance.html">EChartsInstance</a>
+        · 下一步
+        <a href="../../differences.html">与官方差异</a>
+      </p>
+    </main>
+  </div>
+  <script type="module" src="/src/shared/docs-shell.js"></script>
+</body>
+</html>

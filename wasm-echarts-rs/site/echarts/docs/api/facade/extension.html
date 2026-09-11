@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>命名空间与扩展 · wasm-echarts 文档</title>
+  <link rel="stylesheet" href="/src/shared/layout.css" />
+</head>
+<body>
+  <header class="site-header"></header>
+  <div class="docs-layout">
+    <aside class="docs-sidebar"></aside>
+    <main class="docs-main">
+      <h1>命名空间与扩展</h1>
+      <p class="lead">
+        <code>export/api.ts</code> 命名空间、主题 / 地图 / transform、以及扩展注册真表。
+        hatch 写清何时不该用。
+      </p>
+
+      <div class="doc-section">
+        <h3>命名空间 <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>
+          已从 wasm-zrender 再导出或按官方签名重写。
+          <code>LinearGradient</code> 可进 <code>setOption</code>。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>导出</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>graphic</code></td>
+              <td>图元构造器 + 渐变 / Pattern；来自同一份 echarts WASM</td>
+            </tr>
+            <tr>
+              <td><code>util</code> / <code>number</code> / <code>time</code> / <code>format</code> / <code>helper</code></td>
+              <td>按官方签名的 JS 实现</td>
+            </tr>
+            <tr>
+              <td><code>matrix</code> / <code>vector</code> / <code>color</code></td>
+              <td>再导出 wasm-zrender <code>js/tool/</code></td>
+            </tr>
+            <tr>
+              <td><code>env</code></td>
+              <td>环境探测对象</td>
+            </tr>
+            <tr>
+              <td><code>throttle(fn, delay?, debounce?)</code></td>
+              <td>按官方签名重写</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>import { graphic, throttle } from '@wasm-echarts';
+const color = new graphic.LinearGradient(0, 0, 0, 1, [
+  { offset: 0, color: '#83bff6' },
+  { offset: 1, color: '#188df0' },
+]);</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>connect</code> / <code>disconnect</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>按 <code>chart.group</code> 转发 <code>dispatchAction</code>。可传 group id，或实例数组。</p>
+        <pre>connect([chartA, chartB]);
+disconnect(chartA.group);</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3>主题与地图 <span class="doc-badge doc-badge-official">官方</span></h3>
+        <table>
+          <thead>
+            <tr>
+              <th>方法</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>registerTheme(name, theme)</code></td>
+              <td>登记主题表；<code>init(dom, name)</code> 或 <code>setTheme</code> 使用</td>
+            </tr>
+            <tr>
+              <td><code>registerMap(name, geoJson, specialAreas?)</code></td>
+              <td>JS 表 + WASM 表；<code>useWorker</code> 时 facade 同步进 Worker</td>
+            </tr>
+            <tr>
+              <td><code>getMap(name)</code></td>
+              <td>读已登记记录</td>
+            </tr>
+            <tr>
+              <td><code>parseGeoJSON</code> / <code>parseGeoJson</code></td>
+              <td>返回 <code>{ name, center, polygons }</code> 数组</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>registerMap('demo', geoJson);
+chart.setOption({
+  geo: { map: 'demo' },
+  series: [{ type: 'map', map: 'demo', data: [] }],
+});</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>registerTransform({ type, transform })</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>内置 <code>filter</code> / <code>sort</code>；外部函数登记后可被 dataset 调用。包装后的 upstream 有 <code>data</code> / <code>count</code> / <code>getRawDataItem</code> 等。</p>
+        <pre>registerTransform({
+  type: 'my:filter',
+  transform(params) {
+    return { dimensions: params.upstream.dimensions, data: params.upstream.data };
+  },
+});</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3>扩展注册 <span class="doc-badge doc-badge-official">官方</span> <span class="doc-badge doc-badge-degraded">降级</span></h3>
+        <p>
+          真表：<code>registerPreprocessor</code> / <code>registerProcessor</code> /
+          <code>registerLayout</code> / <code>registerVisual</code> / <code>registerAction</code> /
+          <code>registerCoordinateSystem</code> / <code>registerCustomSeries</code> /
+          <code>PRIORITY</code> / <code>setPlatformAPI</code>。
+        </p>
+        <p>
+          layout / visual 的 <code>ecModel</code> 是简化对象（<code>getOption</code> /
+          <code>eachSeries</code>），不是官方 GlobalModel / List。
+        </p>
+        <pre>import { registerLayout, PRIORITY } from '@wasm-echarts';
+registerLayout(PRIORITY.VISUAL.LAYOUT, (ecModel) => {
+  ecModel.eachSeries((series) => { /* 简化模型 */ });
+});</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3>补充 hatch <span class="doc-badge doc-badge-extra">补充</span></h3>
+        <p><code>init(canvas)</code> 后普通用户不必再调这些。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>方法</th>
+              <th>何时用</th>
+              <th>何时不要用</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>refresh()</code></td>
+              <td>离屏无 canvas，需要 RGBA</td>
+              <td><code>init(canvas)</code> 后 <code>setOption</code> 已自动上屏</td>
+            </tr>
+            <tr>
+              <td><code>findHover(x, y)</code></td>
+              <td>自管命中检测</td>
+              <td>主路径用 <code>on('mouseover')</code></td>
+            </tr>
+            <tr>
+              <td><code>handlePointerMove</code> / <code>Leave</code> / <code>Down</code> / <code>Up</code> / <code>Click</code></td>
+              <td>离屏或自管指针</td>
+              <td><code>init(canvas)</code> 时一般不需要</td>
+            </tr>
+            <tr>
+              <td><code>applyDataZoomWheel(x, deltaY)</code></td>
+              <td>自管滚轮</td>
+              <td><code>init(canvas)</code> 时滚轮已绑定</td>
+            </tr>
+            <tr>
+              <td><code>getTooltipContent(si, di)</code></td>
+              <td>自绘 tooltip（string HTML）</td>
+              <td><code>init(canvas)</code> 时 facade 已内建 DOM</td>
+            </tr>
+            <tr>
+              <td><code>benchmarkRender(n)</code></td>
+              <td>渲染均值耗时（毫秒）</td>
+              <td>不是官方性能 API；见 <a href="/echarts/examples/#bench">bench</a></td>
+            </tr>
+            <tr>
+              <td><code>hasOption</code> / <code>optionHasFunctions</code></td>
+              <td>状态查询</td>
+              <td>不是官方 API</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="doc-section">
+        <h3>未实现仍导出 <span class="doc-badge doc-badge-degraded">降级</span></h3>
+        <p>
+          同名入口内部只 <code>console.warn</code>，避免 <code>is not a function</code>：
+          <code>registerLocale</code>、<code>convertToLayout</code>、<code>getVisual</code>、
+          <code>renderToSVGString</code>、<code>getSvgDataURL</code>、<code>getModel</code>。
+          <code>isSSR()</code> 恒为 <code>false</code>。<code>updateLabelLayout</code> 为空操作。
+        </p>
+      </div>
+
+      <p>
+        上一章 <a href="./coord.html">坐标、导出与 getZr</a>
+        · 下一步
+        <a href="../pkg/">pkg 导出 API</a>
+      </p>
+    </main>
+  </div>
+  <script type="module" src="/src/shared/docs-shell.js"></script>
+</body>
+</html>

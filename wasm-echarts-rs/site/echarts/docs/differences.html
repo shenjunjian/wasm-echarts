@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>与官方差异 · wasm-echarts 文档</title>
+  <link rel="stylesheet" href="/src/shared/layout.css" />
+</head>
+<body>
+  <header class="site-header"></header>
+  <div class="docs-layout">
+    <aside class="docs-sidebar"></aside>
+    <main class="docs-main">
+      <h1>与官方差异</h1>
+      <p class="lead">
+        公开表面对齐官方 <code>core.ts</code> / <code>export/api.ts</code>。
+        做不到的不改名糊弄：例外、未实现、补充分表列出。
+      </p>
+
+      <div class="notice">
+        <p>
+          禁止把后置未做写成允许例外。Worker 开关是<strong>补充 API</strong>，限制写在
+          <a href="./runtime.html">运行模式</a>，本页只留一行回链。
+          某张图能不能画见 <a href="./coverage.html">已实现 / 未实现</a>。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3>允许例外 <span class="doc-badge doc-badge-degraded">降级</span></h3>
+        <p>仓库目标是一帧终态图像，这些是刻意取舍，不是以后再补的缺口。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>例外</th>
+              <th>官方</th>
+              <th>wasm-echarts</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>字体</td>
+              <td>浏览器字体引擎</td>
+              <td>必须从 <code>@wasm-echarts</code> <code>registerFont</code>。见 <a href="./fonts.html">字体引用</a></td>
+            </tr>
+            <tr>
+              <td>动画</td>
+              <td>rAF 播中间帧</td>
+              <td><code>setOption</code> / <code>animation</code> / <code>universalTransition</code> 直接终态。无系列间插值</td>
+            </tr>
+            <tr>
+              <td>离屏</td>
+              <td>DOM canvas / SVG painter / hover layer</td>
+              <td>仅 canvas 离屏。无 SVG / hover 层。WASM 不操作页面 2D context</td>
+            </tr>
+            <tr>
+              <td>宿主</td>
+              <td>客户端 <code>init</code> 需要 DOM</td>
+              <td><code>init(canvas)</code> 绑指针并自动上屏；<code>init(null, null, { width, height })</code> 纯离屏</td>
+            </tr>
+            <tr>
+              <td><code>use(...)</code></td>
+              <td>按需加载图表 / 组件</td>
+              <td>不加载模块，只 <code>console.info</code>：已开发的都编进 WASM</td>
+            </tr>
+            <tr>
+              <td>Loading</td>
+              <td>旋转动画</td>
+              <td>静态半透明遮罩 + 文案</td>
+            </tr>
+            <tr>
+              <td>DataView / SaveAsImage</td>
+              <td>toolbox DOM 浮层 / 下载条</td>
+              <td>明确不做</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="doc-section">
+        <h3>已对齐 <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>可按官方文档调用。细节与参数表在 <a href="./api/facade/">JS facade API</a>。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>范围</th>
+              <th>对齐内容</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>入口</td>
+              <td><code>init</code> / <code>dispose</code> / <code>getInstanceByDom</code> / <code>getInstanceById</code> / <code>version</code>（<code>'6.1.0'</code>）</td>
+            </tr>
+            <tr>
+              <td>实例</td>
+              <td><code>setOption</code> 三种签名 / <code>getOption</code> / <code>resize</code> / <code>clear</code> / <code>on</code> / <code>off</code></td>
+            </tr>
+            <tr>
+              <td>action</td>
+              <td>已接线 <code>dispatchAction</code> type（highlight / dataZoom / showTip / legend* / restore / timeline / brush / axisBreak 等）</td>
+            </tr>
+            <tr>
+              <td>命名空间</td>
+              <td><code>export/api.ts</code>：<code>graphic</code> / <code>util</code> / <code>time</code> / <code>format</code> / <code>number</code> / <code>helper</code> / <code>matrix</code> / <code>vector</code> / <code>color</code> / <code>env</code> / <code>throttle</code></td>
+            </tr>
+            <tr>
+              <td>指针与 tooltip</td>
+              <td><code>init(canvas)</code> 后指针与 string tooltip。<code>click</code> / <code>mouseover</code> / <code>mouseout</code> / <code>globalout</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="doc-section">
+        <h3>降级 / 后置（未实现） <span class="doc-badge doc-badge-degraded">降级</span></h3>
+        <p>
+          <strong>后置</strong> = 还没做，不要写进「已对齐」。
+          <strong>降级</strong> = 签名在，语义弱于官方。两者都不是允许例外。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>条目</th>
+              <th>类别</th>
+              <th>现状</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>replaceMerge</code></td>
+              <td>降级</td>
+              <td>只按顶层 key 整段替换，不按 component <code>id</code></td>
+            </tr>
+            <tr>
+              <td>扩展 StageHandler</td>
+              <td>降级</td>
+              <td><code>registerProcessor</code> / Layout / Visual 拿到简化 <code>ecModel</code>（<code>getOption</code> / <code>eachSeries</code>）</td>
+            </tr>
+            <tr>
+              <td>labelLayout</td>
+              <td>降级</td>
+              <td>终态 AABB 避让，不是官方 LabelManager / OBB</td>
+            </tr>
+            <tr>
+              <td>UniversalTransition</td>
+              <td>后置</td>
+              <td>只跳终态，不做系列间插值</td>
+            </tr>
+            <tr>
+              <td>rich text</td>
+              <td>降级</td>
+              <td>标签当普通 Text</td>
+            </tr>
+            <tr>
+              <td>geo roam / SVG 地图源</td>
+              <td>后置</td>
+              <td>未实现。能力缺口见覆盖页</td>
+            </tr>
+            <tr>
+              <td>tooltip HTMLElement formatter</td>
+              <td>后置</td>
+              <td>未实现；内建只有 string HTML</td>
+            </tr>
+            <tr>
+              <td><code>lazyUpdate</code> / <code>silent</code></td>
+              <td>降级</td>
+              <td>同步 flush</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="doc-section">
+        <h3>补充 API <span class="doc-badge doc-badge-extra">补充</span></h3>
+        <p>wasm-echarts 多出来的。不要当成浏览器 ECharts 的官方方法来用。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>API</th>
+              <th>用途</th>
+              <th>何时不该当官方用</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>registerFont</code> / <code>clearFonts</code></td>
+              <td>向本模块 fontdb 注入 / 清空字体</td>
+              <td>官方没有。须从 <code>@wasm-echarts</code> 调</td>
+            </tr>
+            <tr>
+              <td><code>refresh()</code></td>
+              <td>返回 RGBA</td>
+              <td>绑了 canvas 时 <code>setOption</code> 已上屏</td>
+            </tr>
+            <tr>
+              <td>指针 hatch</td>
+              <td><code>findHover</code> / <code>handlePointer*</code> / <code>applyDataZoomWheel</code> / <code>getTooltipContent</code></td>
+              <td><code>init(canvas)</code> 时 facade 已绑定</td>
+            </tr>
+            <tr>
+              <td><code>opts.useWorker</code></td>
+              <td>把实例放到 Worker</td>
+              <td>非官方开关。限制见 <a href="./runtime.html">运行模式</a></td>
+            </tr>
+            <tr>
+              <td><code>benchmarkRender</code></td>
+              <td>渲染均值耗时</td>
+              <td>不是官方性能 API</td>
+            </tr>
+            <tr>
+              <td><code>optionHasFunctions</code> / <code>hasOption</code></td>
+              <td>状态查询</td>
+              <td>不是官方 API</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        上一章 <a href="./api/pkg/unused.html">不要直接用的符号</a>
+        · 下一步
+        <a href="./coverage.html">已实现 / 未实现</a>
+      </p>
+    </main>
+  </div>
+  <script type="module" src="/src/shared/docs-shell.js"></script>
+</body>
+</html>

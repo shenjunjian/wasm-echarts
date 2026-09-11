@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>生命周期 · wasm-echarts 文档</title>
+  <link rel="stylesheet" href="/src/shared/layout.css" />
+</head>
+<body>
+  <header class="site-header"></header>
+  <div class="docs-layout">
+    <aside class="docs-sidebar"></aside>
+    <main class="docs-main">
+      <h1>生命周期</h1>
+      <p class="lead">
+        顶层函数：先 <code>await initWasm()</code>，再 <code>init</code>。
+        有文字时必须先 <code>registerFont</code>。
+      </p>
+
+      <div class="doc-section">
+        <h3><code>init(dom, theme?, opts?)</code> <span class="doc-badge doc-badge-official">官方</span> <span class="doc-badge doc-badge-extra">补充</span></h3>
+        <p>
+          创建图表实例。有 canvas 时 <code>setOption</code> 自动上屏，并绑定
+          mousemove / click / leave / wheel。
+          <code>dom</code> 可为 <code>null</code>（离屏；官方客户端无 DOM 会抛错）。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>参数</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>dom</code></td>
+              <td><code>HTMLCanvasElement | null</code></td>
+              <td>绑 canvas 则指针 + tooltip + 自动 <code>putImageData</code>；<code>null</code> 纯离屏</td>
+            </tr>
+            <tr>
+              <td><code>theme</code></td>
+              <td><code>string | object | null</code></td>
+              <td>已 <code>registerTheme</code> 的名字，或主题对象。首次 <code>setOption</code> 当默认项合并</td>
+            </tr>
+            <tr>
+              <td><code>opts.width</code> / <code>height</code></td>
+              <td><code>number</code></td>
+              <td>缺省读 canvas 位图 / <code>clientWidth</code>；再缺省 300×150</td>
+            </tr>
+            <tr>
+              <td><code>opts.devicePixelRatio</code> / <code>dpr</code></td>
+              <td><code>number</code></td>
+              <td>默认 <code>1</code></td>
+            </tr>
+            <tr>
+              <td><code>opts.useWorker</code> <span class="doc-badge doc-badge-extra">补充</span></td>
+              <td><code>boolean</code></td>
+              <td>默认 <code>false</code>。详见 <a href="../../runtime.html">运行模式</a></td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>const chart = init(canvas);
+const offscreen = init(null, null, { width: 480, height: 360 });
+const worker = init(canvas, null, { useWorker: true });</pre>
+        <p>
+          对照
+          <a href="/echarts/examples/#line">line</a>、
+          <a href="/echarts/examples/#bar-large">bar-large</a>。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>dispose(chart | canvas | id)</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>释放单个实例（也可用 <code>chart.dispose()</code>）。按实例、canvas 或 id 查找。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>参数</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>chart</code></td>
+              <td>facade 实例 / canvas / id 字符串</td>
+              <td>已 dispose 的忽略</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>dispose(chart);
+dispose(canvas);
+chart.dispose();</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>getInstanceByDom</code> / <code>getInstanceById</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>按 canvas 或实例 id 取回已包装的 facade。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>参数</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>dom</code></td>
+              <td>canvas</td>
+              <td><code>getInstanceByDom</code></td>
+            </tr>
+            <tr>
+              <td><code>id</code></td>
+              <td><code>string</code></td>
+              <td><code>chart.getId()</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>const again = getInstanceByDom(canvas);
+const byId = getInstanceById(chart.getId());</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>version</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>字符串常量 <code>'6.1.0'</code>，对齐官方 ECharts 版本号。</p>
+        <pre>import { version } from '@wasm-echarts';
+console.log(version); // '6.1.0'</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>use(...)</code> <span class="doc-badge doc-badge-degraded">降级</span></h3>
+        <p>
+          导出且签名对齐；只 <code>console.info</code>，不按需加载。
+          已开发的图表 / 组件都编进 WASM，不必 <code>echarts.use(BarChart)</code>。
+        </p>
+        <pre>import { use } from '@wasm-echarts';
+use(); // 只打印提示</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>registerFont</code> / <code>clearFonts</code> <span class="doc-badge doc-badge-extra">补充</span></h3>
+        <p>
+          向本模块全局 fontdb 注入 / 清空字体。完整规则见
+          <a href="../../fonts.html">字体引用</a>。
+        </p>
+        <pre>registerFont(bytes, {
+  familyName: 'Noto Sans SC',
+  sansSerif: ['Noto Sans SC'],
+});</pre>
+      </div>
+
+      <p>
+        上一章 <a href="./">总览与约定</a>
+        · 下一章
+        <a href="./instance.html">实例方法</a>
+      </p>
+    </main>
+  </div>
+  <script type="module" src="/src/shared/docs-shell.js"></script>
+</body>
+</html>

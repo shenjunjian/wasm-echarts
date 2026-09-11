@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>运行模式 · wasm-echarts 文档</title>
+  <link rel="stylesheet" href="/src/shared/layout.css" />
+</head>
+<body>
+  <header class="site-header"></header>
+  <div class="docs-layout">
+    <aside class="docs-sidebar"></aside>
+    <main class="docs-main">
+      <h1>运行模式</h1>
+      <p class="lead">
+        默认主线程。数据量大会卡住页面时，用非官方开关 <code>opts.useWorker</code>。
+        不要自己 <code>new Worker</code>。
+      </p>
+
+      <div class="doc-section">
+        <h3>为什么引入 Worker</h3>
+        <p>
+          绘制在 WASM 里是<strong>同步长任务</strong>。数据量一大（例如 50 万柱、20 万 K 线），
+          主线程 <code>setOption</code> 会卡住页面：滚轮、点击、tooltip 全停。
+        </p>
+        <p>
+          Worker 把 <code>EChartsInstance</code> 放到后台线程；主线程只做
+          <code>putImageData</code>、指针坐标转发、tooltip DOM。
+          开发者仍写官方形态的 <code>init</code> / <code>setOption</code> / <code>on</code>。
+        </p>
+        <p>
+          Worker <strong>不是</strong> progressive / 增量绘制的替代：Worker 内仍然一次画完。
+          它只保证<strong>主线程还能响应用户</strong>。
+        </p>
+        <p>
+          小图、带 <code>formatter</code> / <code>renderItem</code> 的 option
+          <strong>不要开</strong>。画廊只在大数据卡死例打开（
+          <a href="/echarts/examples/#bar-large">bar-large</a> /
+          <a href="/echarts/examples/#scatter-large">scatter-large</a> /
+          <a href="/echarts/examples/#candlestick-large">candlestick-large</a> /
+          <a href="/echarts/examples/#parallel-nutrients">parallel-nutrients</a>）。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3>普通模式（默认）</h3>
+        <pre>const chart = init(canvas);
+chart.setOption(option); // 同步
+chart.on('click', (p) => { /* 可用函数 option、getZr、DOM tooltip */ });</pre>
+        <ul>
+          <li>同线程；WASM 与定义函数的 JS 在同一 realm，回调桥可用。</li>
+          <li><code>setOption</code> 同步返回；<code>getZr()</code> 可用。</li>
+          <li>适合绝大多数图；有函数字段时<strong>必须</strong>走这条。</li>
+        </ul>
+      </div>
+
+      <div class="doc-section">
+        <h3>Worker 模式 <span class="doc-badge doc-badge-extra">补充</span></h3>
+        <pre>const chart = init(canvas, null, { useWorker: true });
+await chart.setOption(option); // Promise；option 必须可结构化克隆</pre>
+        <p>
+          非官方开关 <code>opts.useWorker</code>，默认 <code>false</code>。
+          当前环境没有 <code>Worker</code> 时 <code>console.warn</code> 并回退主线程。
+        </p>
+        <p>
+          <strong>不要自己 <code>new Worker</code></strong>。封装在
+          <code>js/worker-bridge.js</code> / <code>js/chart.worker.js</code>。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3>Worker 限制</h3>
+        <p>结构化克隆过不了的东西都不能进 Worker 的 option / action payload。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>限制</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>函数</td>
+              <td>
+                <code>tooltip.formatter</code>、<code>axisLabel.formatter</code>、
+                <code>label.formatter</code>、<code>itemStyle.color</code> 为函数、
+                <code>symbolSize</code> 为函数、<code>series.renderItem</code>、
+                扩展 <code>registerLayout</code> / <code>registerVisual</code> 里依赖主线程闭包的回调等。
+                含函数会抛错并提示走主线程。
+              </td>
+            </tr>
+            <tr>
+              <td>DOM / 宿主对象</td>
+              <td>
+                <code>HTMLElement</code>、canvas、节点、不能克隆的 wasm-bindgen 实例。
+                Worker 没有页面 DOM。
+              </td>
+            </tr>
+            <tr>
+              <td>因此主线程仍负责</td>
+              <td>
+                canvas 上屏、mousemove / click / wheel 绑点、内建 tooltip
+                <strong>string HTML</strong>（不是把 DOM 丢进 Worker）。
+                <code>HTMLElement</code> formatter 本身未实现，Worker 下更不行。
+              </td>
+            </tr>
+            <tr>
+              <td><code>getZr()</code></td>
+              <td>ZRender 在 Worker 里；主线程 <code>console.warn</code> 并返回 <code>undefined</code>，不能 <code>add</code> 图元。</td>
+            </tr>
+            <tr>
+              <td>Symbol</td>
+              <td>同样不能克隆。</td>
+            </tr>
+            <tr>
+              <td>TypedArray / <code>ArrayBuffer</code></td>
+              <td>可以随 option <code>postMessage</code>。<strong>option 方向一律不用 SharedArrayBuffer</strong>。</td>
+            </tr>
+            <tr>
+              <td>SAB 只用于回图</td>
+              <td>
+                Worker → 主线程回传 RGBA。站点需 COOP <code>same-origin</code> + COEP
+                <code>require-corp</code>（文档站 Vite 已配）。不可用时 fallback Transferable。
+              </td>
+            </tr>
+            <tr>
+              <td>字体 / 地图</td>
+              <td>
+                <code>registerFont</code> / <code>registerMap</code> 由 facade 同步进 Worker；
+                开发者不必发第二份消息。
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="doc-section">
+        <h3>对照</h3>
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th>普通（默认）</th>
+              <th>Worker</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>何时用</td>
+              <td>绝大多数图；有函数 option 时必须</td>
+              <td>大数据、主线程会被画图卡住时</td>
+            </tr>
+            <tr>
+              <td><code>setOption</code></td>
+              <td>同步返回</td>
+              <td>返回 Promise，需 <code>await</code></td>
+            </tr>
+            <tr>
+              <td>函数 option</td>
+              <td>可用</td>
+              <td>不可；会抛错</td>
+            </tr>
+            <tr>
+              <td>DOM</td>
+              <td>facade 绑 canvas / tooltip</td>
+              <td>主线程仍绑；option 里不能带 DOM</td>
+            </tr>
+            <tr>
+              <td><code>getZr()</code></td>
+              <td>可用（同一份 WASM）</td>
+              <td>不可用</td>
+            </tr>
+            <tr>
+              <td>回图</td>
+              <td>主线程 <code>putImageData</code></td>
+              <td>RGBA 经 SAB 或 Transferable 回主线程 blit</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          实现向的数据流见
+          <a href="./internals.html">底层原理</a>。
+          开关本身是补充 API，差异页只留一行回链。
+        </p>
+      </div>
+
+      <p>
+        上一章 <a href="./fonts.html">字体引用</a>
+        · 下一步
+        <a href="./api/">API 参考</a>
+      </p>
+    </main>
+  </div>
+  <script type="module" src="/src/shared/docs-shell.js"></script>
+</body>
+</html>

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EChartsInstance · wasm-echarts 文档</title>
+  <link rel="stylesheet" href="/src/shared/layout.css" />
+</head>
+<body>
+  <header class="site-header"></header>
+  <div class="docs-layout">
+    <aside class="docs-sidebar"></aside>
+    <main class="docs-main">
+      <h1>EChartsInstance</h1>
+      <p class="lead">
+        wasm-bindgen 内部 handle（<code>src/instance.rs</code>）。
+        facade 用 camelCase 包装同一套能力。不要直接 <code>new</code>。
+      </p>
+
+      <div class="doc-section">
+        <h3>对照表</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>pkg / native</th>
+              <th>facade</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>new EChartsInstance(w, h, dpr)</code></td>
+              <td><code>init(...)</code></td>
+              <td>创建 <code>ZRenderer</code> 并登记进 <code>ZR_REGISTRY</code></td>
+            </tr>
+            <tr>
+              <td><code>set_option(option, opts?)</code></td>
+              <td><code>setOption</code></td>
+              <td><code>opts</code> 为 <code>{ notMerge, replaceMerge }</code></td>
+            </tr>
+            <tr>
+              <td><code>get_option()</code></td>
+              <td><code>getOption</code></td>
+              <td>函数字段保留</td>
+            </tr>
+            <tr>
+              <td><code>resize(w, h, dpr)</code></td>
+              <td><code>resize</code></td>
+              <td>facade 还读 canvas / <code>'auto'</code></td>
+            </tr>
+            <tr>
+              <td><code>refresh()</code></td>
+              <td><code>refresh</code></td>
+              <td>返回 RGBA <span class="doc-badge doc-badge-extra">补充</span></td>
+            </tr>
+            <tr>
+              <td><code>getZr()</code></td>
+              <td><code>getZr()</code></td>
+              <td>同一 id 的 zrender handle；facade 再包一层 JS 类</td>
+            </tr>
+            <tr>
+              <td><code>attachHost(dom)</code></td>
+              <td>（内部）</td>
+              <td>把 canvas 绑到 zrender Handler</td>
+            </tr>
+            <tr>
+              <td><code>width()</code> / <code>height()</code> / <code>dpr()</code></td>
+              <td><code>getWidth</code> / <code>getHeight</code> / <code>getDevicePixelRatio</code></td>
+              <td>尺寸</td>
+            </tr>
+            <tr>
+              <td><code>find_hover(x, y)</code></td>
+              <td><code>findHover</code></td>
+              <td><span class="doc-badge doc-badge-extra">补充</span></td>
+            </tr>
+            <tr>
+              <td><code>handle_pointer_move</code> / <code>leave</code> / <code>handlePointerDown</code> / <code>Up</code> / <code>Click</code></td>
+              <td><code>handlePointer*</code></td>
+              <td><span class="doc-badge doc-badge-extra">补充</span>；facade 在有 canvas 时自动调</td>
+            </tr>
+            <tr>
+              <td><code>apply_data_zoom_wheel</code></td>
+              <td><code>applyDataZoomWheel</code></td>
+              <td><span class="doc-badge doc-badge-extra">补充</span></td>
+            </tr>
+            <tr>
+              <td><code>get_tooltip_content</code></td>
+              <td><code>getTooltipContent</code></td>
+              <td><span class="doc-badge doc-badge-extra">补充</span></td>
+            </tr>
+            <tr>
+              <td><code>dispatch_action</code></td>
+              <td><code>dispatchAction</code></td>
+              <td>已接线 type 见事件页</td>
+            </tr>
+            <tr>
+              <td><code>appendData</code> / <code>containPixel</code></td>
+              <td>同名</td>
+              <td>追加数据；像素包含</td>
+            </tr>
+            <tr>
+              <td><code>convert_to_pixel</code> / <code>convert_from_pixel</code></td>
+              <td><code>convertToPixel</code> / <code>convertFromPixel</code></td>
+              <td>坐标换算</td>
+            </tr>
+            <tr>
+              <td><code>update_font_database</code></td>
+              <td>（内部，<code>registerFont</code> 后调）</td>
+              <td>热更新 fontdb</td>
+            </tr>
+            <tr>
+              <td><code>has_option</code> / <code>option_has_functions</code></td>
+              <td><code>hasOption</code> / <code>optionHasFunctions</code></td>
+              <td><span class="doc-badge doc-badge-extra">补充</span></td>
+            </tr>
+            <tr>
+              <td><code>benchmark_render(n)</code></td>
+              <td><code>benchmarkRender</code></td>
+              <td><span class="doc-badge doc-badge-extra">补充</span></td>
+            </tr>
+            <tr>
+              <td><code>dispose()</code></td>
+              <td><code>dispose</code></td>
+              <td>从 registry 卸 Zr</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>// 调试才碰 handle
+const handle = new EChartsInstance(480, 360, 1);
+handle.set_option({
+  xAxis: { type: 'category', data: ['A'] },
+  yAxis: { type: 'value' },
+  series: [{ type: 'bar', data: [1] }],
+});
+const rgba = handle.refresh();</pre>
+      </div>
+
+      <p>
+        上一章 <a href="./">总览与何时使用</a>
+        · 下一章
+        <a href="./unused.html">不要直接用的符号</a>
+      </p>
+    </main>
+  </div>
+  <script type="module" src="/src/shared/docs-shell.js"></script>
+</body>
+</html>

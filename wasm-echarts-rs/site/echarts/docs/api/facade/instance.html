@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>实例方法 · wasm-echarts 文档</title>
+  <link rel="stylesheet" href="/src/shared/layout.css" />
+</head>
+<body>
+  <header class="site-header"></header>
+  <div class="docs-layout">
+    <aside class="docs-sidebar"></aside>
+    <main class="docs-main">
+      <h1>实例方法</h1>
+      <p class="lead">
+        通过 <code>init()</code> 拿到的 facade 实例。
+        <code>notMerge</code> 不是 option 字段。
+      </p>
+
+      <div class="doc-section">
+        <h3><code>setOption(option, notMerge?, lazyUpdate?)</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>三种签名。默认同线程同步返回；<code>useWorker</code> 时返回 Promise。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>参数</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>option</code></td>
+              <td><code>object</code></td>
+              <td>官方形态 option。函数字段仅主线程可用</td>
+            </tr>
+            <tr>
+              <td><code>notMerge</code></td>
+              <td><code>boolean | object</code></td>
+              <td>
+                <code>true</code> 替换整棵树；或
+                <code>{ notMerge, replaceMerge, silent, lazyUpdate }</code>
+              </td>
+            </tr>
+            <tr>
+              <td><code>lazyUpdate</code></td>
+              <td><code>boolean</code></td>
+              <td>忽略排队，同步 flush</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          <code>replaceMerge</code> 只按顶层 key 整段替换，不按 component <code>id</code>（降级）。
+          对照
+          <a href="/echarts/examples/#merge">merge</a>。
+        </p>
+        <pre>chart.setOption(option);
+chart.setOption(option, true);
+chart.setOption(option, { notMerge: false, replaceMerge: ['series'] });
+await workerChart.setOption(option);</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>getOption()</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>已合并 option 转回普通 JSON；函数字段保留为原 Function。Worker 下返回主线程缓存。</p>
+        <pre>const current = chart.getOption();</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>resize(opts?)</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>
+          无参读 canvas；<code>resize({ width, height, devicePixelRatio })</code>；
+          <code>'auto'</code> 回退到 canvas。也接受 native 三位置参数
+          <code>resize(w, h, dpr)</code>。Worker 下返回 Promise。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>参数</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>opts.width</code> / <code>height</code></td>
+              <td><code>number | 'auto'</code></td>
+              <td>缺省或 <code>'auto'</code> 读 DOM</td>
+            </tr>
+            <tr>
+              <td><code>opts.devicePixelRatio</code></td>
+              <td><code>number</code></td>
+              <td>缺省保持当前 dpr</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>chart.resize();
+chart.resize({ width: 640, height: 400 });</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>clear()</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>等价 <code>setOption({ series: [] }, true)</code>。</p>
+        <pre>chart.clear();</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>showLoading</code> / <code>hideLoading</code> <span class="doc-badge doc-badge-degraded">降级</span></h3>
+        <p>静态半透明遮罩 + 文案，不播官方旋转动画。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>参数</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>name</code></td>
+              <td><code>string | object</code></td>
+              <td>官方有多种 Loading；这里忽略类型名。对象则当 cfg</td>
+            </tr>
+            <tr>
+              <td><code>cfg.text</code></td>
+              <td><code>string</code></td>
+              <td>遮罩文案</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>chart.showLoading('default', { text: '加载中' });
+chart.hideLoading();</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>appendData({ seriesIndex, data })</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>追加到对应 <code>series.data</code> 后重绘。</p>
+        <pre>chart.appendData({ seriesIndex: 0, data: [8, 9] });</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>setTheme(theme)</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>应用已 <code>registerTheme</code> 的名字，或传入主题对象，再按当前 option 重绘。</p>
+        <pre>chart.setTheme('dark');</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3>生命周期与尺寸 <span class="doc-badge doc-badge-official">官方</span></h3>
+        <table>
+          <thead>
+            <tr>
+              <th>方法</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>isDisposed()</code></td>
+              <td>是否已释放</td>
+            </tr>
+            <tr>
+              <td><code>getDom()</code></td>
+              <td><code>init</code> 时传入的 canvas；离屏为 <code>null</code></td>
+            </tr>
+            <tr>
+              <td><code>getId()</code></td>
+              <td>实例 id 字符串</td>
+            </tr>
+            <tr>
+              <td><code>getWidth()</code> / <code>getHeight()</code> / <code>getDevicePixelRatio()</code></td>
+              <td>离屏位图尺寸</td>
+            </tr>
+            <tr>
+              <td><code>dispose()</code></td>
+              <td>释放本实例</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>if (!chart.isDisposed()) {
+  console.log(chart.getWidth(), chart.getId());
+}</pre>
+      </div>
+
+      <p>
+        上一章 <a href="./lifecycle.html">生命周期</a>
+        · 下一章
+        <a href="./events.html">事件与 dispatchAction</a>
+      </p>
+    </main>
+  </div>
+  <script type="module" src="/src/shared/docs-shell.js"></script>
+</body>
+</html>

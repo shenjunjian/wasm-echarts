@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>事件与 dispatchAction · wasm-echarts 文档</title>
+  <link rel="stylesheet" href="/src/shared/layout.css" />
+</head>
+<body>
+  <header class="site-header"></header>
+  <div class="docs-layout">
+    <aside class="docs-sidebar"></aside>
+    <main class="docs-main">
+      <h1>事件与 dispatchAction</h1>
+      <p class="lead">
+        <code>init(canvas)</code> 后 facade 绑定指针。
+        发出官方事件名 <code>click</code> / <code>mouseover</code> / <code>mouseout</code> / <code>globalout</code>。
+      </p>
+
+      <div class="doc-section">
+        <h3><code>on</code> / <code>off</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>
+          <code>on(event, handler)</code> 或 <code>on(event, query, handler)</code>。
+          payload 含 <code>event</code>、<code>seriesIndex</code>、<code>dataIndex</code>。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>参数</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>event</code></td>
+              <td><code>string</code></td>
+              <td>指针事件，或 <code>showTip</code> / <code>hideTip</code> 等 action 事件</td>
+            </tr>
+            <tr>
+              <td><code>query</code></td>
+              <td><code>string | object</code></td>
+              <td>可选过滤；不传则全部</td>
+            </tr>
+            <tr>
+              <td><code>handler</code></td>
+              <td><code>Function</code></td>
+              <td>回调</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>chart.on('click', (params) => {
+  console.log(params.seriesIndex, params.dataIndex);
+});
+chart.off('click');</pre>
+        <p>
+          对照
+          <a href="/echarts/examples/#interactive">interactive</a>。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>dispatchAction(payload)</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>已接线的 type 会改交互状态并重绘。未接线 type <code>console.warn</code>。Worker 下已接线的返回 Promise。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>type</th>
+              <th>行为</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>highlight</code> / <code>downplay</code></td>
+              <td>emphasis 状态</td>
+            </tr>
+            <tr>
+              <td><code>select</code> / <code>unselect</code> / <code>toggleSelect</code></td>
+              <td>选中状态</td>
+            </tr>
+            <tr>
+              <td><code>dataZoom</code></td>
+              <td><code>start</code> / <code>end</code> 百分比</td>
+            </tr>
+            <tr>
+              <td><code>showTip</code> / <code>hideTip</code></td>
+              <td>按 <code>seriesIndex</code> / <code>dataIndex</code> 或 <code>{ x, y }</code> 开关 string tooltip</td>
+            </tr>
+            <tr>
+              <td><code>legendToggleSelect</code> / <code>legendSelect</code> / <code>legendUnSelect</code></td>
+              <td>图例筛选</td>
+            </tr>
+            <tr>
+              <td><code>restore</code></td>
+              <td>恢复初始 option</td>
+            </tr>
+            <tr>
+              <td><code>timelineChange</code> / <code>timelinePlayChange</code></td>
+              <td>切 <code>options[i]</code> 后终态重绘</td>
+            </tr>
+            <tr>
+              <td><code>takeGlobalCursor</code></td>
+              <td>全局光标（brush 等）</td>
+            </tr>
+            <tr>
+              <td><code>brush</code> / <code>brushEnd</code></td>
+              <td>框选</td>
+            </tr>
+            <tr>
+              <td><code>expandAxisBreak</code> / <code>collapseAxisBreak</code> / <code>toggleAxisBreak</code></td>
+              <td>轴断点折叠；无展开动画</td>
+            </tr>
+          </tbody>
+        </table>
+        <p><code>registerAction</code> 登记的自定义 type 会先跑 handler，内建 type 仍走 native。</p>
+        <pre>chart.dispatchAction({ type: 'toggleSelect', seriesIndex: 0, dataIndex: 1 });
+chart.dispatchAction({ type: 'showTip', seriesIndex: 0, dataIndex: 0 });</pre>
+      </div>
+
+      <p>
+        上一章 <a href="./instance.html">实例方法</a>
+        · 下一章
+        <a href="./coord.html">坐标、导出与 getZr</a>
+      </p>
+    </main>
+  </div>
+  <script type="module" src="/src/shared/docs-shell.js"></script>
+</body>
+</html>

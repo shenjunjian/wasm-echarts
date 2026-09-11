@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>底层原理 · wasm-echarts 文档</title>
+  <link rel="stylesheet" href="/src/shared/layout.css" />
+</head>
+<body>
+  <header class="site-header"></header>
+  <div class="docs-layout">
+    <aside class="docs-sidebar"></aside>
+    <main class="docs-main">
+      <h1>底层原理</h1>
+      <p class="lead">
+        给能读 JS、想搞懂 WASM 的前端：option 怎么进引擎、为什么只有一份 WASM、
+        函数和像素怎么过桥。三层定位见 <a href="/">站点首页</a>。
+      </p>
+
+      <div class="doc-section">
+        <h3>从 facade 到 RGBA</h3>
+        <div class="layer-map" role="img" aria-label="业务代码经 JS facade 分主线程或 Worker，再经 pkg 到达 rust-zrender">
+          <div class="layer-map-row">
+            <span class="layer-chip">业务 / site</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip">js/index.js</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip">主线程 handle 或 Worker</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip">pkg</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip is-engine">ZRenderer</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip">RGBA</span>
+          </div>
+          <p class="layer-map-note">
+            wasm-echarts 与 wasm-zrender 是 sibling，共用同一份 <code>ZRenderer</code>。
+            echarts 页不得再加载 <code>wasm-zrender/pkg</code>。
+          </p>
+        </div>
+      </div>
+
+      <div class="doc-section">
+        <h3>option 管线</h3>
+        <div class="layer-map" role="img" aria-label="OptionValue 经 merge、GlobalModel、ChartView 进入同一份 ZRenderer">
+          <div class="layer-map-row">
+            <span class="layer-chip">OptionValue</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip">merge</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip">GlobalModel</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip">ChartView</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip">Storage</span>
+          </div>
+          <p class="layer-map-note">
+            函数字段保留为 <code>OptionValue::Function</code>，渲染 / 交互阶段再回调。
+            <code>notMerge</code> / <code>replaceMerge</code> 来自 <code>setOption</code> 第二参数，不是 option 根字段。
+          </p>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>步骤</th>
+              <th>源码</th>
+              <th>做什么</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>解析</td>
+              <td><code>option/</code></td>
+              <td>JS object → Null / Bool / Number / String / Array / Object / Function</td>
+            </tr>
+            <tr>
+              <td>preprocessor / processor</td>
+              <td><code>js/extension.js</code></td>
+              <td>入 WASM 前改 option</td>
+            </tr>
+            <tr>
+              <td>模型</td>
+              <td><code>model/</code>、<code>scheduler.rs</code></td>
+              <td>grid / 轴 / series / dataZoom 窗口</td>
+            </tr>
+            <tr>
+              <td>落笔</td>
+              <td><code>render.rs</code>、各 <code>chart/</code></td>
+              <td>往同一份 <code>ZRenderer</code> 加图元</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="doc-section">
+        <h3>单 WASM</h3>
+        <p>
+          <code>getZr</code> 与 ChartView 共用 <code>ZR_REGISTRY</code>。
+          echarts 的 <code>js/native.js</code> 加载 <code>pkg/wasm_echarts.js</code> 后立刻
+          <code>setNative</code> 进 zrender 的 <code>native-core</code>，图元 native 类来自这一份模块。
+        </p>
+        <p>
+          因此 echarts 页不得再加载 <code>wasm-zrender/pkg</code>：那会变成第二份内存、第二份 fontdb。
+          zrender 文档站可以继续单独用自己的 pkg。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3>JS ↔ WASM：三种过桥</h3>
+        <h4>1. 普通数据</h4>
+        <p>
+          option 解成 Rust <code>OptionValue</code>，再进 GlobalModel。
+          <code>LinearGradient</code> 等 wasm-bindgen 实例按 getter 收成
+          <code>type</code> / <code>colorStops</code>。
+        </p>
+        <pre>chart.setOption({
+  series: [{
+    type: 'line',
+    areaStyle: { color: new graphic.LinearGradient(0, 0, 0, 1, stops) },
+    data: [1, 2, 3],
+  }],
+});</pre>
+
+        <h4>2. 函数</h4>
+        <p>
+          主线程把 <code>js_sys::Function</code> 留在 option 树里。渲染 / tooltip / custom
+          时 <code>call1</code>：<code>tooltip.formatter</code>、<code>axisLabel.formatter</code>、
+          <code>itemStyle.color</code>、<code>symbolSize</code>、<code>series.renderItem</code>。
+        </p>
+        <p>
+          WASM 必须与定义这些函数的 JS 在同一 realm。因此 Worker 路径禁止函数 option
+         （结构化克隆会失败）。对照
+          <a href="/echarts/examples/#interactive">interactive</a>。
+        </p>
+
+        <h4>3. RGBA 回图</h4>
+        <p>
+          <code>refresh()</code> → <code>Vec&lt;u8&gt;</code> → JS <code>Uint8Array</code>。
+          绑了 canvas 时 facade 做成 <code>ImageData</code> 再 <code>putImageData</code>。
+          mousemove 仅在 hover / axisPointer / 拖拽导致画面变化时上屏。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3>Worker 数据流</h3>
+        <p>用法见 <a href="./runtime.html">运行模式</a>。这里只写实现向的过桥。</p>
+        <div class="layer-map" role="img" aria-label="主线程 facade postMessage option，Worker 内实例画出 RGBA 再回主线程 blit">
+          <div class="layer-map-row">
+            <span class="layer-chip">facade</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip">postMessage(option)</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip">Worker 内实例</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip">SAB / Transferable</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip">主线程 blit</span>
+          </div>
+          <p class="layer-map-note">
+            option 方向一律结构化克隆，不用 SharedArrayBuffer。
+            SAB 只用于回传 RGBA。指针只传 <code>x, y</code>，tooltip 文案回主线程 DOM。
+          </p>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>文件</th>
+              <th>职责</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>js/worker-protocol.js</code></td>
+              <td>消息名；option 含函数检测；SAB 探测</td>
+            </tr>
+            <tr>
+              <td><code>js/worker-bridge.js</code></td>
+              <td>主线程桥：创建 module Worker、RPC、字体与地图同步</td>
+            </tr>
+            <tr>
+              <td><code>js/chart.worker.js</code></td>
+              <td>Worker 内 <code>initWasm</code> + <code>EChartsInstance</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          字体 / 地图由 facade 代发，开发者不必第二份消息。
+          <code>getZr()</code> 的 ZRender 在 Worker 里，主线程拿不到。
+        </p>
+      </div>
+
+      <p>
+        上一章 <a href="./coverage.html">已实现 / 未实现</a>
+        · 返回
+        <a href="./">快速上手</a>
+      </p>
+    </main>
+  </div>
+  <script type="module" src="/src/shared/docs-shell.js"></script>
+</body>
+</html>

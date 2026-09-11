@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>坐标、导出与 getZr · wasm-echarts 文档</title>
+  <link rel="stylesheet" href="/src/shared/layout.css" />
+</head>
+<body>
+  <header class="site-header"></header>
+  <div class="docs-layout">
+    <aside class="docs-sidebar"></aside>
+    <main class="docs-main">
+      <h1>坐标、导出与 getZr</h1>
+      <p class="lead">
+        像素换算、把离屏 RGBA 导出成图、以及与 ChartView 共用的 ZRender。
+      </p>
+
+      <div class="doc-section">
+        <h3><code>convertToPixel</code> / <code>convertFromPixel</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>
+          cartesian 多 grid / 多轴 finder（<code>gridIndex</code> / <code>xAxisIndex</code> /
+          <code>yAxisIndex</code> / <code>seriesIndex</code>），含 <code>time</code> / <code>log</code> 轴；
+          以及 <code>polar</code> / <code>geo</code> / <code>calendar</code> / <code>singleAxis</code> /
+          <code>parallel</code> / <code>matrix</code> / <code>radar</code> finder。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>参数</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>finder</code></td>
+              <td><code>string | object</code></td>
+              <td>坐标系或 series 定位</td>
+            </tr>
+            <tr>
+              <td><code>value</code></td>
+              <td><code>number | number[]</code></td>
+              <td>数据值或像素</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>const px = chart.convertToPixel({ seriesIndex: 0 }, [0, 120]);
+const data = chart.convertFromPixel({ gridIndex: 0 }, [40, 80]);</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>containPixel(finder, value)</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>判断像素是否落在对应 grid / polar / geo 等区域内。</p>
+        <pre>chart.containPixel({ gridIndex: 0 }, [80, 80]);</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>getDataURL</code> / <code>renderToCanvas</code> / <code>getRenderedCanvas</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>
+          离屏 RGBA → PNG/JPEG 数据 URL，或画到目标 canvas。
+          <code>getRenderedCanvas</code> 等价 <code>renderToCanvas</code>。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>参数</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>opts.type</code></td>
+              <td><code>'png' | 'jpeg'</code></td>
+              <td><code>'svg'</code> 不支持，只 warn</td>
+            </tr>
+            <tr>
+              <td><code>opts.pixelRatio</code></td>
+              <td><code>number</code></td>
+              <td>导出倍率</td>
+            </tr>
+            <tr>
+              <td><code>opts.backgroundColor</code></td>
+              <td><code>string</code></td>
+              <td>导出底色</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>const url = chart.getDataURL({ type: 'png' });
+const canvas = chart.renderToCanvas();</pre>
+        <p>
+          <code>renderToSVGString</code> / <code>getSvgDataURL</code> 只 warn 并返回空。
+          <code>getConnectedDataURL</code> 不按 connect 拼图，回退 <code>getDataURL</code>。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>getZr()</code> <span class="doc-badge doc-badge-official">官方</span> <span class="doc-badge doc-badge-degraded">降级</span></h3>
+        <p>
+          返回与 ChartView 共用 Storage 的 wasm-zrender <code>ZRender</code> 实例
+          （同一份 WASM，不是第二份 <code>wasm-zrender/pkg</code>）。
+          可 <code>add</code> / <code>on</code> / <code>configLayer</code>。
+        </p>
+        <ul>
+          <li>无 SVG painter / hover layer；动画写终态。</li>
+          <li><code>zr.painter.getSvgDom</code> 只 <code>console.warn</code>。</li>
+          <li><code>useWorker</code> 时不可用：主线程 warn 并返回 <code>undefined</code>。见 <a href="../../runtime.html">运行模式</a>。</li>
+        </ul>
+        <pre>const zr = chart.getZr();
+zr.add(new echarts.graphic.Rect({
+  shape: { x: 8, y: 8, width: 40, height: 20 },
+  style: { fill: '#5470c6' },
+}));</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>refresh()</code> <span class="doc-badge doc-badge-extra">补充</span></h3>
+        <p>
+          同步重绘并返回 RGBA。离屏无 canvas、需要自行 <code>putImageData</code> 时用。
+          <code>init(canvas)</code> 后 <code>setOption</code> 已自动上屏，不必再调。
+        </p>
+        <pre>const rgba = chart.refresh();</pre>
+      </div>
+
+      <p>
+        上一章 <a href="./events.html">事件与 dispatchAction</a>
+        · 下一章
+        <a href="./extension.html">命名空间与扩展</a>
+      </p>
+    </main>
+  </div>
+  <script type="module" src="/src/shared/docs-shell.js"></script>
+</body>
+</html>

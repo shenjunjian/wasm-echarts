@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>已实现 / 未实现 · wasm-echarts 文档</title>
+  <link rel="stylesheet" href="/src/shared/layout.css" />
+</head>
+<body>
+  <header class="site-header"></header>
+  <div class="docs-layout">
+    <aside class="docs-sidebar"></aside>
+    <main class="docs-main">
+      <h1>已实现 / 未实现</h1>
+      <p class="lead">
+        给「这张图 / 这个 option 能不能用」的开发者。
+        想看效果去 <a href="/echarts/examples/">画廊</a>。
+      </p>
+
+      <div class="doc-section">
+        <h3>已实现</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>范围</th>
+              <th>现状</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>图表</td>
+              <td>官方 <code>export/charts.ts</code> 23 种（含 chord）均已接线 canvas 终态；feature 默认全开，不是 <code>echarts.use(BarChart)</code></td>
+            </tr>
+            <tr>
+              <td>cartesian</td>
+              <td>多 <code>grid</code> / <code>xAxis[]</code> / <code>yAxis[]</code>；<code>type: category | value | time | log</code>；<code>breaks</code> 折叠未展开区间；<code>jitter</code> 给 scatter 终态错开；y 类目横画；<code>convertToPixel</code> 按 finder 取轴</td>
+            </tr>
+            <tr>
+              <td>dataset / transform</td>
+              <td><code>source</code>（二维数组 / 对象行 / 列对象）/<code>dimensions</code> / <code>seriesLayoutBy</code> / <code>datasetIndex</code> / <code>datasetId</code> / <code>encode</code>；内置 <code>filter</code> / <code>sort</code>；<code>registerTransform</code> 接外部</td>
+            </tr>
+            <tr>
+              <td>stack / sampling</td>
+              <td><code>stack</code> + <code>stackStrategy</code>（samesign / all / positive / negative）line 与 bar 共用偏移；<code>sampling: lttb | average</code></td>
+            </tr>
+            <tr>
+              <td>line</td>
+              <td><code>smooth</code> / <code>step</code> / <code>connectNulls</code>；<code>areaStyle</code>（色可为 <code>LinearGradient</code>）；<code>lineStyle</code>；<code>endLabel.show</code>；<code>symbol</code>；<code>stack</code> / <code>sampling</code>；polar</td>
+            </tr>
+            <tr>
+              <td>bar</td>
+              <td>同轴多系列并排；y 类目水平柱；polar 下为扇区；<code>barWidth</code> / <code>barGap</code> / <code>barCategoryGap</code> / <code>barMinHeight</code>；<code>itemStyle.borderRadius</code></td>
+            </tr>
+            <tr>
+              <td>pie</td>
+              <td><code>center</code> / <code>radius</code>（含环形）/ <code>startAngle</code> / <code>clockwise</code>；<code>roseType</code>；<code>selectedMode</code> + <code>selectedOffset</code>；简单 labelLine</td>
+            </tr>
+            <tr>
+              <td>scatter</td>
+              <td>双 value 轴；也可挂 polar / geo / calendar / single / matrix；<code>symbol</code> 与 <code>symbolSize</code>；<code>large</code> 且点数 ≥ <code>largeThreshold</code> 时终态一次画完、不挂 emphasis、不画 label</td>
+            </tr>
+            <tr>
+              <td>其它图表</td>
+              <td><code>radar</code> / <code>gauge</code> / <code>candlestick</code> / <code>boxplot</code> / <code>heatmap</code> / <code>pictorialBar</code> / <code>effectScatter</code>（ripple 同心圆终态）/ <code>funnel</code> / <code>tree</code> / <code>treemap</code> / <code>sunburst</code> / <code>graph</code> / <code>chord</code> / <code>sankey</code> / <code>themeRiver</code> / <code>map</code> / <code>lines</code> / <code>parallel</code> / <code>custom</code>（<code>renderItem</code> + <code>api.coord</code> / <code>size</code> / <code>style</code> / <code>value</code>）</td>
+            </tr>
+            <tr>
+              <td>轴与坐标系</td>
+              <td>轴标签 Text；<code>axisLabel.formatter</code>；轴名称；<code>breaks</code>；polar / radar / singleAxis / parallel / calendar / matrix / geo（<code>registerMap</code> + <code>parseGeoJSON</code>）</td>
+            </tr>
+            <tr>
+              <td>title / legend</td>
+              <td>title 布局字段；legend <code>orient</code> / <code>selected</code>、点击筛选</td>
+            </tr>
+            <tr>
+              <td>canvas 组件</td>
+              <td><code>markPoint</code> / <code>markLine</code> / <code>markArea</code>；<code>option.graphic</code>；visualMap；dataZoom slider；axisPointer 十字；toolbox（restore / magicType / dataZoom）；timeline；brush；thumbnail</td>
+            </tr>
+            <tr>
+              <td>交互</td>
+              <td><code>init(canvas)</code> 绑指针；hover 高亮、内建 string tooltip、<code>on('click')</code>、legend / toolbox / timeline 点击、slider / brush 拖拽、wheel inside dataZoom、<code>tooltip.trigger: 'axis'</code></td>
+            </tr>
+            <tr>
+              <td>实例 API</td>
+              <td><code>showLoading</code>（静态遮罩）/<code>getDataURL</code> / <code>renderToCanvas</code> / <code>appendData</code> / <code>setTheme</code> / <code>containPixel</code>；全局 <code>connect</code> / <code>registerTheme</code> / <code>registerMap</code> / 扩展注册真表</td>
+            </tr>
+            <tr>
+              <td>media / labelLayout</td>
+              <td><code>option.media</code> 按宽高匹配；<code>series.labelLayout</code> 终态 <code>hideOverlap</code> / <code>moveOverlap</code> / <code>dx</code> / <code>dy</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="doc-section">
+        <h3>未实现</h3>
+        <p>
+          下列官方入口已导出同名，内部只 <code>console.warn</code>：
+          <code>registerLocale</code>、<code>convertToLayout</code>、<code>getVisual</code>、
+          <code>renderToSVGString</code>、<code>getSvgDataURL</code>、<code>getModel</code>。
+          <code>getConnectedDataURL</code> 不按 connect 拼图，回退 <code>getDataURL</code>。
+          <code>isSSR()</code> 恒为 <code>false</code>。<code>updateLabelLayout</code> 为空操作。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>缺口</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>图表简化</td>
+              <td>未识别的 <code>series.type</code> 会 warn。force 不迭代、桑基非完整节点平衡、tree 非 tidy、chord 用贝塞尔而非丝带、pictorialBar 非全部 symbolClip</td>
+            </tr>
+            <tr>
+              <td>缺增量绘制</td>
+              <td>bar / candlestick 无增量 <code>large</code>：几十万点会在 WASM 里一次画完。画廊大数据例开 <code>useWorker</code> 只保证主线程还能响应，Worker 内仍是长任务。见 <a href="./runtime.html">运行模式</a></td>
+            </tr>
+            <tr>
+              <td>parallel 无 progressive</td>
+              <td>每条数据一条 Path；上万行同样是同步长任务</td>
+            </tr>
+            <tr>
+              <td>大树 treemap</td>
+              <td>过深 / 过大的树在递归 parse / squarify 时会 WASM panic。库现在画不了这类数据</td>
+            </tr>
+            <tr>
+              <td>treemap <code>levels</code> 色映射</td>
+              <td><code>series.levels.color</code> + <code>visualDimension</code> 未按官方做，渲染会 panic</td>
+            </tr>
+            <tr>
+              <td>缺外部插件</td>
+              <td>官网回归 / 聚类示例依赖全局 <code>ecStat</code>（<code>echarts-stat</code>）；热力 / 散点百度地图示例依赖 <code>bmap</code>。本宿主都不注入</td>
+            </tr>
+            <tr>
+              <td>组件</td>
+              <td>geo roam / SVG 地图源。toolbox DataView DOM / SaveAsImage 下载条明确不做</td>
+            </tr>
+            <tr>
+              <td>option 名字在但未按官方做</td>
+              <td><code>smoothMonotone</code>、pie 完整 <code>avoidLabelOverlap</code> / <code>padAngle</code> / <code>alignTo</code>、bar <code>showBackground</code> / polar <code>roundCap</code>、色板不是官方 palette 全套、rich text 当普通 Text</td>
+            </tr>
+            <tr>
+              <td>tooltip</td>
+              <td>HTMLElement formatter / <code>confine</code> / <code>renderMode: 'richText'</code></td>
+            </tr>
+            <tr>
+              <td>UniversalTransition</td>
+              <td>只跳终态，不做系列间插值</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          未实现的官方方法仍导出同名 + <code>console.warn</code>，避免
+          <code>is not a function</code>。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3>想看效果去画廊</h3>
+        <p>
+          全部示例走 <code>init(canvas)</code> + <code>setOption</code>，自己创建图表，
+          不直接 <code>new EChartsInstance</code>。
+        </p>
+        <ul>
+          <li><a href="/echarts/examples/#line">line</a> / <a href="/echarts/examples/#bar">bar</a> / <a href="/echarts/examples/#pie">pie</a> / <a href="/echarts/examples/#scatter">scatter</a> — 基础出图</li>
+          <li><a href="/echarts/examples/#fonts">fonts</a> — 多字体</li>
+          <li><a href="/echarts/examples/#merge">merge</a> — 二次 <code>setOption</code>、dispose 后再 init</li>
+          <li><a href="/echarts/examples/#interactive">interactive</a> — <code>on('click')</code> + <code>dispatchAction</code></li>
+          <li><a href="/echarts/examples/#bar-large">bar-large</a> 等 — Worker 大数据</li>
+        </ul>
+      </div>
+
+      <p>
+        上一章 <a href="./differences.html">与官方差异</a>
+        · 下一步
+        <a href="./internals.html">底层原理</a>
+      </p>
+    </main>
+  </div>
+  <script type="module" src="/src/shared/docs-shell.js"></script>
+</body>
+</html>

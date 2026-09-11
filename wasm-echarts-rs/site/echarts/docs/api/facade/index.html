@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>总览与约定 · wasm-echarts 文档</title>
+  <link rel="stylesheet" href="/src/shared/layout.css" />
+</head>
+<body>
+  <header class="site-header"></header>
+  <div class="docs-layout">
+    <aside class="docs-sidebar"></aside>
+    <main class="docs-main">
+      <h1>总览与约定</h1>
+      <p class="lead">
+        公开面是 <code>crates/wasm-echarts/js/index.js</code>。
+        <code>default</code> 是 wasm-bindgen 的 <code>initWasm</code>；命名导出才是 echarts API。
+      </p>
+
+      <div class="doc-section">
+        <h3>导入</h3>
+        <p>
+          文档站 Vite alias <code>@wasm-echarts</code> 指向 <code>js/</code>。
+          入口会加载 <code>pkg/wasm_echarts.js</code>，并把同一份模块
+          <code>setNative</code> 进 wasm-zrender 的 <code>native-core</code>，
+          因此 echarts 页只持有一份 WASM。
+        </p>
+        <pre>import initWasm, { init, registerFont } from '@wasm-echarts';
+
+await initWasm();
+const chart = init(canvas);
+chart.setOption(option);</pre>
+        <p>
+          不要直接 <code>import</code> <code>pkg/wasm_echarts.js</code>，也不要
+          <code>new EChartsInstance</code>。见
+          <a href="../pkg/">pkg 导出</a>。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>default</code> 即 <code>initWasm</code> <span class="doc-badge doc-badge-extra">补充</span></h3>
+        <p>
+          与 wasm-bindgen <code>--target web</code> 一致：默认导出是异步加载
+          <code>.wasm</code> 的函数。官方 echarts 没有这一步；这是 WASM 宿主必需。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>参数</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>module_or_path?</code></td>
+              <td><code>string | URL | Request | Response | BufferSource</code></td>
+              <td>可选。不传则按打包路径加载 <code>wasm_echarts_bg.wasm</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>import initWasm from '@wasm-echarts';
+await initWasm();</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3>构造约定</h3>
+        <p>
+          facade 的实例类是 <code>ECharts</code>（<code>js/instance.js</code>），包装 native
+          <code>EChartsInstance</code> 或 Worker 桥 <code>ChartWorkerBridge</code>。
+          业务只通过 <code>init()</code> 拿到实例，不要自己 <code>new</code>。
+        </p>
+        <ul>
+          <li><code>useWorker</code> <strong>只</strong>出现在 <code>init</code> 的第三参数 <code>opts</code>，不是 option 字段，也不是实例方法。</li>
+          <li>同一 canvas 上已有未 dispose 的实例时，<code>init</code> 会 warn 并返回已有实例。</li>
+          <li>绑了 canvas 时，把 <code>canvas.width</code> / <code>canvas.height</code> 设成与 opts 一致；上屏不改位图尺寸。</li>
+        </ul>
+        <pre>const chart = init(canvas);
+const workerChart = init(canvas, null, { useWorker: true });</pre>
+      </div>
+
+      <p>
+        返回 <a href="../">API 参考</a>
+        · 下一步
+        <a href="./lifecycle.html">生命周期</a>
+      </p>
+    </main>
+  </div>
+  <script type="module" src="/src/shared/docs-shell.js"></script>
+</body>
+</html>

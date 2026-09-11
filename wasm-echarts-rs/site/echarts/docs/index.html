@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>wasm-echarts 文档</title>
+  <title>快速上手 · wasm-echarts 文档</title>
   <link rel="stylesheet" href="/src/shared/layout.css" />
 </head>
 <body>
@@ -11,22 +11,100 @@
   <div class="docs-layout">
     <aside class="docs-sidebar"></aside>
     <main class="docs-main">
-    <h1>wasm-echarts 文档</h1>
-    <p class="lead">
-      公开 JS API 对齐官方 ECharts canvas 用法（<code>init</code> / <code>setOption</code>）。
-      从 <code>@wasm-echarts</code>（<code>js/</code> facade）导入；<code>pkg/</code> 只作内部 handle。
-      入口签名见仓库 <code>.cursor/plans/wasm-echarts_api_对齐_1d164d7d.plan.md</code>；
-      canvas 能力补齐见 <code>.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md</code>。
-    </p>
+      <h1>快速上手</h1>
+      <p class="lead">
+        从 <code>@wasm-echarts</code>（<code>js/</code> facade）导入，先加载 WASM，再
+        <code>init</code> / <code>setOption</code>。
+        <code>pkg/</code> 是 wasm-bindgen 胶水，不是业务公开面。
+      </p>
 
-    <div class="doc-section">
-      <h3>快速开始</h3>
-      <pre>cd crates/wasm-echarts && wasm-pack build --target web
+      <div class="doc-section">
+        <h3>pkg 与 JS facade</h3>
+        <p>
+          <code>wasm-pack build --target web</code> 产出 <code>crates/wasm-echarts/pkg/</code>
+          （<code>wasm_echarts.js</code> + <code>.wasm</code>）。这是内部 handle：
+          <code>EChartsInstance</code> 没有官方实例包装，也不绑 canvas / tooltip。
+        </p>
+        <p>
+          公开入口是 <code>crates/wasm-echarts/js/index.js</code>。它包装 native handle，补上官方
+          <code>init</code> / <code>setOption</code> / <code>on</code>，以及
+          <code>graphic</code> / <code>util</code> 等命名空间。
+          文档站 Vite alias <code>@wasm-echarts</code> 指向这份 <code>js/</code>。
+        </p>
+        <div class="layer-map" role="img" aria-label="业务代码导入 js facade，再经 pkg 到达 rust-zrender">
+          <div class="layer-map-row">
+            <span class="layer-chip">业务 / site</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip">js/index.js</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip">pkg/</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip is-engine">rust-zrender</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip">RGBA</span>
+          </div>
+          <p class="layer-map-note">
+            默认导出是 wasm-bindgen 的 <code>initWasm</code>；命名导出才是 echarts API。
+            不要直接 <code>new EChartsInstance</code>。仓库定位见
+            <a href="/">站点首页</a>。
+          </p>
+        </div>
+      </div>
 
-cd ../..
-cd site && npm install && npm run dev
+      <div class="doc-section">
+        <h3>编译与启动</h3>
+        <pre>cd crates/wasm-echarts && wasm-pack build --target web
+
+cd ../../site && npm install && npm run dev
 # 打开 http://127.0.0.1:5173/echarts/examples/</pre>
-      <pre>import initWasm, { init, registerFont } from '@wasm-echarts';
+        <p>
+          改 Rust 引擎后必须重新 <code>wasm-pack</code>，浏览器才能拿到新逻辑。
+          更完整的 option 见
+          <a href="/echarts/examples/">实例画廊</a>。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3>推荐调用顺序</h3>
+        <ol>
+          <li><code>await initWasm()</code> — 加载 <code>.wasm</code></li>
+          <li>有文字时 <code>registerFont(bytes, opts?)</code>（详见 <a href="./fonts.html">字体引用</a>）</li>
+          <li><code>init(canvas | null, theme?, opts?)</code></li>
+          <li><code>setOption(option)</code></li>
+        </ol>
+        <table>
+          <thead>
+            <tr>
+              <th>宿主</th>
+              <th>行为</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>init(canvas)</code></td>
+              <td>绑指针与内建 string tooltip；<code>setOption</code> 后自动 <code>putImageData</code></td>
+            </tr>
+            <tr>
+              <td><code>init(null, null, { width, height })</code></td>
+              <td>纯离屏。尺寸来自 opts（缺省 300×150）；<code>refresh()</code> 返回 RGBA</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          默认主线程，<code>setOption</code> 同步返回。大数据再开
+          <code>opts.useWorker</code>，不要自己 <code>new Worker</code>。详见
+          <a href="./runtime.html">运行模式</a>。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3>示例：绑定 canvas</h3>
+        <p>
+          传入 <code>HTMLCanvasElement</code> 后，<code>setOption</code> 会自动把离屏 RGBA 贴上屏。
+          可对照
+          <a href="/echarts/examples/#line">line</a>。
+        </p>
+        <pre>import initWasm, { init, registerFont } from '@wasm-echarts';
 
 await initWasm();
 
@@ -51,397 +129,45 @@ chart.setOption({
 });
 chart.on('click', (params) => {
   console.log(params.seriesIndex, params.dataIndex);
+});</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3>示例：纯离屏</h3>
+        <p>
+          <code>init(null)</code> 不绑 DOM，<code>refresh()</code> 同步返回 RGBA。
+          对照
+          <a href="./api/facade/coord.html">坐标、导出与 getZr</a>。
+        </p>
+        <pre>import initWasm, { init, registerFont } from '@wasm-echarts';
+
+await initWasm();
+registerFont(fontBytes, { familyName: 'Noto Sans SC' });
+
+const chart = init(null, null, { width: 480, height: 360 });
+chart.setOption({
+  xAxis: { type: 'category', data: ['A', 'B'] },
+  yAxis: { type: 'value' },
+  series: [{ type: 'bar', data: [12, 24] }],
 });
-</pre>
-      <p>每个 <code>examples/*.js</code> 都是独立脚本（自己 <code>init</code> / <code>setOption</code>），不经 <code>runOfficialExample</code>。大数据时加非官方开关，仍不必自己管 Worker：</p>
-      <pre>const chart = init(canvas, null, { useWorker: true });
-await chart.setOption(option); // 含 formatter / renderItem 等函数时不要开 Worker
-</pre>
-    </div>
 
-    <div class="doc-section">
-      <h3>1. 与官方一致的公开 API</h3>
-      <p>可按官方文档调用（签名对齐）。default export 仍是 wasm-bindgen 的 <code>initWasm</code>，命名导出才是 echarts API。</p>
-      <table>
-        <thead>
-          <tr><th>导出 / 方法</th><th>签名与说明</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><code>init</code></td>
-            <td><code>init(canvas, theme?, opts?)</code>。有 canvas 时 <code>setOption</code> 自动上屏，并绑定 mousemove / click / leave / wheel。<code>init(null, null, { width, height, devicePixelRatio })</code> 允许离屏（见例外）。非官方 <code>opts.useWorker</code> 见例外。</td>
-          </tr>
-          <tr>
-            <td><code>dispose</code></td>
-            <td><code>dispose(chart | canvas | id)</code></td>
-          </tr>
-          <tr>
-            <td><code>getInstanceByDom</code> / <code>getInstanceById</code></td>
-            <td>按 canvas / id 取回实例</td>
-          </tr>
-          <tr>
-            <td><code>version</code></td>
-            <td><code>'6.1.0'</code></td>
-          </tr>
-          <tr>
-            <td><code>use</code></td>
-            <td>导出且签名对齐；只打印提示，不按需加载（见例外）</td>
-          </tr>
-          <tr>
-            <td><code>setOption</code></td>
-            <td><code>setOption(option)</code> / <code>setOption(option, notMerge, lazyUpdate?)</code> / <code>setOption(option, { notMerge, replaceMerge, silent, lazyUpdate })</code>。<code>notMerge</code> 不是 option 字段。默认同线程同步；<code>useWorker</code> 时返回 Promise。</td>
-          </tr>
-          <tr>
-            <td><code>getOption</code></td>
-            <td>已合并 option 转回普通 JSON；函数字段保留为原 Function</td>
-          </tr>
-          <tr>
-            <td><code>resize</code></td>
-            <td><code>resize()</code> 无参读 canvas；<code>resize({ width, height, devicePixelRatio })</code>；<code>'auto'</code> 回退到 canvas</td>
-          </tr>
-          <tr>
-            <td><code>clear</code></td>
-            <td>等价 <code>setOption({ series: [] }, true)</code></td>
-          </tr>
-          <tr>
-            <td><code>on</code> / <code>off</code></td>
-            <td><code>click</code> / <code>mouseover</code> / <code>mouseout</code> / <code>globalout</code>。<code>on(event, handler)</code> 或 <code>on(event, query, handler)</code>。payload 含 <code>event</code>、<code>seriesIndex</code>、<code>dataIndex</code>。</td>
-          </tr>
-          <tr>
-            <td><code>dispatchAction</code></td>
-            <td>已接线：<code>highlight</code> / <code>downplay</code> / <code>select</code> / <code>unselect</code> / <code>toggleSelect</code> / <code>dataZoom</code> / <code>showTip</code> / <code>hideTip</code> / <code>legendToggleSelect</code> / <code>legendSelect</code> / <code>legendUnSelect</code> / <code>restore</code> / <code>timelineChange</code> / <code>timelinePlayChange</code> / <code>takeGlobalCursor</code> / <code>brush</code> / <code>brushEnd</code> / <code>expandAxisBreak</code> / <code>collapseAxisBreak</code> / <code>toggleAxisBreak</code>。其它 type <code>console.warn</code>。</td>
-          </tr>
-          <tr>
-            <td><code>getWidth</code> / <code>getHeight</code> / <code>getDevicePixelRatio</code> / <code>isDisposed</code> / <code>dispose</code> / <code>getDom</code> / <code>getId</code></td>
-            <td>实例生命周期与尺寸</td>
-          </tr>
-          <tr>
-            <td><code>convertToPixel</code> / <code>convertFromPixel</code></td>
-            <td>cartesian / polar / geo / calendar / single / parallel / matrix / radar finder</td>
-          </tr>
-          <tr>
-            <td><code>getZr</code></td>
-            <td>返回与 ChartView 共用 Storage 的 wasm-zrender <code>ZRender</code> 实例（同一份 WASM，不是第二份 <code>wasm-zrender/pkg</code>）。可 <code>add</code> / <code>on</code> / <code>configLayer</code>。无 SVG painter / hover layer；动画写终态。<code>useWorker</code> 时不可用（见例外）。</td>
-          </tr>
-          <tr>
-            <td><code>showLoading</code> / <code>hideLoading</code></td>
-            <td>静态遮罩；不播旋转动画</td>
-          </tr>
-          <tr>
-            <td><code>getDataURL</code> / <code>renderToCanvas</code> / <code>getRenderedCanvas</code></td>
-            <td>离屏 RGBA → PNG/JPEG / 画到 canvas。<code>getRenderedCanvas</code> 等价 <code>renderToCanvas</code>。<code>type: 'svg'</code> / <code>renderToSVGString</code> / <code>getSvgDataURL</code> 只 warn。</td>
-          </tr>
-          <tr>
-            <td><code>containPixel</code> / <code>appendData</code> / <code>setTheme</code></td>
-            <td>grid / polar / geo 等包含判断；追加 series.data；应用已注册主题</td>
-          </tr>
-          <tr>
-            <td><code>connect</code> / <code>registerTheme</code> / <code>registerMap</code> / <code>getMap</code> / <code>parseGeoJSON</code> / <code>registerTransform</code></td>
-            <td>按 group 转发 action；主题表；注册并绘制 geo；解析 GeoJSON；dataset 外部 transform</td>
-          </tr>
-          <tr>
-            <td><code>registerPreprocessor</code> / <code>registerProcessor</code> / <code>registerLayout</code> / <code>registerVisual</code> / <code>registerAction</code> / <code>registerCoordinateSystem</code> / <code>registerCustomSeries</code> / <code>PRIORITY</code> / <code>setPlatformAPI</code></td>
-            <td>扩展注册真表。layout/visual 的 <code>ecModel</code> 是简化对象（见例外）</td>
-          </tr>
-          <tr>
-            <td><code>graphic</code> / <code>util</code> / <code>time</code> / <code>format</code> / <code>number</code> / <code>helper</code> / <code>matrix</code> / <code>vector</code> / <code>color</code> / <code>env</code> / <code>throttle</code></td>
-            <td>已从 wasm-zrender 再导出或按官方签名重写。<code>LinearGradient</code> 可进 <code>setOption</code>；<code>throttle(fn, delay?, debounce?)</code></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+const rgba = chart.refresh();
+const ctx = canvas.getContext('2d');
+ctx.putImageData(
+  new ImageData(new Uint8ClampedArray(rgba), chart.getWidth(), chart.getHeight()),
+  0,
+  0,
+);</pre>
+      </div>
 
-    <div class="doc-section">
-      <h3>2. 与官方不一致 / 例外</h3>
-      <table>
-        <thead>
-          <tr><th>项</th><th>现状 / 约定</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><code>use(...)</code></td>
-            <td>不加载模块，只 <code>console.info</code>：已开发的图表/组件都编进 WASM，不必 <code>use</code></td>
-          </tr>
-          <tr>
-            <td><code>init(null)</code></td>
-            <td>允许离屏（官方客户端无 dom 会抛错）</td>
-          </tr>
-          <tr>
-            <td>渲染</td>
-            <td>仅 canvas；无 SVG / <code>renderToSVGString</code> / <code>getSvgDataURL</code></td>
-          </tr>
-          <tr>
-            <td>动画</td>
-            <td>不播中间帧；<code>setOption</code> / <code>animation</code> / <code>universalTransition</code> 直接终态（无系列间插值）。<code>lazyUpdate</code> / <code>silent</code> 同步 flush</td>
-          </tr>
-          <tr>
-            <td>字体</td>
-            <td>WASM 不读系统字体。轴标签 / series label 渲染走 rust-zrender fontdb；须从 <code>@wasm-echarts</code> 调 <code>registerFont</code>。echarts 页与 <code>getZr</code> 共用同一份 fontdb；zrender 文档站的 pkg 仍是另一份内存。未注册时 <code>refresh</code> 会报 <code>no default font found</code></td>
-          </tr>
-          <tr>
-            <td><code>notMerge</code></td>
-            <td>只作 <code>setOption</code> 第二参数；写在 option 根上不会当合并开关</td>
-          </tr>
-          <tr>
-            <td><code>replaceMerge</code></td>
-            <td>只按顶层 key 整段替换，不按 component <code>id</code></td>
-          </tr>
-          <tr>
-            <td><code>getZr()</code></td>
-            <td>返回与 ChartView 共用 Storage 的 wasm-zrender 实例，不是第二份 zrender wasm。无 SVG painter（<code>zr.painter.getSvgDom</code> / <code>renderToSVGString</code> / <code>getSvgDataURL</code> 只 <code>console.warn</code>）；无 hover layer / dirty rect；<code>animate</code> / UniversalTransition 写终态</td>
-          </tr>
-          <tr>
-            <td><code>showLoading</code> / <code>hideLoading</code></td>
-            <td>导出；静态半透明遮罩 + 文案，不播官方旋转 Loading 动画</td>
-          </tr>
-          <tr>
-            <td>DataView / SaveAsImage</td>
-            <td>toolbox DataView 浮层与 SaveAsImage 的 DOM 下载条明确不做</td>
-          </tr>
-          <tr>
-            <td>default export</td>
-            <td>wasm-bindgen <code>initWasm</code>，不是 echarts 命名空间对象</td>
-          </tr>
-          <tr>
-            <td>tooltip</td>
-            <td>facade 内建简单 string HTML DOM，不是官方 TooltipView；HTMLElement formatter 未实现</td>
-          </tr>
-          <tr>
-            <td>扩展 StageHandler</td>
-            <td><code>registerProcessor</code> / <code>Layout</code> / <code>Visual</code> 拿到简化 <code>ecModel</code>（<code>getOption</code> / <code>eachSeries</code>），不是官方 GlobalModel / List</td>
-          </tr>
-          <tr>
-            <td>LabelLayout / AxisBreak / Jitter</td>
-            <td>终态 AABB 避让、比例尺折叠 + 折线标记、稳定哈希 jitter；无官方展开动画 / OBB / <code>Math.random</code></td>
-          </tr>
-          <tr>
-            <td><code>opts.useWorker</code></td>
-            <td><strong>非官方</strong>。默认 <code>false</code>：同线程同步 <code>setOption</code>。<code>true</code> 时 Worker 持实例，主线程只 blit / 指针 / tooltip。无 Worker 时 warn 并回退主线程。不要自己 <code>new Worker</code>。画廊仅 <code>bar-large</code> / <code>scatter-large</code> / <code>candlestick-large</code> / <code>parallel-nutrients</code> 打开。</td>
-          </tr>
-          <tr>
-            <td>Worker 函数 option</td>
-            <td><code>formatter</code> / <code>renderItem</code> 等函数不能结构化克隆。含函数的 option 必须默认主线程 <code>init</code>。WASM 须与定义这些函数的 JS 在同一 realm。</td>
-          </tr>
-          <tr>
-            <td>Worker <code>setOption</code> / SAB</td>
-            <td>返回 Promise。<strong>option（含 TypedArray）一律 <code>postMessage</code>，不用 SharedArrayBuffer</strong>。SAB 只用于 Worker → 主线程回传 RGBA（需 <code>COOP: same-origin</code> + <code>COEP: require-corp</code>）。不可用时 fallback Transferable。<code>getZr()</code> 不可用。</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="doc-section">
-      <h3>3. 多出来的非官方 API</h3>
-      <p>因 WASM 离屏需要。<strong>不要当官方 API 用</strong>。<code>init(canvas)</code> 后普通用户不必再手动 <code>putImageData</code>，也不必再绑指针或自绘 tooltip。</p>
-      <table>
-        <thead>
-          <tr><th>方法</th><th>何时用</th><th>何时不要用</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><code>refresh()</code></td>
-            <td>离屏无 canvas，需要 RGBA 自行 <code>putImageData</code></td>
-            <td><code>init(canvas)</code> 后 <code>setOption</code> 已自动上屏</td>
-          </tr>
-          <tr>
-            <td><code>findHover(x, y)</code></td>
-            <td>自管命中检测</td>
-            <td>主路径用 <code>on('mouseover')</code></td>
-          </tr>
-          <tr>
-            <td><code>handlePointerMove(x, y)</code> / <code>handlePointerLeave()</code> / <code>handlePointerDown</code> / <code>handlePointerUp</code> / <code>handlePointerClick</code></td>
-            <td>离屏或自管指针</td>
-            <td><code>init(canvas)</code> 时一般不需要</td>
-          </tr>
-          <tr>
-            <td><code>applyDataZoomWheel(x, deltaY)</code></td>
-            <td>自管滚轮</td>
-            <td><code>init(canvas)</code> 时滚轮已绑定</td>
-          </tr>
-          <tr>
-            <td><code>getTooltipContent(si, di)</code></td>
-            <td>自绘 tooltip（string HTML）</td>
-            <td><code>init(canvas)</code> 时 facade 已内建 DOM</td>
-          </tr>
-          <tr>
-            <td><code>benchmarkRender(n)</code></td>
-            <td>渲染均值耗时（毫秒）</td>
-            <td>不是官方性能 API</td>
-          </tr>
-          <tr>
-            <td><code>hasOption</code> / <code>optionHasFunctions</code></td>
-            <td>状态查询</td>
-            <td>不是官方 API</td>
-          </tr>
-          <tr>
-            <td><code>registerFont(data, opts?)</code> / <code>clearFonts()</code></td>
-            <td>注册 TTF/OTF/WOFF/TTC bytes（<code>opts.familyName</code>、<code>opts.sansSerif</code>）；后续注册若未传 <code>sansSerif</code> 不会覆盖已有 <code>sans-serif</code> 映射。已创建实例会热更新 fontdb。轴标签渲染前必调。多字体见 <a href="../examples/#fonts">fonts</a>。<code>useWorker</code> 时同一份 bytes 会进 Worker。</td>
-            <td>不是官方 ECharts API；不要从 <code>@wasm-zrender</code> 注册并期望本模块生效</td>
-          </tr>
-          <tr>
-            <td><code>opts.useWorker</code></td>
-            <td>把实例放到 Worker；开发者仍写 <code>init</code> / <code>setOption</code> / <code>on</code></td>
-            <td>不要自己 <code>new Worker</code>；含函数 option 不要开</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="doc-section">
-      <h3>4. 已实现 / 未实现</h3>
-      <h4>已实现（部分生效）</h4>
-      <table>
-        <thead>
-          <tr><th>范围</th><th>现状</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>图表</td>
-            <td>官方 <code>export/charts.ts</code> 23 种（含 chord）均已接线 canvas 终态；feature 默认全开，不是 <code>echarts.use(BarChart)</code></td>
-          </tr>
-          <tr>
-            <td>cartesian</td>
-            <td>多 <code>grid</code> / <code>xAxis[]</code> / <code>yAxis[]</code>；<code>type: category | value | time | log</code>；<code>breaks</code> 折叠未展开区间；<code>jitter</code> 给 scatter 终态错开；y 类目横画；<code>convertToPixel</code> / <code>convertFromPixel</code> / <code>containPixel</code> 按 finder 取轴</td>
-          </tr>
-          <tr>
-            <td>dataset / transform</td>
-            <td><code>source</code>（二维数组 / 对象行 / 列对象）/<code>dimensions</code> / <code>seriesLayoutBy</code> / <code>datasetIndex</code> / <code>datasetId</code> / <code>encode</code>；内置 <code>filter</code> / <code>sort</code>；<code>registerTransform</code> 接外部</td>
-          </tr>
-          <tr>
-            <td>stack / sampling</td>
-            <td><code>stack</code> + <code>stackStrategy</code>（samesign / all / positive / negative）line 与 bar 共用偏移；<code>sampling: lttb | average</code></td>
-          </tr>
-          <tr>
-            <td>line</td>
-            <td><code>smooth</code>（bool→0.5 或数字）/<code>step</code>（start/middle/end）/<code>connectNulls</code>；<code>areaStyle</code>（默认透明度 0.7，色可为 <code>LinearGradient</code>）；<code>lineStyle.width</code>/<code>type</code>；<code>endLabel.show</code>；<code>symbol</code>/<code>symbolSize</code>；<code>stack</code>/<code>sampling</code>；<code>coordinateSystem: 'polar'</code></td>
-          </tr>
-          <tr>
-            <td>bar</td>
-            <td>同轴多系列并排（同 <code>stack</code> 共用列）；y 类目水平柱；polar 下为扇区；<code>barWidth</code>/<code>barGap</code>/<code>barCategoryGap</code>/<code>barMinHeight</code>；<code>itemStyle.borderRadius</code></td>
-          </tr>
-          <tr>
-            <td>pie</td>
-            <td><code>center</code> / <code>radius</code>（含环形 <code>[r0, r]</code>）/ <code>startAngle</code> / <code>clockwise</code>；<code>roseType: radius|area</code>；<code>selectedMode</code> + <code>selectedOffset</code>；<code>minShowLabelAngle</code>；label 同侧 y 间距跳过 + 简单 labelLine</td>
-          </tr>
-          <tr>
-            <td>scatter</td>
-            <td>双 value 轴；也可挂 polar / geo / calendar / single / matrix；<code>symbol</code> 与 <code>symbolSize</code>；<code>large</code> 且点数 ≥ <code>largeThreshold</code> 时终态一次画完、不挂 emphasis、不画 label；类目轴 <code>jitter</code></td>
-          </tr>
-          <tr>
-            <td>第 6 波图表</td>
-            <td><code>radar</code>（蛛网 Polygon）/ <code>gauge</code>（轴环+指针终态）/ <code>candlestick</code> / <code>boxplot</code> / <code>heatmap</code>（cartesian/calendar/matrix/geo 上色）/ <code>pictorialBar</code> / <code>effectScatter</code>（ripple 同心圆终态）/ <code>funnel</code> / <code>tree</code> / <code>treemap</code> / <code>sunburst</code> / <code>graph</code> / <code>chord</code> / <code>sankey</code> / <code>themeRiver</code> / <code>map</code> / <code>lines</code> / <code>parallel</code> / <code>custom</code>（<code>renderItem</code> + <code>api.coord</code>/<code>size</code>/<code>style</code>/<code>value</code>）</td>
-          </tr>
-          <tr>
-            <td>轴</td>
-            <td>轴标签 Text；<code>axisLabel.formatter</code>（函数或 <code>{value}</code> 模板）；<code>xAxis.name</code> / <code>yAxis.name</code>；<code>breaks</code> 折叠 + 折线标记；polar / radar / singleAxis / parallel / calendar / matrix / geo 底图</td>
-          </tr>
-          <tr>
-            <td>title / legend</td>
-            <td>title <code>text</code> / <code>subtext</code>；<code>padding</code> / <code>left</code>/<code>right</code>/<code>top</code>/<code>bottom</code> / <code>textAlign</code>；legend <code>orient</code> / <code>selected</code>、点击筛选</td>
-          </tr>
-          <tr>
-            <td>坐标系</td>
-            <td><code>polar</code>（angleAxis/radiusAxis）/<code>radar</code> 蛛网/<code>singleAxis</code>/<code>parallel</code>/<code>calendar</code>/<code>matrix</code>/<code>geo</code>（<code>registerMap</code> + <code>parseGeoJSON</code>）</td>
-          </tr>
-          <tr>
-            <td>canvas 组件</td>
-            <td><code>markPoint</code> / <code>markLine</code> / <code>markArea</code>；<code>option.graphic</code>；visualMap continuous/piecewise；dataZoom slider；axisPointer 十字；toolbox（restore / magicType / dataZoom；DataView 只 warn）；timeline；brush；thumbnail</td>
-          </tr>
-          <tr>
-            <td>CallbackDataParams</td>
-            <td><code>componentType</code> / <code>seriesType</code> / <code>percent</code>（pie）/ <code>data</code>；custom <code>renderItem</code> 另收 <code>api.coord</code>/<code>size</code>/<code>style</code>/<code>value</code></td>
-          </tr>
-          <tr>
-            <td>交互</td>
-            <td><code>init(canvas)</code> 绑指针；hover 高亮、内建 string tooltip、<code>on('click')</code>、legend/toolbox/timeline 点击、slider/brush 拖拽、wheel inside dataZoom、<code>tooltip.trigger: 'axis'</code>、十字 axisPointer</td>
-          </tr>
-          <tr>
-            <td><code>dispatchAction</code></td>
-            <td><code>highlight</code> / <code>downplay</code> / <code>select</code> / <code>unselect</code> / <code>toggleSelect</code> / <code>dataZoom</code> / <code>showTip</code> / <code>hideTip</code> / <code>legendToggleSelect</code> / <code>legendSelect</code> / <code>legendUnSelect</code> / <code>restore</code> / <code>timelineChange</code> / <code>brush</code> / <code>expandAxisBreak</code> / <code>collapseAxisBreak</code> / <code>toggleAxisBreak</code>；以及 <code>registerAction</code> 登记的 type</td>
-          </tr>
-          <tr>
-            <td><code>getZr</code> / 命名空间</td>
-            <td>与 ChartView 共用同一份 wasm-zrender 实例与 Storage（echarts 页只加载一份 WASM）；<code>graphic</code>（含 <code>LinearGradient</code>）/<code>util</code>/<code>time</code>/<code>format</code>/<code>number</code>/<code>helper</code>/<code>matrix</code>/<code>vector</code>/<code>color</code>/<code>env</code>；<code>throttle</code>。无 SVG painter / hover layer；动画终态</td>
-          </tr>
-          <tr>
-            <td>实例 API</td>
-            <td><code>showLoading</code>（静态遮罩）/<code>getDataURL</code>/<code>renderToCanvas</code>/<code>appendData</code>/<code>setTheme</code>/<code>containPixel</code>；全局 <code>connect</code>/<code>registerTheme</code>/<code>registerMap</code>/<code>parseGeoJSON</code>/<code>registerTransform</code>；扩展注册真表（<code>registerPreprocessor</code> / <code>Processor</code> / <code>Layout</code> / <code>Visual</code> / <code>Action</code> / <code>CoordinateSystem</code> / <code>CustomSeries</code> / <code>PRIORITY</code>）</td>
-          </tr>
-          <tr>
-            <td>media / labelLayout</td>
-            <td><code>option.media</code> 按宽高匹配 <code>minWidth</code> 等，<code>resize</code> 重算；<code>series.labelLayout</code> 终态 <code>hideOverlap</code> / <code>moveOverlap</code> / <code>dx</code>/<code>dy</code></td>
-          </tr>
-        </tbody>
-      </table>
-
-      <h4>未实现（不是永久例外；probe 失败与视觉简化）</h4>
-      <p>下列官方入口已导出同名，内部只 <code>console.warn</code>：<code>registerLocale</code>、<code>convertToLayout</code>、<code>getVisual</code>、<code>renderToSVGString</code>、<code>getSvgDataURL</code>、<code>getModel</code>（官方为 private；扩展示例会调）。<code>getConnectedDataURL</code> 不按 connect 拼图，回退 <code>getDataURL</code>。<code>getRenderedCanvas</code> 等价 <code>renderToCanvas</code>。<code>isSSR()</code> 恒为 <code>false</code>。<code>updateLabelLayout</code> 为空操作（labelLayout 已在 <code>setOption</code> 终态做完）。</p>
-      <ul>
-        <li>Charts：未识别的 <code>series.type</code> 会 <code>console.warn</code>（不再静默当 Other；<code>registerCustomSeries</code> 登记过的 type 当 custom）。已接线图表相对官方仍有简化（force 不迭代、桑基非完整节点平衡、tree 非 tidy、chord 用贝塞尔而非丝带、pictorialBar 非全部 symbolClip）。</li>
-        <li>Components：geo roam / SVG 地图源。toolbox DataView DOM / SaveAsImage 下载条明确不做。</li>
-        <li>Actions：geo roam 等</li>
-        <li>option 名字在但未按官方做：<code>smoothMonotone</code>、pie 完整 <code>avoidLabelOverlap</code> / <code>padAngle</code> / <code>alignTo</code>、bar <code>showBackground</code> / polar <code>roundCap</code>、parallel <code>progressive</code>、色板不是官方 palette 全套、rich text 标签当普通 Text</li>
-        <li>tooltip HTMLElement formatter / <code>confine</code> / <code>renderMode: 'richText'</code></li>
-        <li><code>UniversalTransition</code> 只跳终态，不做系列间插值</li>
-        <li>bar 未接 <code>large</code>：官网 <code>bar-large</code>（50 万柱）无增量绘制；示例已 <code>useWorker</code>，主线程不再卡死，Worker 内仍是同步长任务，probe 仍可能 timeout</li>
-        <li>官网 scatter 6 条回归/聚类示例与 custom <code>bar-histogram</code> 依赖全局 <code>ecStat</code>（<code>echarts-stat</code>），本宿主未注入</li>
-        <li><code>candlestick-large</code>：20 万 OHLC，无增量绘制；示例已 <code>useWorker</code></li>
-        <li><code>heatmap-bmap</code>：依赖百度地图扩展 <code>bmap</code>；<code>getModel</code> 已导出只 warn 并返回 <code>undefined</code>，表面错误为 <code>getComponent</code> of undefined</li>
-        <li><code>treemap-disk</code> / <code>treemap-show-parent</code>：官网 <code>disk.tree.json</code> 大树，递归 parse / squarify 触发 WASM panic（<code>unreachable</code>）</li>
-        <li><code>treemap-visual</code>：<code>series.levels.color</code> + <code>visualDimension</code> 渐变映射未按官方做，渲染时 WASM panic</li>
-        <li><code>parallel-nutrients</code>：官网 <code>nutrients.json</code> 约 1.4 万行；parallel 每条数据一条 Path、未接 <code>progressive</code>；示例已 <code>useWorker</code></li>
-        <li><code>lines-ny</code>：官网 <code>links_ny_*.bin</code> 分片 URL 为字符串拼接，sync 未拉到资源；404 HTML 被当 arraybuffer，<code>Float32Array</code> 报 byte length 不是 4 的倍数</li>
-      </ul>
-      <p>官网同步 catalog（含跨组重复）：折线 40、柱状 46、饼图 19、散点 36、K 线 10、盒须 4、热力 7、象形柱 8、仪表盘 12、雷达 5、漏斗 4、和弦 4、旭日 7、树图 7、矩形树 7、关系图 13、桑基 7、主题河流 2、日历 9、矩阵 14、平行坐标 4、地图 25、地理 1、路径图 5、自定义系列 20、数据集 9、图形组件 5。第 8.9 波去重全量 probe <strong>296 条中 281 <code>ok</code></strong>（3 timeout：<code>bar-large</code> / <code>candlestick-large</code> / <code>parallel-nutrients</code>，这三条已 <code>useWorker</code> 避免主线程无响应；12 error：6 条 scatter + <code>bar-histogram</code> 缺 <code>ecStat</code>、<code>heatmap-bmap</code> 无 bmap、<code>lines-ny</code> 缺 bin、3 条 treemap WASM panic）。<code>scatter-weibo</code> 与 <code>map-usa-projection</code> 本轮 <code>ok</code>（后者依赖 CDN <code>d3-geo</code>，不在 env 假实现）。gauge 12 + radar 5 全部 <code>ok</code>。仍可能有视觉缺口（能 <code>setOption</code>、不在示例里 workaround）：<code>smoothMonotone</code>、<code>padAngle</code>、<code>roundCap</code>、<code>showBackground</code>、<code>realtimeSort</code> 只终态、force 布局不迭代、<code>effectScatter-bmap</code> 无百度地图扩展、SVG 地图源 / <code>china</code>·<code>world</code> 底图未预注册、graphic 动画跳终态等。缺官方实例方法已同名导出 + <code>console.warn</code>，避免 <code>is not a function</code>。</p>
-    </div>
-
-    <div class="doc-section">
-      <h3>函数 option</h3>
       <p>
-        默认主线程路径：WASM 侧可识别 option 中的函数字段（如 <code>tooltip.formatter</code>、<code>series[].itemStyle.color</code>、<code>axisLabel.formatter</code>、<code>symbolSize</code>、<code>renderItem</code>），
-        在渲染/交互阶段回调。含函数的 option 见
-        <a href="../examples/interactive.html">交互合集</a>。
+        下一步：
+        <a href="./fonts.html">字体引用</a>
+        ·
+        <a href="./runtime.html">运行模式</a>
+        ·
+        <a href="/echarts/examples/">实例</a>
       </p>
-      <p>
-        <code>init(..., { useWorker: true })</code> <strong>不支持</strong>函数 option（结构化克隆会失败）。Worker 路径 option 一律 <code>postMessage</code>，不用 SAB；SAB 只用于回传 RGBA。
-      </p>
-    </div>
-
-    <div class="doc-section">
-      <h3>实例对照（验收）</h3>
-      <p>全部示例走 <code>init(canvas)</code> + <code>setOption</code>，自己创建图表，不经 <code>runOfficialExample</code>，也不直接 <code>new EChartsInstance</code>。</p>
-      <table>
-        <thead>
-          <tr><th>示例</th><th>覆盖</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><a href="../examples/#line">line</a> / <a href="../examples/#bar">bar</a> / <a href="../examples/#pie">pie</a> / <a href="../examples/#scatter">scatter</a></td>
-            <td><code>init(canvas)</code> 出图；轴 formatter、pie center/radius、symbol/label</td>
-          </tr>
-          <tr>
-            <td><a href="../examples/#fonts">fonts</a></td>
-            <td>连续 <code>registerFont</code>；title / subtext / legend / 轴名称与轴标签使用不同 <code>fontFamily</code></td>
-          </tr>
-          <tr>
-            <td><a href="../examples/#line-simple">官网折线</a> / <a href="../examples/#bar-simple">官网柱状</a> / <a href="../examples/#pie-simple">官网饼图</a> / <a href="../examples/#scatter-simple">官网散点</a></td>
-            <td>同步官网 line 40 + bar 46 + pie 19 + scatter 36 + candlestick 10 + boxplot 4 + heatmap 7 + pictorialBar 8 + gauge 12 + radar 5 + funnel 4 + chord 4 + sunburst 7 + tree 7 + treemap 7 + graph 13 + sankey 7 + themeRiver 2 + calendar 9 + matrix 14 + parallel 4 + map 25 + geo 1 + lines 5 + custom 20 + dataset 9 + graphic 5。catalog 一经生成即自动进画廊。能力补在库里，不在示例里 workaround。第 8.9 波去重 probe 296 条中 281 <code>ok</code>；<code>bar-large</code> / <code>candlestick-large</code> / <code>parallel-nutrients</code> 已 <code>useWorker</code>（见未实现表）；缺 <code>ecStat</code> / <code>bmap</code> / <code>lines-ny</code> bin 等仍会报错，预览层展示错误</td>
-          </tr>
-          <tr>
-            <td><a href="../examples/#merge">merge</a></td>
-            <td>二次 <code>setOption</code> 深合并、<code>notMerge: true</code>、<code>getOption</code>、dispose 后再 init</td>
-          </tr>
-          <tr>
-            <td><a href="../examples/#interactive">interactive</a></td>
-            <td><code>use()</code> 只出提示；<code>on('click')</code> + <code>dispatchAction('toggleSelect')</code>；hover tooltip；wheel dataZoom。不必调 <code>handlePointer*</code></td>
-          </tr>
-          <tr>
-            <td><a href="../examples/#bench">bench</a></td>
-            <td>非官方 <code>benchmarkRender</code></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
     </main>
   </div>
   <script type="module" src="/src/shared/docs-shell.js"></script>

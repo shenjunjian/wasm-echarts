@@ -7,25 +7,25 @@ todos:
     status: completed
   - id: ch-start-fonts
     content: 写快速上手 / 字体引用；/echarts/docs/ 默认落在快速上手
-    status: pending
+    status: completed
   - id: ch-runtime
     content: 写运行模式章：主线程 vs Worker；为何引入；函数 / DOM / getZr / SAB 限制
-    status: pending
+    status: completed
   - id: ch-api-facade
     content: 按源码写 JS facade API 分页：参数表 + 徽章 + 短示例
-    status: pending
+    status: completed
   - id: ch-api-pkg
     content: 写 pkg 导出 API 分页：与 facade 对照、不要直接 new EChartsInstance
-    status: pending
+    status: completed
   - id: ch-diff-coverage
     content: 写与官方差异三表 + 已实现/未实现能力表；删光 probe / 波次
-    status: pending
+    status: completed
   - id: ch-internals
     content: 写底层原理：option 管线、单 WASM、JS-WASM 过桥、Worker 数据流
-    status: pending
+    status: completed
   - id: sync-entry
     content: 更新 echarts 产品页卡片、AGENT.md 七章硬规则与 site 树、README 链接；公开文档不含 probe
-    status: pending
+    status: completed
 isProject: false
 ---
 
