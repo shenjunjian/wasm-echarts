@@ -1,5 +1,5 @@
 /**
- * 全站顶栏：品牌回首页，产品入口进文档默认页；进入产品后旁挂「文档 / 实例」。
+ * 全站顶栏：品牌回首页；产品名为下拉，内挂「文档 / 实例」。
  */
 
 const PRODUCTS = [
@@ -46,6 +46,73 @@ export function detectSiteContext(pathname = location.pathname) {
   return { product, section };
 }
 
+function prefersFineHover() {
+  return window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+}
+
+/**
+ * @param {HTMLElement} root
+ * @param {HTMLElement | null} except
+ */
+function setOpenItem(root, except) {
+  root.querySelectorAll('.site-nav-item').forEach((item) => {
+    const open = item === except;
+    item.classList.toggle('is-open', open);
+    item.querySelector('.site-nav-product')?.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+}
+
+function closeAllNavs() {
+  document.querySelectorAll('header.site-header').forEach((header) => setOpenItem(header, null));
+}
+
+/**
+ * @param {HTMLElement} root
+ */
+function bindNavEvents(root) {
+  if (root.dataset.navBound === '1') return;
+  root.dataset.navBound = '1';
+
+  root.addEventListener('click', (event) => {
+    const btn = event.target.closest('.site-nav-product');
+    if (!btn || !root.contains(btn)) return;
+    if (prefersFineHover()) return;
+    const item = btn.closest('.site-nav-item');
+    const willOpen = !item.classList.contains('is-open');
+    setOpenItem(root, willOpen ? item : null);
+  });
+
+  root.addEventListener('pointerover', (event) => {
+    if (!prefersFineHover()) return;
+    const item = event.target.closest('.site-nav-item');
+    if (item && root.contains(item)) setOpenItem(root, item);
+  });
+
+  root.addEventListener('pointerout', (event) => {
+    if (!prefersFineHover()) return;
+    const item = event.target.closest('.site-nav-item');
+    const related = event.relatedTarget instanceof Element
+      ? event.relatedTarget.closest('.site-nav-item')
+      : null;
+    if (item && related !== item) setOpenItem(root, null);
+  });
+
+  if (document.documentElement.dataset.siteNavDocBound === '1') return;
+  document.documentElement.dataset.siteNavDocBound = '1';
+
+  document.addEventListener('click', (event) => {
+    if (event.target.closest('.site-nav-item')) return;
+    closeAllNavs();
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    const openBtn = document.querySelector('.site-nav-item.is-open .site-nav-product');
+    closeAllNavs();
+    openBtn?.focus();
+  });
+}
+
 /**
  * @param {HTMLElement} [root]
  * @param {{ product?: string | null, section?: string | null }} [opts]
@@ -59,15 +126,17 @@ export function mountSiteHeader(root = document.querySelector('header.site-heade
 
   const clusters = PRODUCTS.map((item) => {
     const isCurrent = item.id === product;
-    const sub = isCurrent
-      ? `<span class="site-nav-sub">
-          <a href="${item.docs}"${section === 'docs' ? ' class="is-active" aria-current="page"' : ''}>文档</a>
-          <a href="${item.examples}"${section === 'examples' ? ' class="is-active" aria-current="page"' : ''}>实例</a>
-        </span>`
-      : '';
+    const docsActive = isCurrent && section === 'docs';
+    const examplesActive = isCurrent && section === 'examples';
+    const menuId = `site-nav-menu-${item.id}`;
     return `<div class="site-nav-item${isCurrent ? ' is-current' : ''}">
-      <a class="site-nav-product" href="${item.href}">${item.label}</a>
-      ${sub}
+      <button type="button" class="site-nav-product" aria-expanded="false" aria-haspopup="true" aria-controls="${menuId}">
+        ${item.label}
+      </button>
+      <div class="site-nav-menu" id="${menuId}" role="menu">
+        <a href="${item.docs}" role="menuitem"${docsActive ? ' class="is-active" aria-current="page"' : ''}>文档</a>
+        <a href="${item.examples}" role="menuitem"${examplesActive ? ' class="is-active" aria-current="page"' : ''}>实例</a>
+      </div>
     </div>`;
   }).join('');
 
@@ -75,6 +144,7 @@ export function mountSiteHeader(root = document.querySelector('header.site-heade
     <a class="brand" href="/">wasm-echarts</a>
     <nav class="site-nav" aria-label="产品">${clusters}</nav>
   `;
+  bindNavEvents(root);
 }
 
 if (typeof document !== 'undefined') {
