@@ -221,6 +221,8 @@ fn parse_axis_from(comp: Option<&OptionValue>, fallback: AxisType) -> AxisModel 
         jitter,
         jitter_overlap,
         jitter_margin,
+        boundary_gap: crate::model::axis::parse_boundary_gap(comp, axis_type),
+        scale: crate::model::axis::parse_scale(comp),
     }
 }
 

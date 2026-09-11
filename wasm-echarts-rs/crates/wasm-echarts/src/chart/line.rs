@@ -57,8 +57,8 @@ pub fn render_line_series(
             continue;
         }
         let y_val = p.stacked_value;
-        let (cx, cy) = coord.map_point(p, i);
-        let finite = p.value.is_finite() && y_val.is_finite() && cx.is_finite() && cy.is_finite();
+        let (cx, cy) = coord.point_for(i, p.x_value, y_val);
+        let finite = y_val.is_finite() && cx.is_finite() && cy.is_finite();
         let (px, py) = if finite { (cx, cy) } else { (f64::NAN, f64::NAN) };
         let (bx, by) = if finite {
             if series.stack.is_some() {
@@ -498,5 +498,88 @@ mod tests {
             .filter(|p| matches!(p.shape, Shape::Polyline(_)))
             .count();
         assert!(n >= 1, "polar line should draw a polyline");
+    }
+
+    #[test]
+    fn stacked_line_uses_stacked_y() {
+        let mut option = OptionModel::new();
+        option.apply(
+            obj(vec![
+                (
+                    "xAxis",
+                    obj(vec![
+                        ("type", OptionValue::String("category".into())),
+                        ("boundaryGap", OptionValue::Bool(false)),
+                        (
+                            "data",
+                            OptionValue::Array(vec![
+                                OptionValue::String("a".into()),
+                                OptionValue::String("b".into()),
+                            ]),
+                        ),
+                    ]),
+                ),
+                ("yAxis", obj(vec![("type", OptionValue::String("value".into()))])),
+                (
+                    "series",
+                    OptionValue::Array(vec![
+                        obj(vec![
+                            ("type", OptionValue::String("line".into())),
+                            ("stack", OptionValue::String("t".into())),
+                            ("areaStyle", obj(vec![])),
+                            (
+                                "data",
+                                OptionValue::Array(vec![
+                                    OptionValue::Number(10.0),
+                                    OptionValue::Number(10.0),
+                                ]),
+                            ),
+                        ]),
+                        obj(vec![
+                            ("type", OptionValue::String("line".into())),
+                            ("stack", OptionValue::String("t".into())),
+                            ("areaStyle", obj(vec![])),
+                            (
+                                "data",
+                                OptionValue::Array(vec![
+                                    OptionValue::Number(20.0),
+                                    OptionValue::Number(20.0),
+                                ]),
+                            ),
+                        ]),
+                    ]),
+                ),
+            ]),
+            SetOptionFlags {
+                not_merge: true,
+                replace_merge: vec![],
+            },
+        );
+        let model = crate::model::GlobalModel::from_option(&option, 400, 300);
+        let visual = VisualContext::new(&option, &model);
+        let mut zr = ZRenderer::new(400, 300).unwrap();
+        let group = zr.storage.create_group();
+        for series in &model.series {
+            let coord = SeriesCoord::for_series(&model, series);
+            render_line_series(&mut zr, group, &model, &coord, &visual, series, 0, series.data.len());
+        }
+        let coord = SeriesCoord::for_series(&model, &model.series[1]);
+        let expected = coord.point_for(0, None, 30.0);
+        let raw = coord.point_for(0, None, 20.0);
+        let top_y = zr
+            .storage
+            .paths()
+            .iter()
+            .filter_map(|p| match &p.shape {
+                Shape::Polyline(s) => s.points.first().map(|pt| pt.1),
+                _ => None,
+            })
+            .fold(f64::INFINITY, f64::min);
+        assert!(
+            (top_y - expected.1).abs() < 1.0,
+            "stacked y={top_y}, expected {}, raw would be {}",
+            expected.1,
+            raw.1
+        );
     }
 }

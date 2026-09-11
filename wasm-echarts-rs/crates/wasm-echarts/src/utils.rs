@@ -46,7 +46,10 @@ pub fn parse_percent(value: Option<&OptionValue>, relative: f64, default: f64) -
 }
 
 pub fn format_axis_number(v: f64) -> String {
-    if v.abs() >= 1000.0 || (v.abs() < 0.01 && v != 0.0) {
+    if !v.is_finite() {
+        return v.to_string();
+    }
+    if v.abs() >= 1_000_000.0 || (v.abs() < 0.001 && v != 0.0) {
         format!("{v:.1e}")
     } else if (v - v.round()).abs() < 0.001 {
         format!("{}", v.round() as i64)
@@ -64,5 +67,12 @@ mod tests {
         assert!((parse_percent(Some(&OptionValue::String("50%".into())), 200.0, 0.0) - 100.0).abs() < 1e-9);
         assert!((parse_percent(Some(&OptionValue::Number(12.0)), 200.0, 0.0) - 12.0).abs() < 1e-9);
         assert!((parse_percent(None, 200.0, 7.0) - 7.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn axis_number_keeps_thousands_as_integer() {
+        assert_eq!(format_axis_number(1330.0), "1330");
+        assert_eq!(format_axis_number(0.0), "0");
+        assert!(format_axis_number(1_000_000.0).to_ascii_lowercase().contains('e'));
     }
 }

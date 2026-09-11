@@ -284,8 +284,12 @@ impl<'a> Cartesian2D<'a> {
         }
         let (start, end) = self.model.visible_category_range_of(self.x_index);
         let visible = (end - start).max(1);
-        let rel = ((x - self.grid.x) / self.grid.width).clamp(0.0, 0.999_999);
-        let local = (rel * visible as f64).floor() as usize;
+        let rel = ((x - self.grid.x) / self.grid.width).clamp(0.0, 1.0);
+        let local = if !self.x_axis.boundary_gap && visible > 1 {
+            (rel * (visible - 1) as f64).round() as usize
+        } else {
+            ((rel * visible as f64).floor() as usize).min(visible.saturating_sub(1))
+        };
         Some((start + local).min(self.model.category_count_of(self.x_index).saturating_sub(1)))
     }
 
@@ -349,7 +353,11 @@ fn axis_value_to_pixel(
             0
         };
         let local = idx.saturating_sub(start);
-        let mut t = (local as f64 + 0.5) / visible as f64;
+        let mut t = if !axis.boundary_gap && visible > 1 {
+            local as f64 / (visible - 1) as f64
+        } else {
+            (local as f64 + 0.5) / visible as f64
+        };
         if invert {
             t = 1.0 - t;
         }
@@ -946,6 +954,60 @@ mod tests {
             panic!("expected scalar");
         };
         assert_eq!(idx, 1.0);
+    }
+
+    #[test]
+    fn boundary_gap_false_places_first_category_on_grid_edge() {
+        let mut option = OptionModel::new();
+        option.apply(
+            obj(vec![
+                (
+                    "xAxis",
+                    obj(vec![
+                        ("type", OptionValue::String("category".into())),
+                        ("boundaryGap", OptionValue::Bool(false)),
+                        (
+                            "data",
+                            OptionValue::Array(vec![
+                                OptionValue::String("Mon".into()),
+                                OptionValue::String("Tue".into()),
+                                OptionValue::String("Wed".into()),
+                            ]),
+                        ),
+                    ]),
+                ),
+                ("yAxis", obj(vec![("type", OptionValue::String("value".into()))])),
+                (
+                    "series",
+                    OptionValue::Array(vec![obj(vec![
+                        ("type", OptionValue::String("line".into())),
+                        (
+                            "data",
+                            OptionValue::Array(vec![
+                                OptionValue::Number(10.0),
+                                OptionValue::Number(20.0),
+                                OptionValue::Number(30.0),
+                            ]),
+                        ),
+                    ])]),
+                ),
+            ]),
+            SetOptionFlags {
+                not_merge: true,
+                ..Default::default()
+            },
+        );
+        let model = GlobalModel::from_option(&option, 400, 300);
+        let coord = Cartesian2D::for_series(&model, &model.series[0]);
+        let (x0, _) = coord.point_for(0, None, 0.0);
+        let (x_last, _) = coord.point_for(2, None, 0.0);
+        let g = coord.grid();
+        assert!((x0 - g.x).abs() < 0.5, "first category x={x0} grid.x={}", g.x);
+        assert!(
+            (x_last - (g.x + g.width)).abs() < 0.5,
+            "last category x={x_last} grid.right={}",
+            g.x + g.width
+        );
     }
 
     #[test]

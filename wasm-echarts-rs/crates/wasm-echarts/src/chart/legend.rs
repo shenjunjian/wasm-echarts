@@ -1,18 +1,18 @@
-//! legend：色块 + 系列名；`orient` / `selected`；点击筛选（命中 dataType=legend）
+//! legend：折线用「线 + 圆」，其它系列用色块；默认贴底（ECharts 6）
 
 use rust_zrender::{
-    FillStrokeStyle, TextAlign, TextBaseline, ZRenderer,
+    ChildRef, CircleShape, DisplayableProps, FillStrokeStyle, LineShape, Path, PathStyle, Shape,
+    TextAlign, TextBaseline, ZRenderer,
 };
 
 use crate::bridge::default_series_color;
 use crate::chart::layout::{
-    add_rect, add_text, component_ec, parse_orient, parse_padding, HIT_LEGEND,
+    add_rect, add_text, component_ec, layout_origin, parse_orient, parse_padding, HIT_LEGEND,
 };
 use crate::chart::text_opt::{option_component, parse_chart_text_style};
 use crate::interaction::InteractionState;
 use crate::model::{GlobalModel, SeriesType};
 use crate::option::{OptionModel, OptionValue};
-use crate::utils::parse_percent;
 
 pub fn render_legend(
     zr: &mut ZRenderer,
@@ -37,15 +37,15 @@ pub fn render_legend(
     let item_width = legend
         .get("itemWidth")
         .and_then(|v| v.as_f64())
-        .unwrap_or(14.0);
+        .unwrap_or(25.0);
     let item_height = legend
         .get("itemHeight")
         .and_then(|v| v.as_f64())
-        .unwrap_or(10.0);
+        .unwrap_or(14.0);
     let item_gap = legend
         .get("itemGap")
         .and_then(|v| v.as_f64())
-        .unwrap_or(10.0);
+        .unwrap_or(8.0);
     let pad = parse_padding(legend.get("padding"), 5.0);
     let horizontal = parse_orient(legend.get("orient"));
     let mut total_w = pad.left + pad.right;
@@ -65,22 +65,41 @@ pub fn render_legend(
 
     let width = model.width as f64;
     let height = model.height as f64;
-    let (origin_x, _) = parse_legend_left(legend.get("left"), width, total_w);
-    let origin_y = parse_percent(legend.get("top"), height, 12.0);
+    let row_h = item_height.max(style.font_size as f64) + 4.0;
+    let legend_h = if horizontal {
+        pad.top + pad.bottom + row_h
+    } else {
+        pad.top + pad.bottom + (row_h + item_gap) * names.len() as f64 - item_gap
+    };
+    let (origin_x, origin_y) = layout_origin(
+        legend,
+        width,
+        height,
+        total_w,
+        legend_h,
+        ((width - total_w).max(0.0) / 2.0).max(0.0),
+        (height - 15.0 - legend_h).max(0.0),
+    );
 
     let mut x = origin_x + pad.left;
     let mut y = origin_y + pad.top;
     for (i, name) in names.iter().enumerate() {
+        let series_index = model.series.iter().position(|s| s.name == *name).unwrap_or(i);
+        let series_type = model
+            .series
+            .get(series_index)
+            .map(|s| s.series_type)
+            .unwrap_or(SeriesType::Other);
         let on = interaction.is_name_selected(name);
         let color = if on {
-            default_series_color(i).to_string()
+            default_series_color(series_index).to_string()
         } else {
             "#ccc".to_string()
         };
         let fill = style.fill.clone();
         let text_fill = if on { fill } else { "#ccc".to_string() };
         let hit_w = item_width + 6.0 + widths[i];
-        let hit_h = item_height.max(style.font_size as f64) + 4.0;
+        let hit_h = row_h;
         add_rect(
             zr,
             group,
@@ -94,19 +113,23 @@ pub fn render_legend(
             10.0,
             Some(component_ec(HIT_LEGEND, i as i32)),
         );
-        add_rect(
-            zr,
-            group,
-            x,
-            y + 2.0,
-            item_width,
-            item_height,
-            FillStrokeStyle::color(color),
-            FillStrokeStyle::none(),
-            0.0,
-            10.1,
-            None,
-        );
+        if series_type == SeriesType::Line {
+            add_line_legend_icon(zr, group, x, y, item_width, item_height, &color);
+        } else {
+            add_rect(
+                zr,
+                group,
+                x,
+                y + (hit_h - item_height).max(0.0) / 2.0,
+                item_width,
+                item_height,
+                FillStrokeStyle::color(&color),
+                FillStrokeStyle::none(),
+                0.0,
+                10.1,
+                None,
+            );
+        }
         let mut ts = style.to_text_style(TextAlign::Left, TextBaseline::Top);
         ts.fill = text_fill;
         add_text(
@@ -126,6 +149,60 @@ pub fn render_legend(
             y += hit_h + item_gap;
         }
     }
+}
+
+fn add_line_legend_icon(
+    zr: &mut ZRenderer,
+    group: usize,
+    x: f64,
+    y: f64,
+    item_width: f64,
+    item_height: f64,
+    color: &str,
+) {
+    let cy = y + item_height / 2.0;
+    let line = zr.storage.create_path(
+        Path::new(
+            Shape::Line(LineShape {
+                x1: x,
+                y1: cy,
+                x2: x + item_width,
+                y2: cy,
+                percent: 1.0,
+            }),
+            PathStyle {
+                fill: FillStrokeStyle::none(),
+                stroke: FillStrokeStyle::color(color),
+                line_width: 2.0,
+                ..PathStyle::stroke_default()
+            },
+        )
+        .with_displayable(DisplayableProps {
+            z: 10.1,
+            ..Default::default()
+        }),
+    );
+    zr.storage.group_add_child(group, ChildRef::Path(line));
+    let size = item_height * 0.8;
+    let circle = zr.storage.create_path(
+        Path::new(
+            Shape::Circle(CircleShape {
+                cx: x + item_width / 2.0,
+                cy,
+                r: size / 2.0,
+            }),
+            PathStyle {
+                fill: FillStrokeStyle::color(color),
+                stroke: FillStrokeStyle::none(),
+                ..Default::default()
+            },
+        )
+        .with_displayable(DisplayableProps {
+            z: 10.15,
+            ..Default::default()
+        }),
+    );
+    zr.storage.group_add_child(group, ChildRef::Path(circle));
 }
 
 pub fn legend_item_name(legend: &OptionValue, model: &GlobalModel, index: usize) -> Option<String> {
@@ -166,19 +243,6 @@ pub fn legend_names(legend: &OptionValue, model: &GlobalModel) -> Vec<String> {
                 .filter(|n| !n.is_empty())
         })
         .collect()
-}
-
-fn parse_legend_left(value: Option<&OptionValue>, width: f64, total: f64) -> (f64, rust_zrender::TextAlign) {
-    match value {
-        Some(OptionValue::String(s)) => match s.as_str() {
-            "center" => ((width - total).max(0.0) / 2.0, rust_zrender::TextAlign::Left),
-            "right" => ((width - total - 12.0).max(0.0), rust_zrender::TextAlign::Left),
-            "left" => (12.0, rust_zrender::TextAlign::Left),
-            _ => (parse_percent(value, width, 12.0), rust_zrender::TextAlign::Left),
-        },
-        Some(OptionValue::Number(n)) => (*n, rust_zrender::TextAlign::Left),
-        _ => ((width - total).max(0.0) / 2.0, rust_zrender::TextAlign::Left),
-    }
 }
 
 #[cfg(test)]
@@ -262,5 +326,41 @@ mod tests {
         assert!(hits >= 2, "legend hit targets: {}", hits);
         let legend = option.root().get("legend").unwrap();
         assert_eq!(legend_names(legend, &model), vec!["A".to_string(), "B".to_string()]);
+    }
+
+    #[test]
+    fn line_legend_uses_line_and_circle_at_bottom() {
+        let (option, model) = sample_option("horizontal");
+        let interaction = InteractionState::from_option(&option);
+        let mut zr = ZRenderer::new(400, 300).unwrap();
+        let group = zr.storage.create_group();
+        render_legend(&mut zr, group, &model, &option, &interaction);
+        let has_line = zr
+            .storage
+            .paths()
+            .iter()
+            .any(|p| matches!(p.shape, Shape::Line(_)));
+        let has_circle = zr
+            .storage
+            .paths()
+            .iter()
+            .any(|p| matches!(p.shape, Shape::Circle(_)));
+        assert!(has_line, "line series legend should draw a line");
+        assert!(has_circle, "line series legend should draw a circle");
+        let min_y = zr
+            .storage
+            .paths()
+            .iter()
+            .filter_map(|p| match &p.shape {
+                Shape::Line(s) => Some(s.y1.min(s.y2)),
+                Shape::Circle(s) => Some(s.cy - s.r),
+                _ => None,
+            })
+            .fold(f64::INFINITY, f64::min);
+        assert!(
+            min_y > 200.0,
+            "default legend should sit near the bottom, got y={}",
+            min_y
+        );
     }
 }

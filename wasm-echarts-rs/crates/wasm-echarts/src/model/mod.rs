@@ -109,7 +109,7 @@ impl GlobalModel {
         let w = width as f64;
         let h = height as f64;
 
-        let grids = parse_grids(root.get("grid"), w, h);
+        let grids = parse_grids(root.get("grid"), w, h, grid_default_bottom(root));
         let mut x_axes = parse_axes(root.get("xAxis"), AxisType::Category, root, true);
         let mut y_axes = parse_axes(root.get("yAxis"), AxisType::Value, root, false);
 
@@ -227,23 +227,45 @@ fn parse_data_zoom_x_axes(root: &OptionValue) -> Option<Vec<usize>> {
     None
 }
 
-fn parse_grids(value: Option<&OptionValue>, width: f64, height: f64) -> Vec<GridRect> {
+fn legend_reserves_bottom(root: &OptionValue) -> bool {
+    let Some(legend) = crate::utils::first_component(root.get("legend")) else {
+        return false;
+    };
+    if legend.get("show").and_then(|v| v.as_bool()) == Some(false) {
+        return false;
+    }
+    legend.get("top").is_none()
+}
+
+fn grid_default_bottom(root: &OptionValue) -> f64 {
+    if legend_reserves_bottom(root) {
+        72.0
+    } else {
+        50.0
+    }
+}
+
+fn parse_grids(value: Option<&OptionValue>, width: f64, height: f64, default_bottom: f64) -> Vec<GridRect> {
     let comps = as_components(value);
     if comps.is_empty() {
-        vec![parse_one_grid(None, width, height)]
+        vec![parse_one_grid(None, width, height, default_bottom)]
     } else {
         comps
             .into_iter()
-            .map(|c| parse_one_grid(Some(c), width, height))
+            .map(|c| parse_one_grid(Some(c), width, height, default_bottom))
             .collect()
     }
 }
 
-fn parse_one_grid(value: Option<&OptionValue>, width: f64, height: f64) -> GridRect {
+fn parse_one_grid(
+    value: Option<&OptionValue>,
+    width: f64,
+    height: f64,
+    default_bottom: f64,
+) -> GridRect {
     let default_left = 60.0;
     let default_right = 20.0;
     let default_top = 40.0;
-    let default_bottom = 50.0;
 
     let map = value.and_then(|v| v.as_object());
     let left = parse_percent(
@@ -311,6 +333,8 @@ fn default_axis(fallback_type: AxisType, is_x: bool, root: &OptionValue) -> Axis
         max: None,
         grid_index: 0,
         log_base: 10.0,
+        boundary_gap: fallback_type.is_category(),
+        scale: false,
         ..Default::default()
     };
     if is_x && axis.axis_type.is_category() {
@@ -350,6 +374,8 @@ fn parse_one_axis(comp: &OptionValue, fallback_type: AxisType, _is_x: bool) -> A
         jitter,
         jitter_overlap,
         jitter_margin,
+        boundary_gap: crate::model::axis::parse_boundary_gap(comp, axis_type),
+        scale: crate::model::axis::parse_scale(comp),
     }
 }
 
@@ -440,6 +466,7 @@ fn apply_axis_extents(
             } else {
                 compute_y_extent_for(series, idx, axis.axis_type)
             };
+            let (min, max) = finalize_axis_extent(min, max, &axis);
             axis.with_data_range((min, max))
         })
         .collect()
@@ -471,7 +498,7 @@ fn compute_x_extent_for(
             max = max.max(x);
         }
     }
-    pad_extent(min, max, axis_type)
+    (min, max)
 }
 
 fn compute_y_extent_for(series: &[SeriesModel], axis_index: usize, axis_type: AxisType) -> (f64, f64) {
@@ -491,7 +518,19 @@ fn compute_y_extent_for(series: &[SeriesModel], axis_index: usize, axis_type: Ax
             }
         }
     }
-    pad_extent(min, max, axis_type)
+    (min, max)
+}
+
+fn finalize_axis_extent(min: f64, max: f64, axis: &AxisModel) -> (f64, f64) {
+    let (mut lo, mut hi) = pad_extent(min, max, axis.axis_type);
+    if axis.axis_type == AxisType::Value && !axis.scale {
+        if min >= 0.0 {
+            lo = 0.0;
+        } else if max <= 0.0 {
+            hi = 0.0;
+        }
+    }
+    (lo, hi)
 }
 
 fn point_y_values(series: &SeriesModel, p: &DataPoint) -> Vec<f64> {
@@ -590,9 +629,86 @@ mod tests {
         let mut m = IndexMap::new();
         m.insert("left".into(), OptionValue::String("10%".into()));
         m.insert("right".into(), OptionValue::Number(20.0));
-        let grids = parse_grids(Some(&OptionValue::Object(m)), 400.0, 300.0);
+        let grids = parse_grids(Some(&OptionValue::Object(m)), 400.0, 300.0, 50.0);
         assert!((grids[0].x - 40.0).abs() < 0.01);
         assert!((grids[0].width - 340.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn value_axis_keeps_zero_when_data_is_positive() {
+        let model = apply(obj(vec![
+            (
+                "xAxis",
+                obj(vec![
+                    ("type", OptionValue::String("category".into())),
+                    (
+                        "data",
+                        OptionValue::Array(vec![
+                            OptionValue::String("Mon".into()),
+                            OptionValue::String("Tue".into()),
+                        ]),
+                    ),
+                ]),
+            ),
+            ("yAxis", obj(vec![("type", OptionValue::String("value".into()))])),
+            (
+                "series",
+                OptionValue::Array(vec![
+                    obj(vec![
+                        ("type", OptionValue::String("line".into())),
+                        ("stack", OptionValue::String("Total".into())),
+                        ("areaStyle", obj(vec![])),
+                        (
+                            "data",
+                            OptionValue::Array(vec![
+                                OptionValue::Number(120.0),
+                                OptionValue::Number(132.0),
+                            ]),
+                        ),
+                    ]),
+                    obj(vec![
+                        ("type", OptionValue::String("line".into())),
+                        ("stack", OptionValue::String("Total".into())),
+                        ("areaStyle", obj(vec![])),
+                        (
+                            "data",
+                            OptionValue::Array(vec![
+                                OptionValue::Number(820.0),
+                                OptionValue::Number(932.0),
+                            ]),
+                        ),
+                    ]),
+                ]),
+            ),
+        ]));
+        assert_eq!(model.y_axis().value_min(), 0.0);
+        assert!(model.y_axis().value_max() >= 1052.0);
+    }
+
+    #[test]
+    fn category_boundary_gap_false_is_parsed() {
+        let model = apply(obj(vec![
+            (
+                "xAxis",
+                obj(vec![
+                    ("type", OptionValue::String("category".into())),
+                    ("boundaryGap", OptionValue::Bool(false)),
+                    (
+                        "data",
+                        OptionValue::Array(vec![OptionValue::String("Mon".into())]),
+                    ),
+                ]),
+            ),
+            ("yAxis", obj(vec![("type", OptionValue::String("value".into()))])),
+            (
+                "series",
+                OptionValue::Array(vec![obj(vec![
+                    ("type", OptionValue::String("line".into())),
+                    ("data", OptionValue::Array(vec![OptionValue::Number(1.0)])),
+                ])]),
+            ),
+        ]));
+        assert!(!model.x_axis().boundary_gap);
     }
 
     #[test]

@@ -72,6 +72,10 @@ pub struct AxisModel {
     pub jitter: f64,
     pub jitter_overlap: bool,
     pub jitter_margin: f64,
+    /// 类目轴：`true` 时点落在 band 中心；`false` 时首末类目贴齐轴线。
+    pub boundary_gap: bool,
+    /// `false`（官方默认）时数值轴必须包含 0。
+    pub scale: bool,
 }
 
 impl Default for AxisModel {
@@ -87,6 +91,8 @@ impl Default for AxisModel {
             jitter: 0.0,
             jitter_overlap: false,
             jitter_margin: 0.0,
+            boundary_gap: true,
+            scale: false,
         }
     }
 }
@@ -262,6 +268,17 @@ fn parse_break_gap(value: Option<&OptionValue>) -> (Option<f64>, Option<f64>) {
         }
     }
     (None, None)
+}
+
+pub fn parse_boundary_gap(comp: &OptionValue, axis_type: AxisType) -> bool {
+    match comp.get("boundaryGap") {
+        Some(OptionValue::Bool(b)) => *b,
+        _ => axis_type.is_category(),
+    }
+}
+
+pub fn parse_scale(comp: &OptionValue) -> bool {
+    comp.get("scale").and_then(|v| v.as_bool()).unwrap_or(false)
 }
 
 pub fn parse_axis_jitter(comp: &OptionValue) -> (f64, bool, f64) {
