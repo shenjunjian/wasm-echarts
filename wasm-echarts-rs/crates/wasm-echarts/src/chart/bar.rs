@@ -463,6 +463,54 @@ mod tests {
     }
 
     #[test]
+    fn numeric_string_data_still_draws_rects() {
+        let (zr, _) = render(obj(vec![
+            (
+                "xAxis",
+                obj(vec![
+                    ("type", OptionValue::String("category".into())),
+                    (
+                        "data",
+                        OptionValue::Array(vec![
+                            OptionValue::String("A".into()),
+                            OptionValue::String("B".into()),
+                        ]),
+                    ),
+                ]),
+            ),
+            ("yAxis", obj(vec![("type", OptionValue::String("value".into()))])),
+            (
+                "series",
+                OptionValue::Array(vec![obj(vec![
+                    ("type", OptionValue::String("bar".into())),
+                    (
+                        "data",
+                        OptionValue::Array(vec![
+                            OptionValue::String("3456.12".into()),
+                            OptionValue::String("3500.00".into()),
+                        ]),
+                    ),
+                ])]),
+            ),
+        ]));
+        let heights: Vec<f64> = zr
+            .storage
+            .paths()
+            .iter()
+            .filter_map(|p| match &p.shape {
+                Shape::Rect(r) => Some(r.height),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(heights.len(), 2);
+        assert!(
+            heights.iter().all(|h| *h > 10.0),
+            "string numbers must become visible bars: {:?}",
+            heights
+        );
+    }
+
+    #[test]
     fn bar_width_pixels() {
         let (zr, _) = render(axes_and_series(vec![bar_data(vec![(
             "barWidth",

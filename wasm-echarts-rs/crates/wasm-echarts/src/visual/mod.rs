@@ -284,8 +284,8 @@ fn parse_data_point(item: &OptionValue, index: usize) -> DataPoint {
                         .unwrap_or(f64::NAN);
                     (y, x)
                 }
+                Some(v) => (numeric_or_time(v).unwrap_or(f64::NAN), None),
                 None => (f64::NAN, None),
-                _ => (f64::NAN, None),
             };
             data_point_from_parsed(value, x_value, name, index, item.clone())
         }
@@ -299,7 +299,13 @@ fn parse_data_point(item: &OptionValue, index: usize) -> DataPoint {
             let name = pair[0].as_str().map(str::to_string);
             data_point_from_parsed(value, x, name, index, item.clone())
         }
-        _ => data_point_from_parsed(f64::NAN, None, None, index, item.clone()),
+        other => data_point_from_parsed(
+            numeric_or_time(other).unwrap_or(f64::NAN),
+            None,
+            None,
+            index,
+            item.clone(),
+        ),
     }
 }
 
@@ -333,5 +339,20 @@ mod tests {
         assert!(!pts[1].value.is_finite());
         assert!(!pts[2].value.is_finite());
         assert_eq!(pts[3].value, 4.0);
+    }
+
+    #[test]
+    fn parse_numeric_strings_like_to_fixed() {
+        let data = OptionValue::Array(vec![
+            OptionValue::String("3456.12".into()),
+            OptionValue::Object({
+                let mut m = indexmap::IndexMap::new();
+                m.insert("value".into(), OptionValue::String("100.50".into()));
+                m
+            }),
+        ]);
+        let pts = parse_series_data(Some(&data));
+        assert_eq!(pts[0].value, 3456.12);
+        assert_eq!(pts[1].value, 100.50);
     }
 }

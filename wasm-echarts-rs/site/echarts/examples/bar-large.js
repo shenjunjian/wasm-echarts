@@ -30,7 +30,7 @@ async function main() {
   titleCN: 大数据量柱图
   difficulty: 5
   */
-  const dataCount = 5e5;
+  const dataCount = 5e3;
   const data = generateData(dataCount);
   option = {
     title: {
