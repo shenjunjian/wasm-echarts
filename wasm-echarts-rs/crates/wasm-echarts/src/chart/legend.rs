@@ -1,14 +1,15 @@
 //! legend：折线用「线 + 圆」，其它系列用色块；默认贴底（ECharts 6）
 
 use rust_zrender::{
-    ChildRef, CircleShape, DisplayableProps, FillStrokeStyle, LineShape, Path, PathStyle, Shape,
-    TextAlign, TextBaseline, ZRenderer,
+    ChildRef, DisplayableProps, FillStrokeStyle, LineShape, Path, PathStyle, Shape, TextAlign,
+    TextBaseline, ZRenderer,
 };
 
 use crate::bridge::default_series_color;
 use crate::chart::layout::{
     add_rect, add_text, component_ec, layout_origin, parse_orient, parse_padding, HIT_LEGEND,
 };
+use crate::chart::symbol::{add_symbol, SymbolSpec};
 use crate::chart::text_opt::{option_component, parse_chart_text_style};
 use crate::interaction::InteractionState;
 use crate::model::{GlobalModel, SeriesType};
@@ -183,26 +184,20 @@ fn add_line_legend_icon(
         }),
     );
     zr.storage.group_add_child(group, ChildRef::Path(line));
-    let size = item_height * 0.8;
-    let circle = zr.storage.create_path(
-        Path::new(
-            Shape::Circle(CircleShape {
-                cx: x + item_width / 2.0,
-                cy,
-                r: size / 2.0,
-            }),
-            PathStyle {
-                fill: FillStrokeStyle::color(color),
-                stroke: FillStrokeStyle::none(),
-                ..Default::default()
-            },
-        )
-        .with_displayable(DisplayableProps {
-            z: 10.15,
-            ..Default::default()
-        }),
+    add_symbol(
+        zr,
+        group,
+        &SymbolSpec {
+            kind: "emptyCircle".into(),
+            size: item_height * 0.8,
+            cx: x + item_width / 2.0,
+            cy,
+            color: color.to_string(),
+            series_index: 0,
+            data_index: 0,
+            attach_states: false,
+        },
     );
-    zr.storage.group_add_child(group, ChildRef::Path(circle));
 }
 
 pub fn legend_item_name(legend: &OptionValue, model: &GlobalModel, index: usize) -> Option<String> {
@@ -347,6 +342,14 @@ mod tests {
             .any(|p| matches!(p.shape, Shape::Circle(_)));
         assert!(has_line, "line series legend should draw a line");
         assert!(has_circle, "line series legend should draw a circle");
+        let circle = zr
+            .storage
+            .paths()
+            .iter()
+            .find(|p| matches!(p.shape, Shape::Circle(_)))
+            .unwrap();
+        assert!(matches!(&circle.style.fill, FillStrokeStyle::Color(c) if c == "#fff"));
+        assert!(!circle.style.stroke.is_none());
         let min_y = zr
             .storage
             .paths()

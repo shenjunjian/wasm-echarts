@@ -154,9 +154,10 @@ pub fn add_symbol(zr: &mut ZRenderer, group: usize, spec: &SymbolSpec) -> Option
         ),
     };
     if empty {
-        fill = FillStrokeStyle::none();
+        // 官方 empty*：白底 + 系列色描边，避免面积色透出来像实心点
+        fill = FillStrokeStyle::color("#fff");
         stroke = FillStrokeStyle::color(&spec.color);
-        line_width = 1.5;
+        line_width = 2.0;
     }
     let symbol = zr.storage.create_path(
         Path::new(
@@ -225,6 +226,19 @@ mod tests {
         }
         assert_eq!(zr.storage.paths().len(), 7);
         let empty = zr.storage.paths().last().unwrap();
-        assert!(empty.style.fill.is_none());
+        assert!(matches!(&empty.style.fill, FillStrokeStyle::Color(c) if c == "#fff"));
+        assert!(matches!(&empty.style.stroke, FillStrokeStyle::Color(c) if c == "#5470c6"));
+    }
+
+    #[test]
+    fn empty_circle_is_white_fill_with_stroke() {
+        let mut zr = ZRenderer::new(80, 80).unwrap();
+        let group = zr.storage.create_group();
+        add_symbol(&mut zr, group, &spec("emptyCircle"));
+        let path = zr.storage.paths().last().unwrap();
+        assert!(matches!(path.shape, Shape::Circle(_)));
+        assert!(matches!(&path.style.fill, FillStrokeStyle::Color(c) if c == "#fff"));
+        assert!(matches!(&path.style.stroke, FillStrokeStyle::Color(c) if c == "#5470c6"));
+        assert!((path.style.line_width - 2.0).abs() < 1e-6);
     }
 }
