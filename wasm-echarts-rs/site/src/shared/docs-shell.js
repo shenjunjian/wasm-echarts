@@ -3,10 +3,11 @@
  * 按路径区分 wasm-zrender / wasm-echarts；顶栏复用 site-header。
  */
 
+import { withBase } from './site-base.js';
 import { detectSiteContext, mountSiteHeader } from './site-header.js';
 
-const ZR_DOCS_BASE = '/zrender/docs';
-const EC_DOCS_BASE = '/echarts/docs';
+const ZR_DOCS_BASE = withBase('/zrender/docs');
+const EC_DOCS_BASE = withBase('/echarts/docs');
 
 /** @typedef {{ label: string, href?: string, id?: string, children?: DocNavItem[] }} DocNavItem */
 

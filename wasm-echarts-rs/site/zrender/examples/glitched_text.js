@@ -4,8 +4,8 @@ import initWasm, {
   Text,
   Rect,
 } from '@wasm-zrender';
+import { DEFAULT_FONT_URL as FONT_URL } from '../../src/shared/site-base.js';
 
-const FONT_URL = '/fonts/NotoSansSC-Regular.ttf';
 const FONT_FAMILY = 'Noto Sans SC';
 
 async function loadFont() {

@@ -1,0 +1,69 @@
+# 用仓库里已提交的 crate pkg/ 编 site，发布到 GitHub Pages。
+# 不在 push 时跑。触发：Actions 页 Run workflow，或 site 目录 npm run deploy:pages。
+#
+# 仓库 Settings → Pages → Source 选 GitHub Actions（不要再用 Deploy from a branch）。
+# site/dist/ 不提交。pkg/ 在本地 wasm-pack 后提交；CI 不再跑 wasm-pack。
+
+name: Deploy pages
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: wasm-echarts-rs/site/package-lock.json
+
+      - name: Install site dependencies
+        working-directory: wasm-echarts-rs/site
+        run: npm ci
+
+      - name: Build site
+        working-directory: wasm-echarts-rs/site
+        env:
+          SITE_BASE: ${{ steps.pages.outputs.base_path }}
+        run: npm run build
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: wasm-echarts-rs/site/dist
+          include-hidden-files: true
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

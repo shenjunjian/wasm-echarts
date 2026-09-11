@@ -574,7 +574,7 @@ crates/wasm-zrender/pkg/
 └── .gitignore / README.md
 ```
 
-`pkg/` 在 crate `.gitignore` 中（`/pkg`）。本地开发需自己 `wasm-pack build`。中间缓存仍在 workspace `target/`。
+`pkg/` 提交进仓库（胶水 JS / `.wasm` / `package.json`）。`wasm-pack` 每次会把 `pkg/.gitignore` 写成 `*`，该文件本身忽略，不提交。改 Rust 后在本地重新 `wasm-pack` 再提交 `pkg/`。中间缓存仍在 workspace `target/`。
 
 `package.json` 使其**可以**当 npm 包（`file:` 或发布到 registry）。当前文档站**没有**把它写进 `site/package.json` 的 `dependencies`，而是用 Vite alias 直接指到这个目录（见「文档站如何引用产物」）。
 
@@ -973,7 +973,7 @@ crates/wasm-echarts/pkg/
 └── wasm_echarts_bg.wasm.d.ts
 ```
 
-crate `.gitignore` 含 `pkg/`。改 Rust 后必须重新 wasm-pack，浏览器硬刷新。公开 import 走 `js/`，`pkg/` 只作内部 handle。
+`pkg/` 提交进仓库。改 Rust 后必须在本地重新 wasm-pack 并提交更新后的 `pkg/`，浏览器硬刷新。公开 import 走 `js/`，`pkg/` 只作内部 handle。
 
 ### 文档站如何用到本 crate
 
@@ -1093,7 +1093,7 @@ npm run build        # 输出 site/dist/
 npm run preview      # 预览构建结果
 ```
 
-**必须先**对两个 WASM crate 执行 `wasm-pack build --target web`，否则 facade 引用的 `pkg/wasm_zrender.js` / `pkg/wasm_echarts.js` 不存在，Vite 会解析失败。
+仓库已跟踪两个 crate 的 `pkg/`。克隆后可直接 `npm run dev`。改 Rust 后须在本地重新 `wasm-pack build --target web` 并提交 `pkg/`，否则 facade 引用的仍是旧产物。
 
 浏览器入口：
 
@@ -1109,7 +1109,21 @@ npm run preview      # 预览构建结果
 
 ### 站点自己的产物
 
-`npm run build` → `site/dist/`（gitignore）。其中会打包对 `pkg/*.js` 与 `.wasm` 的引用；部署时需保证构建时 `pkg/` 已生成，且 WASM MIME 为 `application/wasm`（dev server 已用插件设置）。
+`npm run build` → `site/dist/`（gitignore）。其中会打包对已提交 `pkg/*.js` 与 `.wasm` 的引用。dev server 已用插件把 WASM MIME 设为 `application/wasm`；GitHub Pages 对 `.wasm` 亦如此。
+
+GitHub Pages 项目站路径是 `/wasm-echarts/`。`SITE_BASE` 非空时 Vite `base` 带上此外前缀；JS 用 `src/shared/site-base.js` 的 `withBase`。本地 `npm run dev` / `npm run build` 不设 `SITE_BASE`，行为与原来相同。
+
+### GitHub Pages 部署
+
+`pkg/` 在本地 `wasm-pack` 后提交。`site/dist/` 不提交。CI（`.github/workflows/deploy-pages.yml`）只用仓库里的 `pkg/` 跑 `npm run build`，再用 `actions/deploy-pages` 发布；不在 CI 里编 WASM。
+
+只手动触发，不在 push 时跑：
+
+1. 仓库 Settings → Pages → Source 选 **GitHub Actions**（不要再用 Deploy from a branch）。
+2. 推到 `main` 后：GitHub → Actions → **Deploy pages** → Run workflow（或 `cd wasm-echarts-rs/site && npm run deploy:pages`）。
+3. 站点：https://shenjunjian.github.io/wasm-echarts/
+
+GitHub Pages 不能设 COOP/COEP。Worker 回图走 Transferable，不走 SharedArrayBuffer。
 
 ---
 

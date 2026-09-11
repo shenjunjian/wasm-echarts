@@ -1,1 +1,2 @@
-/pkg
+# wasm-pack 每次会把 pkg/.gitignore 写成 `*`；产物本身提交进仓库。
+pkg/.gitignore

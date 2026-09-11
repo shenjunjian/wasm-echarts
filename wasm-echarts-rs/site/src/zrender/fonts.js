@@ -3,8 +3,8 @@
  */
 
 import { registerFont } from '@wasm-zrender';
+import { DEFAULT_FONT_URL } from '../shared/site-base.js';
 
-const DEFAULT_FONT_URL = '/fonts/NotoSansSC-Regular.ttf';
 const DEFAULT_FONT_FAMILY = 'Noto Sans SC';
 
 /** @type {Promise<void> | null} */

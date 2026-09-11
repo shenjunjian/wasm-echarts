@@ -6,6 +6,32 @@ import { defineConfig } from 'vite';
 const root = fileURLToPath(new URL('.', import.meta.url));
 const repoRoot = resolve(root, '..');
 
+/** GitHub Pages 项目站传入 `/wasm-echarts`；本地开发保持 `/`。 */
+function viteBase() {
+  const raw = process.env.SITE_BASE;
+  if (!raw || raw === '/') return '/';
+  return raw.endsWith('/') ? raw : `${raw}/`;
+}
+
+/** 构建后给 HTML 里仍写着的站内绝对路径补上 base。 */
+function rewriteAbsoluteUrls(base) {
+  const prefix = (base || '/').replace(/\/$/, '');
+  return {
+    name: 'rewrite-absolute-urls',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html) {
+        if (!prefix) return html;
+        return html.replace(/\b(href|src)="(\/[^"]*)"/g, (full, attr, url) => {
+          if (url === prefix || url.startsWith(`${prefix}/`)) return full;
+          if (url === '/') return `${attr}="${prefix}/"`;
+          return `${attr}="${prefix}${url}"`;
+        });
+      },
+    },
+  };
+}
+
 /** @returns {Record<string, string>} */
 function collectHtmlEntries(dir = root, acc = {}) {
   for (const name of readdirSync(dir)) {
@@ -26,8 +52,11 @@ const COOP_COEP_HEADERS = {
   'Cross-Origin-Embedder-Policy': 'require-corp',
 };
 
+const siteBase = viteBase();
+
 export default defineConfig({
   root,
+  base: siteBase,
   server: {
     fs: { allow: [repoRoot] },
     headers: COOP_COEP_HEADERS,
@@ -46,6 +75,7 @@ export default defineConfig({
     exclude: ['@wasm-zrender', '@wasm-echarts'],
   },
   plugins: [
+    rewriteAbsoluteUrls(siteBase),
     {
       name: 'wasm-mime',
       configureServer(server) {

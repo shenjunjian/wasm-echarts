@@ -3,7 +3,9 @@
  * 不 init、不 setOption；每个 examples/*.js 自己创建图表。
  */
 
-export const ROOT_PATH = '/echarts-official';
+import { withBase } from '../shared/site-base.js';
+
+export const ROOT_PATH = withBase('/echarts-official');
 export const CDN_PATH = 'https://fastly.jsdelivr.net/npm/';
 
 export const app = { config: {}, configParameters: {} };

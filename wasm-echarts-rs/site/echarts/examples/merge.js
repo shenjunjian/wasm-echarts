@@ -1,9 +1,9 @@
 import initWasm, { init, dispose, registerFont } from '@wasm-echarts';
+import { DEFAULT_FONT_URL as FONT_URL } from '../../src/shared/site-base.js';
 
 const width = 480;
 const height = 360;
 const FONT_FAMILY = 'Noto Sans SC';
-const FONT_URL = '/fonts/NotoSansSC-Regular.ttf';
 
 async function loadFont() {
   const response = await fetch(FONT_URL);

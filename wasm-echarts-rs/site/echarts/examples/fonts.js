@@ -1,4 +1,5 @@
 import initWasm, { init, registerFont } from '@wasm-echarts';
+import { withBase } from '../../src/shared/site-base.js';
 
 const width = 560;
 const height = 400;
@@ -15,20 +16,20 @@ const height = 400;
  */
 const FONTS = [
   {
-    url: '/fonts/NotoSansSC-Regular.ttf',
+    url: withBase('/fonts/NotoSansSC-Regular.ttf'),
     familyName: 'Noto Sans SC',
     sansSerif: ['Noto Sans SC'],
   },
   {
-    url: '/fonts/msyh.ttc',
+    url: withBase('/fonts/msyh.ttc'),
     familyName: 'Microsoft YaHei',
   },
   {
-    url: '/fonts/simsun.ttc',
+    url: withBase('/fonts/simsun.ttc'),
     familyName: 'SimSun',
   },
   {
-    url: '/fonts/simkai.ttf',
+    url: withBase('/fonts/simkai.ttf'),
     familyName: 'KaiTi',
   },
 ];

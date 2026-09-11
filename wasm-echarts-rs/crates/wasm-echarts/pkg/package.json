@@ -1,0 +1,18 @@
+{
+  "name": "wasm-echarts",
+  "type": "module",
+  "collaborators": [
+    "shenjunjian <40288193@qq.com>"
+  ],
+  "version": "0.1.0",
+  "files": [
+    "wasm_echarts_bg.wasm",
+    "wasm_echarts.js",
+    "wasm_echarts.d.ts"
+  ],
+  "main": "wasm_echarts.js",
+  "types": "wasm_echarts.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

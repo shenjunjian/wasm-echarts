@@ -1,0 +1,16 @@
+{
+  "name": "wasm-zrender",
+  "type": "module",
+  "description": "wasm-bindgen 薄封装，浏览器侧暴露对齐 zrender export.ts 的 init/Group/Rect API",
+  "version": "0.1.0",
+  "files": [
+    "wasm_zrender_bg.wasm",
+    "wasm_zrender.js",
+    "wasm_zrender.d.ts"
+  ],
+  "main": "wasm_zrender.js",
+  "types": "wasm_zrender.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

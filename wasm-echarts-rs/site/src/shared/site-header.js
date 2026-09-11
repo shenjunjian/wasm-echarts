@@ -2,18 +2,20 @@
  * 全站顶栏：品牌回首页；产品名为下拉，内挂「文档 / 实例」。
  */
 
+import { stripBase, withBase } from './site-base.js';
+
 const PRODUCTS = [
   {
     id: 'zrender',
     label: 'wasm-zrender',
-    docs: '/zrender/docs/',
-    examples: '/zrender/examples/',
+    docs: withBase('/zrender/docs/'),
+    examples: withBase('/zrender/examples/'),
   },
   {
     id: 'echarts',
     label: 'wasm-echarts',
-    docs: '/echarts/docs/',
-    examples: '/echarts/examples/',
+    docs: withBase('/echarts/docs/'),
+    examples: withBase('/echarts/examples/'),
   },
 ];
 
@@ -31,7 +33,7 @@ function normalizePath(pathname) {
  * @returns {{ product: 'zrender' | 'echarts' | null, section: 'docs' | 'examples' | null }}
  */
 export function detectSiteContext(pathname = location.pathname) {
-  const path = normalizePath(pathname);
+  const path = normalizePath(stripBase(pathname));
   let product = null;
   if (path === '/zrender' || path.startsWith('/zrender/')) product = 'zrender';
   else if (path === '/echarts' || path.startsWith('/echarts/')) product = 'echarts';
@@ -139,7 +141,7 @@ export function mountSiteHeader(root = document.querySelector('header.site-heade
   }).join('');
 
   root.innerHTML = `
-    <a class="brand" href="/">wasm-echarts</a>
+    <a class="brand" href="${withBase('/')}">wasm-echarts</a>
     <nav class="site-nav" aria-label="产品">${clusters}</nav>
   `;
   bindNavEvents(root);
