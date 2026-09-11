@@ -12,7 +12,361 @@
     <aside class="docs-sidebar"></aside>
     <main class="docs-main">
       <h1>顶层函数与 ZRender</h1>
-      <p class="lead">与 facade 对照的 pkg 导出。</p>
+      <p class="lead">
+        源码 <code>src/zrender.rs</code> / <code>font.rs</code> / <code>handler.rs</code>。
+        与 facade 同名，但返回的是 wasm handle，不是包装后的 JS 实例。
+      </p>
+
+      <div class="doc-section">
+        <h3><code>init(dom, opts)</code> <span class="doc-badge doc-badge-official">官方</span> <span class="doc-badge doc-badge-extra">补充</span></h3>
+        <p>
+          创建离屏 <code>ZRenderer</code>，登记 id，再 <code>handler::attach</code>。
+          尺寸只来自 <code>opts</code>（不读 DOM CSS）。<code>dom</code> 可为
+          canvas、内含 canvas 的容器，或 <code>null</code> / <code>undefined</code>（离屏）。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>参数</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>dom</code></td>
+              <td><code>HTMLCanvasElement | HTMLElement | null</code></td>
+              <td>绑 canvas 则指针事件 + 自动 <code>putImageData</code></td>
+            </tr>
+            <tr>
+              <td><code>opts.width</code></td>
+              <td><code>number</code></td>
+              <td>默认 <code>300</code>；必须 &gt; 0</td>
+            </tr>
+            <tr>
+              <td><code>opts.height</code></td>
+              <td><code>number</code></td>
+              <td>默认 <code>150</code>；必须 &gt; 0</td>
+            </tr>
+            <tr>
+              <td><code>opts.dpr</code> / <code>devicePixelRatio</code></td>
+              <td><code>number</code></td>
+              <td>默认 <code>1</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          <strong>与 facade 不同：</strong>返回裸 <code>ZRender</code> handle，没有
+          <code>painter</code>、<code>dom</code> 缓存，也不进 facade 的实例 Map。
+          业务应调 facade 的 <code>init</code>，见
+          <a href="../facade/lifecycle.html">生命周期</a>。
+        </p>
+        <pre>const zr = init(canvas, { width: 480, height: 360, dpr: 1 });
+zr.id; // number
+const offscreen = init(null, { width: 480, height: 360 });</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>dispose</code> / <code>disposeAll</code> / <code>getInstance</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <table>
+          <thead>
+            <tr>
+              <th>函数</th>
+              <th>参数</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>dispose(zr)</code></td>
+              <td>pkg <code>ZRender</code></td>
+              <td>按 <code>zr.id</code> 从注册表删除。也可用 <code>zr.dispose()</code></td>
+            </tr>
+            <tr>
+              <td><code>disposeAll()</code></td>
+              <td>—</td>
+              <td>解绑全部指针，清空实例表与元素表</td>
+            </tr>
+            <tr>
+              <td><code>getInstance(id)</code></td>
+              <td><code>number</code></td>
+              <td>存在则 <code>ZRender.from_id</code>；否则 <code>undefined</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          facade 的 <code>getInstance</code> 会包一层并走 JS 缓存；pkg 每次都是新的 handle 对象（同一 id）。
+        </p>
+        <pre>const again = getInstance(zr.id);
+dispose(zr);
+disposeAll();</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>registerFont</code> / <code>clearFonts</code> <span class="doc-badge doc-badge-extra">补充</span></h3>
+        <p>
+          与 facade 同一套 wasm 函数。未注册字体时含 Text 的 <code>refresh</code> 会
+          <code>no default font found</code>。规则见
+          <a href="../../fonts.html">字体引用</a>。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>参数</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>data</code></td>
+              <td><code>Uint8Array</code></td>
+              <td>TTF / OTF / WOFF bytes</td>
+            </tr>
+            <tr>
+              <td><code>opts.familyName</code></td>
+              <td><code>string?</code></td>
+              <td>覆盖族名</td>
+            </tr>
+            <tr>
+              <td><code>opts.sansSerif</code></td>
+              <td><code>string[]?</code></td>
+              <td>把 CSS <code>sans-serif</code> 映射到这些族名</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>registerFont(bytes, { familyName: 'Noto Sans SC', sansSerif: ['Noto Sans SC'] });
+clearFonts();</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3>facade 有、pkg 没有</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>符号</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>version</code></td>
+              <td>JS 常量 <code>'6.1.0'</code>。<span class="doc-badge doc-badge-facade">仅 facade</span></td>
+            </tr>
+            <tr>
+              <td><code>registerPainter</code></td>
+              <td>只记进 JS Map，不切后端。<span class="doc-badge doc-badge-facade">仅 facade</span></td>
+            </tr>
+            <tr>
+              <td><code>zr.painter</code></td>
+              <td>JS 占位对象。<span class="doc-badge doc-badge-facade">仅 facade</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>add</code> / <code>remove</code> / <code>clear</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>
+          用 <code>el.id</code> 在元素表里解析（facade 图元也能传，因为有 <code>id</code>）。
+          有 DOM 时随后 <code>paint_if_bound</code>。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>方法</th>
+              <th>参数</th>
+              <th>返回</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>add(el)</code></td>
+              <td>任意带有效 <code>id</code> 的图元</td>
+              <td><code>undefined</code>（facade 返回 <code>this</code>）</td>
+            </tr>
+            <tr>
+              <td><code>remove(el)</code></td>
+              <td>已挂上的图元</td>
+              <td>同上</td>
+            </tr>
+            <tr>
+              <td><code>clear()</code></td>
+              <td>—</td>
+              <td>清空本实例图元</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>zr.add(new Rect({ shape: { x: 8, y: 8, width: 80, height: 40 } }));
+zr.remove(rect);
+zr.clear();</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>refresh()</code> / <code>flush()</code> <span class="doc-badge doc-badge-official">官方</span> <span class="doc-badge doc-badge-extra">补充</span></h3>
+        <p>
+          官方返回 <code>void</code>。这里同步离屏绘制并返回 RGBA
+          （<code>Uint8Array</code>，长度 <code>width × height × 4</code>）。
+          <code>flush</code> 直接调 <code>refresh</code>。
+        </p>
+        <pre>const rgba = zr.refresh();
+ctx.putImageData(
+  new ImageData(new Uint8ClampedArray(rgba), zr.width(), zr.height()),
+  0, 0,
+);</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3>尺寸 / <code>resize</code> / 背景 / 光标 <span class="doc-badge doc-badge-extra">补充</span></h3>
+        <table>
+          <thead>
+            <tr>
+              <th>成员</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>width()</code> <code>height()</code> <code>dpr()</code></td>
+              <td>简写；官方常用 <code>getWidth()</code> / <code>getHeight()</code>（同样导出）</td>
+            </tr>
+            <tr>
+              <td><code>resize(opts)</code></td>
+              <td>按 width / height / dpr 重建离屏缓冲；规则与 <code>init</code> 相同</td>
+            </tr>
+            <tr>
+              <td><code>setBackgroundColor(color)</code></td>
+              <td>CSS 字符串；<code>null</code> / <code>undefined</code> 清掉。有 DOM 立刻上屏</td>
+            </tr>
+            <tr>
+              <td><code>getBackgroundColor()</code></td>
+              <td>字符串或 <code>undefined</code></td>
+            </tr>
+            <tr>
+              <td><code>setCursorStyle(cursorStyle)</code></td>
+              <td>有 canvas 时写 <code>style.cursor</code>；空值当 <code>'default'</code></td>
+            </tr>
+            <tr>
+              <td><code>configLayer(zLevel, config)</code> <span class="doc-badge doc-badge-degraded">降级</span></td>
+              <td>忽略参数，只 <code>paint_if_bound</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>zr.resize({ width: 640, height: 400, dpr: 2 });
+zr.setBackgroundColor('#f5f5f5');
+zr.setCursorStyle('pointer');</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>findHover(x, y)</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>
+          kurbo 命中，不靠 <code>isPointInPath</code>。未命中返回 <code>undefined</code>。
+          返回 <code>HoverResult</code>：<code>target</code> / <code>topTarget</code> 是 pkg
+          <code>Element</code>（几乎只有 <code>id</code> / <code>type</code>），不是 facade 包装。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>参数 / 返回</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>x</code> <code>y</code></td>
+              <td><code>number</code></td>
+              <td>逻辑坐标</td>
+            </tr>
+            <tr>
+              <td>返回</td>
+              <td><code>{ target, topTarget }</code></td>
+              <td>pkg <code>HoverResult</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>const hit = zr.findHover(40, 40);
+if (hit) console.log(hit.target.id, hit.target.type);</pre>
+        <p>对照 <a href="/zrender/examples/hit.html">hit 示例</a>（示例走 facade）。</p>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>on</code> / <code>off</code> / <code>trigger</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>
+          把 <code>js_sys::Function</code> 存进 handler registry。
+          <strong>返回新的 <code>ZRender</code> handle（同一 id）</strong>，不是同一个 JS 对象。
+          facade 则返回包装后的 <code>this</code>。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>方法</th>
+              <th>参数</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>on(event, handler)</code></td>
+              <td><code>string</code>, <code>Function</code></td>
+              <td>非函数则忽略</td>
+            </tr>
+            <tr>
+              <td><code>off(event?, handler?)</code></td>
+              <td>事件名 / handler 均可省略</td>
+              <td>不传 handler 则清该事件全部监听</td>
+            </tr>
+            <tr>
+              <td><code>trigger(event, packet?)</code></td>
+              <td><code>string</code>, 任意</td>
+              <td>手动派发</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>zr.on('click', (e) => console.log(e.target));
+zr.off('click');</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>handler</code> / <code>animation</code> / <code>id</code> / <code>dispose</code></h3>
+        <table>
+          <thead>
+            <tr>
+              <th>成员</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>id</code></td>
+              <td>实例数字 id</td>
+            </tr>
+            <tr>
+              <td><code>handler.dispatch(name, event)</code> <span class="doc-badge doc-badge-extra">补充</span></td>
+              <td>无 DOM 时注入指针。读 <code>zrX</code>/<code>zrY</code> 或 <code>offsetX</code>/<code>offsetY</code></td>
+            </tr>
+            <tr>
+              <td><code>handler.setCursorStyle</code></td>
+              <td>与实例方法相同</td>
+            </tr>
+            <tr>
+              <td><code>animation.on/off</code> <span class="doc-badge doc-badge-degraded">降级</span></td>
+              <td>空操作；无帧循环</td>
+            </tr>
+            <tr>
+              <td><code>dispose()</code></td>
+              <td>从实例表删除并释放</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>zr.handler.dispatch('mousedown', { zrX: 40, zrY: 40 });</pre>
+      </div>
+
+      <p>
+        上一章 <a href="./">总览与何时使用</a>
+        · 下一章
+        <a href="./graphic.html">图元与样式类</a>
+      </p>
     </main>
   </div>
   <script type="module" src="/src/shared/docs-shell.js"></script>

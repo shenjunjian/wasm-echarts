@@ -12,7 +12,217 @@
     <aside class="docs-sidebar"></aside>
     <main class="docs-main">
       <h1>空壳与不要直接用的符号</h1>
-      <p class="lead">pkg 的空对象占位，以及会抛错或几乎无用的类。</p>
+      <p class="lead">
+        pkg 为了对齐官方 <code>export.ts</code> 的符号表，会导出一批空对象、空函数，以及构造即抛错的类。
+        有内容的实现在 JS facade。
+      </p>
+
+      <div class="notice">
+        <p>
+          <code>matrix()</code> / <code>vector()</code> / <code>color()</code> 等返回的是
+          <code>{}</code>，不是命名空间。从 pkg 调 <code>matrix.create</code> 会是
+          <code>undefined</code>。用 <code>import { matrix } from '@wasm-zrender'</code>。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3>空壳 tool <span class="doc-badge doc-badge-pkg">仅 pkg</span> <span class="doc-badge doc-badge-degraded">降级</span></h3>
+        <p>源码 <code>src/export.rs</code>：每个函数 <code>Object::new()</code>，避免 wasm-bindgen 缺符号。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>pkg 导出</th>
+              <th>返回</th>
+              <th>请改用</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>matrix()</code></td>
+              <td>空对象</td>
+              <td>facade <code>matrix</code>（<code>js/tool/matrix.js</code>）</td>
+            </tr>
+            <tr>
+              <td><code>vector()</code></td>
+              <td>空对象</td>
+              <td><code>vector</code></td>
+            </tr>
+            <tr>
+              <td><code>color()</code></td>
+              <td>空对象</td>
+              <td><code>color</code></td>
+            </tr>
+            <tr>
+              <td><code>path()</code></td>
+              <td>空对象</td>
+              <td><code>path</code></td>
+            </tr>
+            <tr>
+              <td><code>util()</code></td>
+              <td>空对象</td>
+              <td><code>util</code></td>
+            </tr>
+            <tr>
+              <td><code>morph()</code></td>
+              <td>空对象</td>
+              <td>facade <code>morph</code> 仍是降级 stub</td>
+            </tr>
+            <tr>
+              <td><code>parseSVG()</code></td>
+              <td>空对象</td>
+              <td>facade <code>parseSVG</code> 仍是降级 stub</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>import { matrix } from '@wasm-zrender';
+const m = matrix.create(); // OK
+
+import { matrix as pkgMatrix } from '../../../pkg/wasm_zrender.js';
+pkgMatrix();          // {}
+pkgMatrix.create;     // undefined</pre>
+        <p>完整签名见 <a href="../facade/tools.html">工具模块</a>。</p>
+      </div>
+
+      <div class="doc-section">
+        <h3>空操作函数 <span class="doc-badge doc-badge-degraded">降级</span></h3>
+        <table>
+          <thead>
+            <tr>
+              <th>函数</th>
+              <th>行为</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>showDebugDirtyRect()</code></td>
+              <td>no-op。无 dirty rect 可视化</td>
+            </tr>
+            <tr>
+              <td><code>setPlatformAPI(api)</code></td>
+              <td>忽略参数。不切换平台实现</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>showDebugDirtyRect();
+setPlatformAPI({});</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3>构造即抛错的类</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>类</th>
+              <th>pkg</th>
+              <th>facade</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>Displayable</code></td>
+              <td><code>new Displayable()</code> 抛「抽象基类，用 Rect / Circle / Text / Image / Group」</td>
+              <td>可 <code>new Displayable()</code> 作原型祖先，不建 native</td>
+            </tr>
+            <tr>
+              <td><code>IncrementalDisplayable</code> <span class="doc-badge doc-badge-degraded">降级</span></td>
+              <td>抛 <code>IncrementalDisplayable is not implemented</code></td>
+              <td>绑 <code>native.Group()</code>，当普通 Group 用，无增量图层</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>new Displayable();              // pkg：抛错
+new IncrementalDisplayable();   // pkg：抛错
+// facade：
+new IncrementalDisplayable();   // 可用，type === 'incremental'</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3>同名但不要当 facade 用</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>符号</th>
+              <th>为什么不要直接用</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>pkg <code>Element</code></td>
+              <td>几乎只有 <code>id</code> / <code>type</code>。没有变换、事件、attr</td>
+            </tr>
+            <tr>
+              <td>pkg <code>Group</code></td>
+              <td>无 <code>children</code> / <code>traverse</code>；构造不收 opts</td>
+            </tr>
+            <tr>
+              <td>pkg <code>Animator</code></td>
+              <td><code>during</code> 的第一个参数是 <code>undefined</code>，与 JS Animator 不同</td>
+            </tr>
+            <tr>
+              <td>pkg <code>ZRender.add</code></td>
+              <td>不返回 <code>this</code>；也没有 <code>painter</code></td>
+            </tr>
+            <tr>
+              <td><code>HoverResult.target</code></td>
+              <td>是薄 <code>Element</code>，不是带 <code>style</code> 的 JS 图元</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="doc-section">
+        <h3>JS 有、pkg 没有 <span class="doc-badge doc-badge-facade">仅 facade</span></h3>
+        <ul>
+          <li><code>version</code>、<code>registerPainter</code>、<code>zr.painter</code></li>
+          <li><code>Path.extend</code></li>
+          <li>Group：<code>children</code> / <code>childAt</code> / <code>childOfName</code> / <code>eachChild</code> / <code>traverse</code> / <code>childCount</code></li>
+          <li>Element 状态机：<code>ensureState</code> / <code>getState</code> / <code>clearStates</code> / <code>toggleState</code> 等（pkg Path 只有 <code>useState</code> / <code>useStates</code> / <code>setStateStyle</code>）</li>
+          <li><code>Point.set</code> / <code>lerp</code> 等静态方法</li>
+          <li>独立的 <code>x</code> / <code>y</code> / <code>scaleX</code> / <code>style</code> / <code>shape</code> JS 属性</li>
+        </ul>
+      </div>
+
+      <div class="doc-section">
+        <h3>Rust crate 有、JS pkg 没有 <span class="doc-badge doc-badge-pkg">仅 pkg</span></h3>
+        <p>
+          这些是 <code>pub fn</code>，<strong>没有</strong> <code>#[wasm_bindgen]</code>，
+          浏览器 import 不到。wasm-echarts 在 Rust 里调用，把同一份
+          <code>ZRenderer</code> 挂进 zrender 注册表。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>函数</th>
+              <th>给谁用</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>insert_renderer</code> / <code>dispose_renderer</code></td>
+              <td>echarts <code>init</code> 把内部 <code>ZRenderer</code> 登记成 zr id</td>
+            </tr>
+            <tr>
+              <td><code>attach_host(zr_id, dom)</code></td>
+              <td><code>init(canvas)</code> 后绑定指针，供 <code>getZr().on</code></td>
+            </tr>
+            <tr>
+              <td><code>with_zr</code></td>
+              <td>在已有实例上刷新 / 命中 / 改背景</td>
+            </tr>
+            <tr>
+              <td><code>rematerialize_mounted_roots</code></td>
+              <td>echarts 重绘时把 JS 侧图元再写进 storage</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>不要在页面里找这些名字。原理见 <a href="../../internals.html">底层原理</a>。</p>
+      </div>
+
+      <p>
+        上一章 <a href="./graphic.html">图元与样式类</a>
+        · 下一步
+        <a href="../../differences.html">与官方差异</a>
+      </p>
     </main>
   </div>
   <script type="module" src="/src/shared/docs-shell.js"></script>

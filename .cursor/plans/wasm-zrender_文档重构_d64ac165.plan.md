@@ -16,7 +16,7 @@ todos:
     status: completed
   - id: ch-api-pkg
     content: 写 pkg 导出 API 分页：与 facade 对照、空壳 tool、不要直接用的符号
-    status: pending
+    status: completed
   - id: ch-diff-internals
     content: 写与官方差异三表 + 底层原理（crates / 补齐 / JS-WASM 交互）
     status: pending

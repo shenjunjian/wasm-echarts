@@ -12,7 +12,141 @@
     <aside class="docs-sidebar"></aside>
     <main class="docs-main">
       <h1>总览与何时使用</h1>
-      <p class="lead">业务代码走 facade；pkg 给调试、echarts 注入 native，或绕过原型链。</p>
+      <p class="lead">
+        业务代码走 JS facade（<code>@wasm-zrender</code>）。
+        <code>pkg/</code> 是 wasm-bindgen 产出的 handle，给调试、echarts 注入 native，或绕过原型链。
+      </p>
+
+      <div class="notice">
+        <p>
+          不要从业务 <code>import '../pkg/wasm_zrender.js'</code>。
+          echarts 页不要再加载这份 zrender wasm：echarts 自己的
+          <code>pkg</code> 会 <code>setNative</code> 进同一套 facade。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3>何时才碰 pkg</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>场景</th>
+              <th>怎么用</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>文档站 / 直接构图</td>
+              <td>只 import <code>@wasm-zrender</code>。入口会加载 standalone <code>pkg</code> 并注入 <code>native-core</code>。</td>
+            </tr>
+            <tr>
+              <td>wasm-echarts</td>
+              <td><code>crates/wasm-echarts/js/native.js</code> 把 <strong>echarts 自己的 pkg</strong> 注入 zrender 的 <code>setNative</code>。图元 native 类来自 echarts wasm，不是第二份 zrender wasm。</td>
+            </tr>
+            <tr>
+              <td>调试 / 绕过原型链</td>
+              <td>直接 <code>new native.Rect(opts)</code> 得到 handle。没有 <code>instanceof Path</code>，也没有 JS 上的 <code>x</code> / <code>style</code> / <code>shape</code> getter。</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>// 推荐（facade）
+import initWasm, { init, Rect } from '@wasm-zrender';
+await initWasm();
+const rect = new Rect({ shape: { x: 0, y: 0, width: 40, height: 20 } });
+rect instanceof Path; // true
+
+// 调试才碰 handle（不要当公开 API）
+import * as pkg from '../../../pkg/wasm_zrender.js';
+const handle = new pkg.Rect({ shape: { x: 0, y: 0, width: 40, height: 20 } });
+handle instanceof pkg.Path; // false</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3>两层对照</h3>
+        <p>
+          pkg 类是 wasm-bindgen 生成的；同名 JS 类在 <code>js/*.js</code> 里包装它。
+          叶子构造走 <code>_bindNative(new native.Xxx(opts))</code>。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th>JS facade</th>
+              <th>pkg handle</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>导入</td>
+              <td><code>@wasm-zrender</code> → <code>js/</code></td>
+              <td><code>pkg/wasm_zrender.js</code>（内部）</td>
+            </tr>
+            <tr>
+              <td>原型链</td>
+              <td><code>Rect → Path → Displayable → Element</code></td>
+              <td>没有。每个类是独立 wasm 类型</td>
+            </tr>
+            <tr>
+              <td>变换 / style / shape</td>
+              <td>JS getter/setter，再同步 native</td>
+              <td>几乎只有 <code>attr</code> / <code>setShape</code> / <code>setStyle</code> / <code>position</code></td>
+            </tr>
+            <tr>
+              <td>链式调用</td>
+              <td><code>add</code> / <code>attr</code> 返回同一个 JS 对象</td>
+              <td>成功时常返回 <code>undefined</code>；<code>on</code> / <code>attr</code> 会 new 一个同 id 的新 handle</td>
+            </tr>
+            <tr>
+              <td>工具模块</td>
+              <td><code>js/tool/</code> 有实现</td>
+              <td><code>matrix()</code> 等返回空对象，见<a href="./unused.html">空壳页</a></td>
+            </tr>
+            <tr>
+              <td>Group 子树遍历</td>
+              <td><code>children</code> / <code>eachChild</code> / <code>traverse</code></td>
+              <td>没有。<span class="doc-badge doc-badge-facade">仅 facade</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="doc-section">
+        <h3>注入路径</h3>
+        <p>
+          <code>js/native-core.js</code> 不静态 import pkg。谁先 <code>setNative(mod)</code>，
+          facade 的 <code>native.Rect</code> 就指向谁。
+        </p>
+        <pre>// wasm-zrender/js/native.js（文档站）
+import * as standalonePkg from '../pkg/wasm_zrender.js';
+setNative(standalonePkg);
+
+// wasm-echarts/js/native.js（图表页）
+import * as echartsPkg from '../pkg/wasm_echarts.js';
+setNative(echartsPkg); // 同一份 wasm，内含 zrender 类</pre>
+        <p>
+          Rust 侧 echarts 还直接调 crate 函数（<code>insert_renderer</code> /
+          <code>attach_host</code> / <code>with_zr</code>），这些<strong>没有</strong>
+          <code>#[wasm_bindgen]</code>，JS 的 pkg 里看不到。见
+          <a href="./unused.html">不要直接用的符号</a>。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3>pkg 分页</h3>
+        <ul>
+          <li><a href="./zrender.html">顶层函数与 ZRender</a> — <code>init</code> / <code>refresh</code> / 事件</li>
+          <li><a href="./graphic.html">图元与样式类</a> — Shape / Group / 渐变 / 几何</li>
+          <li><a href="./unused.html">空壳与不要直接用的符号</a> — 空 tool、抛错基类、仅 Rust 符号</li>
+        </ul>
+      </div>
+
+      <p>
+        返回 <a href="../">API 参考</a>
+        · 对照
+        <a href="../facade/">JS facade 总览</a>
+        · 下一步
+        <a href="./zrender.html">顶层函数与 ZRender</a>
+      </p>
     </main>
   </div>
   <script type="module" src="/src/shared/docs-shell.js"></script>

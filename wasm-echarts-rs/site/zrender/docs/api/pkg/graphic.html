@@ -12,7 +12,351 @@
     <aside class="docs-sidebar"></aside>
     <main class="docs-main">
       <h1>图元与样式类</h1>
-      <p class="lead">pkg 侧图形与样式 handle。</p>
+      <p class="lead">
+        pkg 图元是独立 wasm 类，<strong>没有</strong> JS 原型链。
+        <code>shape</code> / <code>style</code> 字段与 facade 相同（解析在
+        <code>bridge/shape.rs</code> / <code>opts.rs</code>），读写方式不同。
+      </p>
+
+      <div class="notice">
+        <p>
+          不要读 <code>handle.x</code> / <code>handle.style.fill</code>：pkg 没有这些 getter。
+          改属性用 <code>attr</code> / <code>setShape</code> / <code>setStyle</code> /
+          <code>position</code>。字段表见
+          <a href="../facade/shapes.html">facade 图元</a>、
+          <a href="../facade/style.html">样式与几何</a>。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>Element</code> <span class="doc-badge doc-badge-pkg">仅 pkg</span></h3>
+        <p>
+          薄 handle：只有 <code>id</code> 与 <code>type</code>。没有 constructor，不能
+          <code>new Element()</code>。<code>findHover</code> 的
+          <code>target</code> 就是它。facade 的 <code>Element</code> 是完整 JS 基类。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>成员</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>id</code></td>
+              <td><code>number</code></td>
+              <td>元素表 id</td>
+            </tr>
+            <tr>
+              <td><code>type</code></td>
+              <td><code>string</code></td>
+              <td>如 <code>'rect'</code>；找不到则 <code>'unknown'</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>const hit = zr.findHover(10, 10);
+hit.target.id;
+hit.target.type; // 'rect'</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3>Path / Shape 公共方法 <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>
+          <code>Path</code> 与各 Shape（<code>Rect</code>、<code>Circle</code> 等）方法表相同。
+          构造：<code>new Xxx(opts)</code>，opts 与 facade 相同。
+          <code>attr</code> / <code>on</code> / <code>setShape</code> 等返回<strong>新 handle</strong>（同一 id），不是同一个对象。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>方法</th>
+              <th>参数</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>attr(key, value)</code> / <code>attr(obj)</code></td>
+              <td>字符串键或对象</td>
+              <td>认 position / shape / style / 变换 / z / clipPath 等</td>
+            </tr>
+            <tr>
+              <td><code>setShape(shape)</code> / <code>setStyle(style)</code></td>
+              <td>对象 patch</td>
+              <td>合并进 pending 与 storage</td>
+            </tr>
+            <tr>
+              <td><code>position</code></td>
+              <td><code>[x, y]</code></td>
+              <td>唯一成对的变换 getter/setter；没有 <code>x</code> / <code>scaleX</code> 独立 getter</td>
+            </tr>
+            <tr>
+              <td><code>useState</code> / <code>useStates</code> / <code>setStateStyle</code></td>
+              <td>状态名 / 名数组 / 样式</td>
+              <td>Path 与 Shape 有；Text / Image 没有单独导出</td>
+            </tr>
+            <tr>
+              <td><code>setClipPath</code> / <code>removeClipPath</code></td>
+              <td>clip 图元</td>
+              <td>clip 必须是 Path 才能进 storage</td>
+            </tr>
+            <tr>
+              <td><code>getBoundingRect()</code></td>
+              <td>—</td>
+              <td>返回 pkg <code>BoundingRect</code></td>
+            </tr>
+            <tr>
+              <td><code>animate(path, looping)</code> <span class="doc-badge doc-badge-degraded">降级</span></td>
+              <td><code>'shape'</code> / <code>'style'</code> / 空</td>
+              <td>返回 pkg <code>Animator</code>（终态）。facade 用的是 JS <code>Animator</code></td>
+            </tr>
+            <tr>
+              <td><code>on</code> / <code>off</code> / <code>trigger</code></td>
+              <td>事件名 + 函数</td>
+              <td>与实例级相同</td>
+            </tr>
+            <tr>
+              <td><code>hide</code> / <code>show</code></td>
+              <td>—</td>
+              <td>写 <code>ignore</code></td>
+            </tr>
+            <tr>
+              <td><code>draggable</code></td>
+              <td><code>boolean | 'horizontal' | 'vertical'</code></td>
+              <td>getter/setter</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>const rect = new Rect({
+  shape: { x: 8, y: 8, width: 80, height: 40 },
+  style: { fill: '#5470c6' },
+});
+rect.setShape({ width: 120 });
+rect.position = [24, 16];
+rect.attr('rotation', Math.PI / 8);</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3>已导出 Shape <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p><code>type</code> 字符串（<code>register_path</code> 的第一参）如下。shape 字段见 facade 图元页。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>类</th>
+              <th><code>type</code></th>
+              <th>类</th>
+              <th><code>type</code></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>Path</code></td>
+              <td><code>path</code></td>
+              <td><code>Rect</code></td>
+              <td><code>rect</code></td>
+            </tr>
+            <tr>
+              <td><code>Circle</code></td>
+              <td><code>circle</code></td>
+              <td><code>Ellipse</code></td>
+              <td><code>ellipse</code></td>
+            </tr>
+            <tr>
+              <td><code>Line</code></td>
+              <td><code>line</code></td>
+              <td><code>Polyline</code> / <code>Polygon</code></td>
+              <td>同名</td>
+            </tr>
+            <tr>
+              <td><code>Sector</code> / <code>Arc</code> / <code>Ring</code></td>
+              <td>同名</td>
+              <td><code>BezierCurve</code></td>
+              <td><code>bezier-curve</code></td>
+            </tr>
+            <tr>
+              <td><code>Isogon</code> / <code>Star</code> / <code>Heart</code> / <code>Droplet</code></td>
+              <td>同名</td>
+              <td><code>Rose</code> / <code>Trochoid</code></td>
+              <td>同名</td>
+            </tr>
+            <tr>
+              <td><code>CompoundPath</code></td>
+              <td><code>compound</code></td>
+              <td></td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          <code>Path.extend</code> 不在 pkg。<span class="doc-badge doc-badge-facade">仅 facade</span>
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>Group</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>
+          <code>new Group()</code> <strong>不接收 opts</strong>（facade 会 <code>attr(opts)</code>）。
+          子节点 API 只有挂载侧；遍历在 JS 数组上，pkg 没有。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>方法</th>
+              <th>pkg</th>
+              <th>facade</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>add</code> / <code>remove</code> / <code>replace</code> / <code>addBefore</code> / <code>removeAll</code></td>
+              <td>有（成功返回 <code>undefined</code>）</td>
+              <td>有（返回 <code>this</code>，并维护 <code>_children</code>）</td>
+            </tr>
+            <tr>
+              <td><code>children</code> / <code>childAt</code> / <code>childOfName</code> / <code>eachChild</code> / <code>traverse</code></td>
+              <td>无</td>
+              <td><span class="doc-badge doc-badge-facade">仅 facade</span></td>
+            </tr>
+            <tr>
+              <td><code>animate</code> / <code>attr</code> / clip / <code>position</code></td>
+              <td>有</td>
+              <td>有</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>const g = new Group();
+g.add(new Circle({ shape: { cx: 40, cy: 40, r: 16 } }));
+g.attr({ x: 10, y: 10 });</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>Text</code> / <code>Image</code> / <code>TSpan</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <table>
+          <thead>
+            <tr>
+              <th>类</th>
+              <th><code>type</code></th>
+              <th>差异</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>Text</code></td>
+              <td><code>text</code></td>
+              <td>有 <code>setStyle</code>；构造不抛错。有文字必须先 <code>registerFont</code></td>
+            </tr>
+            <tr>
+              <td><code>Image</code></td>
+              <td><code>image</code></td>
+              <td>构造可能失败（图未 decode）。没有单独的 <code>setStyle</code>，走 <code>attr</code></td>
+            </tr>
+            <tr>
+              <td><code>TSpan</code></td>
+              <td><code>tspan</code></td>
+              <td>单 run 文本，与 Text 共用 Storage；方法比 Text 更少</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>const t = new Text({
+  style: { text: 'hello', fontSize: 16, fill: '#000' },
+  x: 8,
+  y: 24,
+});
+t.setStyle({ text: 'hi' });</pre>
+        <p>对照 <a href="/zrender/examples/text.html">text</a>、<a href="/zrender/examples/image.html">image</a>。</p>
+      </div>
+
+      <div class="doc-section">
+        <h3>渐变与 Pattern</h3>
+        <p>
+          facade 从 native 再导出，所以 <code>LinearGradient</code> /
+          <code>RadialGradient</code> / <code>Pattern</code> 就是 pkg 类。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>类</th>
+              <th>构造</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>LinearGradient</code> <span class="doc-badge doc-badge-official">官方</span></td>
+              <td><code>(x, y, x2, y2, colorStops?, global?)</code></td>
+              <td>NaN 时 x/y=0、x2=1、y2=0。有 <code>addColorStop</code></td>
+            </tr>
+            <tr>
+              <td><code>RadialGradient</code> <span class="doc-badge doc-badge-official">官方</span></td>
+              <td><code>(x, y, r, colorStops?, global?, r0?)</code></td>
+              <td>默认中心 0.5、r=0.5；<code>r0</code> 可写</td>
+            </tr>
+            <tr>
+              <td><code>Pattern</code> <span class="doc-badge doc-badge-extra">补充</span></td>
+              <td><code>(image, repeat?)</code></td>
+              <td>另有 <code>imageData</code> / <code>imageWidth</code> / <code>imageHeight</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>const lg = new LinearGradient(0, 0, 1, 0, [
+  { offset: 0, color: '#5470c6' },
+  { offset: 1, color: '#91cc75' },
+]);
+rect.setStyle({ fill: lg });</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>Point</code> / <code>BoundingRect</code> / <code>OrientedBoundingRect</code></h3>
+        <p>值对象，实例方法大体对齐官方。静态方法有分叉：</p>
+        <table>
+          <thead>
+            <tr>
+              <th>符号</th>
+              <th>pkg</th>
+              <th>facade</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>Point.set</code> / <code>copy</code> / <code>lerp</code> 等静态</td>
+              <td>无</td>
+              <td>JS 挂到类上。<span class="doc-badge doc-badge-facade">仅 facade</span></td>
+            </tr>
+            <tr>
+              <td><code>BoundingRect.calculateTransform</code></td>
+              <td>实例方法：<code>rect.calculateTransform(other) → number[]</code></td>
+              <td>静态：<code>BoundingRect.calculateTransform(out, a, b)</code>，签名不同</td>
+            </tr>
+            <tr>
+              <td><code>BoundingRect.create</code> / <code>set</code></td>
+              <td>静态，写纯对象 <code>{x,y,width,height}</code></td>
+              <td>未再包一层；用 pkg 的即可</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>const a = new BoundingRect(0, 0, 10, 20);
+const b = new BoundingRect(0, 0, 20, 40);
+const m = a.calculateTransform(b); // pkg：6 个数的数组
+a.contain(4, 4); // true</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3>pkg <code>Animator</code> <span class="doc-badge doc-badge-degraded">降级</span></h3>
+        <p>
+          <code>el.animate()</code> 返回 wasm <code>Animator</code>：<code>when</code> 只留最后一组，
+          <code>start</code> 立刻写终态，再 <code>during(undefined, 1)</code> 与 <code>done</code>。
+          facade 自己实现了一份 JS <code>Animator</code>（<code>during(target, 1)</code>），不要混用两套。
+        </p>
+        <pre>rect.animate('shape').when(400, { width: 200 }).start();</pre>
+      </div>
+
+      <p>
+        上一章 <a href="./zrender.html">顶层函数与 ZRender</a>
+        · 下一章
+        <a href="./unused.html">空壳与不要直接用的符号</a>
+      </p>
     </main>
   </div>
   <script type="module" src="/src/shared/docs-shell.js"></script>
