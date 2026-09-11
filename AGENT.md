@@ -22,8 +22,9 @@ Rust / WebAssembly workspace：用纯 Rust 重写 zrender 离屏 canvas 渲染�
 | echarts Canvas 全量对齐 | `echarts_canvas_全量对齐_3ceaa41e.plan.md` | SVG/DOM 例外以外的 canvas 语义、`getZr` 共享 Storage、22 种图与 canvas 组件。**第 0–8.9 波 YAML 已全部 completed**；视觉缺口以源码与下文「未实现」为准 |
 | 折线缺口补齐 | `折线缺口补齐_96423c21.plan.md` | **已废弃**，并入 canvas 全量对齐 |
 | 示例独立与 Worker | `示例独立与worker_72612d7b.plan.md` | 去掉 `runOfficialExample` 代管；facade `opts.useWorker`；option 不用 SAB，仅回图可用 SAB |
+| wasm-zrender 文档重构 | `wasm-zrender_文档重构_d64ac165.plan.md` | 首页起因 + 三层定位；顶栏产品入口；zrender 五章多页文档 |
 
-zrender API 规范对齐规划的 YAML todo 已全部 completed。wasm-echarts 公开入口（`init`/`setOption`/`on`）以 API 对齐计划与源码为准；canvas 全量对齐计划 YAML 已全部 completed，视觉缺口以**源码与下文「未实现」**为准。示例独立与 Worker 规划 YAML 已全部 completed。其它规划 YAML 里部分 todo 仍可能标 `pending`，以**源码为准**。下文「规划对照」会标明实际完成度。
+zrender API 规范对齐规划的 YAML todo 已全部 completed。wasm-echarts 公开入口（`init`/`setOption`/`on`）以 API 对齐计划与源码为准；canvas 全量对齐计划 YAML 已全部 completed，视觉缺口以**源码与下文「未实现」**为准。示例独立与 Worker 规划 YAML 已全部 completed。wasm-zrender 文档重构规划 YAML 已全部 completed。其它规划 YAML 里部分 todo 仍可能标 `pending`，以**源码为准**。下文「规划对照」会标明实际完成度。
 
 只读参考源码（仓库根目录，禁止改）：`zrender-master/`、`echarts-master/`。
 
@@ -105,6 +106,16 @@ wasm-zrender  ✗ 不依赖  wasm-echarts
 - 实例生命周期：`zr.clear` / `zr.dispose` / `setBackgroundColor` / `trigger`；元素 `hide`/`show`、`on`/`off`/`trigger`、`clipPath`。
 
 **本波不挡主路径（后置，不混进「已对齐」）：** `skewX/Y` `anchorX/Y`、`textContent` 自动布局、RichText、`morph` 形变、`IncrementalDisplayable` 增量语义、`Path.extend` 自定义 `buildPath` 走 PathProxy。
+
+**文档硬规则（与实现对齐同等重要）：**
+
+公开文档（`site/zrender/docs/`、根 README、本文件）必须始终有这五章，实现变更时同步改。`/zrender/docs/` 默认落在快速上手；起因介绍与三层定位写在站点首页，不在 zrender 文档侧栏复述。
+
+1. **快速上手**：pkg 与 JS facade 分工；推荐顺序 `initWasm` → `registerFont`（有文字时）→ `init` → `add`；绑定 canvas / 离屏 `refresh()` 两段示例。
+2. **字体引用**：浏览器 `ctx.font` 能画字、WASM 离屏读不到 OS 字体；必调 `registerFont`；调用顺序、热更新、`sans-serif` 映射。
+3. **API 参考**：facade（`@wasm-zrender` → `js/`）为默认公开面；pkg 单独成章。每条有官方 / 补充 / 降级徽章 + 参数表 + 短示例。
+4. **与官方差异**：允许例外（仅四条）/ 已对齐 / 降级后置 / 补充 API 分表。禁止把后置未做写成允许例外。
+5. **底层原理**：rust-zrender crates 选型、相对 vl-convert 补齐、JS↔WASM 三种过桥。三层定位回链首页。
 
 ### wasm-echarts API 硬规则
 
@@ -210,7 +221,7 @@ site 示例 JS（创建 canvas；`echarts.init` / `setOption`）
 
 ### wasm-zrender API 规范对齐（波次 0–6 + 文档验收已完成）
 
-规范已写入上文「目标与约束」；JS facade 骨架在 `crates/wasm-zrender/js/`，site / README 从 `@wasm-zrender`（`js/index.js`）导入，`pkg/` 只作内部 handle。波次 2：变换主属性、`attr`/`setShape`/`setStyle` 双参数、Group opts 与子树 API。波次 3：`Sector.r0` / `clockwise` / `cornerRadius`、`Rect.r`、Polygon.smooth、Line·Text 默认 style、`miterLimit`、`lineDash` 字符串、`LinearGradient.addColorStop`。波次 4：`js/tool/` 按官方签名实现 `matrix` / `vector` / `color` / `util` / `path`；`morph` / `parseSVG` / `showDebugDirtyRect` / `setPlatformAPI` 为签名齐全的最小实现。波次 5：`Animator` 写最后一组 `when`；`zr.clear` / 实例 `dispose` / `setBackgroundColor` / `trigger`；`el.hide`/`show`/`off`/`trigger`。波次 6：`getClipPath` / `removeClipPath`，clip 扩到 Group/Text/Image（Group clip 对子树生效）；`useStates` / `getState` / `ensureState` / `clearStates`；`zr.setCursorStyle` / `configLayer`；`Path.extend` 把 `buildPath` 录成 pathData；`IncrementalDisplayable` 按普通 Group 语义可构造；Point 静态方法、`BoundingRect.calculateTransform`。文档验收：AGENT.md / README / site 文档与导入路径已同步四条例外；`shapes` / `text` / `animation` / `bounding_box` 示例覆盖原型链、`Group.x`、`Rect.r`、`Sector.r0`、动画终态、`init(canvas)` 拖拽包围盒。余下后置项见该计划「本波不挡主路径」。
+规范已写入上文「目标与约束」；JS facade 骨架在 `crates/wasm-zrender/js/`，site / README 从 `@wasm-zrender`（`js/index.js`）导入，`pkg/` 只作内部 handle。波次 2：变换主属性、`attr`/`setShape`/`setStyle` 双参数、Group opts 与子树 API。波次 3：`Sector.r0` / `clockwise` / `cornerRadius`、`Rect.r`、Polygon.smooth、Line·Text 默认 style、`miterLimit`、`lineDash` 字符串、`LinearGradient.addColorStop`。波次 4：`js/tool/` 按官方签名实现 `matrix` / `vector` / `color` / `util` / `path`；`morph` / `parseSVG` / `showDebugDirtyRect` / `setPlatformAPI` 为签名齐全的最小实现。波次 5：`Animator` 写最后一组 `when`；`zr.clear` / 实例 `dispose` / `setBackgroundColor` / `trigger`；`el.hide`/`show`/`off`/`trigger`。波次 6：`getClipPath` / `removeClipPath`，clip 扩到 Group/Text/Image（Group clip 对子树生效）；`useStates` / `getState` / `ensureState` / `clearStates`；`zr.setCursorStyle` / `configLayer`；`Path.extend` 把 `buildPath` 录成 pathData；`IncrementalDisplayable` 按普通 Group 语义可构造；Point 静态方法、`BoundingRect.calculateTransform`。文档验收：AGENT.md / README / site 五章文档与导入路径已同步四条例外；`shapes` / `text` / `animation` / `bounding_box` 示例覆盖原型链、`Group.x`、`Rect.r`、`Sector.r0`、动画终态、`init(canvas)` 拖拽包围盒。余下后置项见该计划「本波不挡主路径」。
 
 ### wasm-zrender API 对齐（规划 todos 全部 completed）
 
@@ -244,7 +255,7 @@ dispose(zr);
 
 ### 文档官网（待办规划当时最高优先级）
 
-`docs-site` / `demo-zrender` / `demo-echarts` 在规划 YAML 仍为 pending，**site 工程已落地**：首页缘由/限制 + 双产品文档/实例，实例页左源码右预览。
+`docs-site` / `demo-zrender` / `demo-echarts` 在规划 YAML 仍为 pending，**site 工程已落地**：首页起因 + 三层定位（无产品卡片）；顶栏进 wasm-zrender / wasm-echarts；zrender 五章多页文档 + 侧栏；实例页左源码右预览。
 
 ### wasm-echarts API 规范对齐（波次 0–5 已完成）
 
@@ -253,6 +264,10 @@ dispose(zr);
 ### wasm-echarts Canvas 全量对齐（第 0–8.9 波已落地）
 
 权威计划：[`.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md`](../.cursor/plans/echarts_canvas_全量对齐_3ceaa41e.plan.md)。废止「不是一次移植完官方全量 API」以及把 `graphic`/`util`/面积/`getZr` 当永久后置的写法。[折线缺口补齐](../.cursor/plans/折线缺口补齐_96423c21.plan.md) 已废弃并入本计划。第 0 波改文档口径；第 1 波已落地单 WASM、`getZr`、公开命名空间与挡脚本的实例 API。第 2 波已落地 dataset / transform / encode / stack / sampling、多 grid / 轴、`time` / `log`。第 3 波已接线 line/bar/pie/scatter 的 canvas option 族。第 4 波已接线 legend 筛选、mark*、graphic、visualMap、slider、axisPointer、brush、timeline、toolbox。第 5 波已接线 polar / radar / singleAxis / parallel / calendar / matrix / geo 坐标系。第 6 波已接线其余官方图表（radar/gauge/candlestick/boxplot/heatmap/pictorialBar/effectScatter/funnel/chord/sunburst/tree/treemap/graph/sankey/themeRiver/map/lines/parallel/custom）及 `renderItem` + `api`；Cargo feature **默认全开**。未识别的 `series.type` 会 `console.warn`，不再静默当 `Other` 后永远不管。第 7 波已落地扩展注册 / media / labelLayout / breaks / jitter。第 8.0–8.8 按类同步官网画廊；**8.9 已落地**：去重全量 probe 281/296 `ok`，失败写入上文「未实现」；`getZr` 文档写清同一份 wasm-zrender、无 SVG painter / hover layer、动画终态；缺官方实例方法同名导出 + `console.warn`。
+
+### wasm-zrender 文档重构（已完成）
+
+权威计划：[`.cursor/plans/wasm-zrender_文档重构_d64ac165.plan.md`](../.cursor/plans/wasm-zrender_文档重构_d64ac165.plan.md)。首页改为起因介绍 + rust-zrender / wasm-zrender / wasm-echarts 三层定位，去掉产品卡片。全站顶栏（`site-header.js`）品牌回首页，产品名进文档默认页，进入产品后旁挂「文档 / 实例」。zrender 文档拆成五章多页 + 侧栏（`docs-shell.js`）：`/zrender/docs/` 默认快速上手；字体、JS facade / pkg API、与官方差异、底层原理各成页。echarts 文档正文本波不动。
 
 ---
 
@@ -564,6 +579,8 @@ crates/wasm-zrender/pkg/
 4. 字体：`text.js` 内联 `fetch` + `registerFont`；可选辅助 `site/src/zrender/fonts.js` 默认拉取 `/fonts/NotoSansSC-Regular.ttf`
 
 实例页：`/zrender/examples/hello_world.html`、`animation.html`、`bounding_box.html`、`clip_path.html`、`glitched_text.html`、`particles.html`、`shapes.html`、`text.html`、`sector.html`、`hit.html`、`state.html`。
+
+文档：`site/zrender/docs/` 五章多页（快速上手 / 字体 / API facade+pkg / 与官方差异 / 底层原理）。`/zrender/docs/` 默认快速上手；侧栏见 `src/shared/docs-shell.js`。项目缘由与三层定位回链站点首页。
 
 ---
 
@@ -971,23 +988,28 @@ import initWasm, { init, registerFont } from '@wasm-echarts';
 
 ### 目的
 
-对外说明项目缘由与限制，并提供 **wasm-zrender**、**wasm-echarts** 两套文档 + 左源码右预览实例。由规划中的 `demo/` 迁来，现为 Vite 多页工程。
+对外说明仓库起因与 rust-zrender / wasm-zrender / wasm-echarts 定位；顶栏进入两套产品文档与实例。由规划中的 `demo/` 迁来，现为 Vite 多页工程。
 
 ### 实现了哪些内容
 
 ```
 site/
-├── index.html                 # 首页：缘由、限制、双产品入口
+├── index.html                 # 首页：起因介绍 + 三层定位 + 已知限制（无产品卡片）
 ├── package.json               # vite、shiki；不声明 wasm npm 依赖
 ├── vite.config.js             # 多页 HTML 入口 + alias + wasm MIME + COOP/COEP（Worker 回图 SAB）
 ├── public/                    # 静态资源（字体等，按本地/部署准备）
 ├── src/
-│   ├── shared/                # 布局 CSS、画廊 UI、源码高亮
+│   ├── shared/                # layout.css、site-header.js、docs-shell.js、画廊 UI、源码高亮
 │   ├── zrender/fonts.js       # 可选：字体加载辅助
 │   └── echarts/               # ensureDefaultFont、官网薄环境 official-env.js、official-gallery-meta.js
 ├── zrender/
-│   ├── index.html
-│   ├── docs/index.html
+│   ├── index.html             # 薄枢纽：文档 / 实例卡片
+│   ├── docs/
+│   │   ├── index.html         # 快速上手（文档默认页）
+│   │   ├── fonts.html
+│   │   ├── differences.html
+│   │   ├── internals.html
+│   │   └── api/               # facade / pkg 分页
 │   └── examples/              # 每个示例 = html + 完整 js
 │       ├── gallery.js
 │       ├── shapes.html / shapes.js
@@ -995,7 +1017,7 @@ site/
 │       └── …
 └── echarts/
     ├── index.html
-    ├── docs/index.html
+    ├── docs/index.html        # 四块文档（本波正文不动）
     └── examples/              # 每个示例 = html + 完整 js
         ├── gallery.js
         ├── official-line-catalog.js / official-bar-catalog.js / official-pie-catalog.js / official-scatter-catalog.js
@@ -1004,7 +1026,10 @@ site/
         └── …
 ```
 
-- 首页不做 API 长文、不嵌 canvas
+- 全站顶栏（`src/shared/site-header.js`）：品牌 → `/`；**wasm-zrender** → `/zrender/docs/`；**wasm-echarts** → `/echarts/docs/`。进入产品后旁挂「文档 / 实例」
+- 首页 = 起因介绍 + 三层定位 + 已知限制；**没有**产品卡片，不写 API 长文、不嵌 canvas
+- zrender 文档五章 + 侧栏（`docs-shell.js`）：快速上手（默认）/ 字体引用 / API 参考（facade + pkg）/ 与官方差异 / 底层原理。正文不再是单页全集，也不复述首页长文
+- echarts 文档仍是单页四块（一致 / 不一致 / 非官方 API / 已实现与未实现），本波正文本不动
 - 实例画廊：左侧菜单 + 源码（即该示例 `.js` 全文），右侧 iframe 预览。echarts 为二级菜单（类别 → 示例）；zrender 为扁平列表
 - 每个示例 JS 自包含：导入、构图、绘制、交互都写在同一个文件里。官网同步页自己 `init`/`setOption`，不经 `runOfficialExample`
 

@@ -22,7 +22,7 @@ todos:
     status: completed
   - id: sync-entry
     content: 更新产品页顶栏、AGENT.md 文档树与 zrender 五章硬规则、README 链接
-    status: pending
+    status: completed
 isProject: false
 ---
 

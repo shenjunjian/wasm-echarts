@@ -23,9 +23,9 @@ echarts 的 wasm 移植版本。目的是快速将 echarts 的 option 选项绘�
 wasm-echarts/
 ├── wasm-echarts-rs/              # Rust workspace 根目录
 │   ├── Cargo.toml
-│   ├── site/                     # 文档站（Vite 多页 + 实例）
-│   │   ├── index.html
-│   │   ├── main.js
+│   ├── site/                     # 文档站：首页介绍仓库定位；顶栏进 wasm-zrender / wasm-echarts
+│   │   ├── index.html            # 起因 + 三层定位（无产品卡片）
+│   │   ├── zrender/docs/         # 五章文档，默认快速上手
 │   │   └── echarts/examples/     # 每个示例直接 import @wasm-echarts
 │   └── crates/
 │       ├── rust-zrender/         # 纯 Rust lib：zrender 渲染核心（底层依赖）
@@ -175,7 +175,7 @@ native `EChartsInstance`（`wasm_echarts.d.ts`）是内部 handle，不要从 si
 
 ### wasm-zrender 对外 API（公开入口是 `js/`，不是 `pkg/`）
 
-site 与文档站用 Vite alias `@wasm-zrender` → `crates/wasm-zrender/js`。`js/index.js` 再加载内部 `pkg/wasm_zrender.js`。请勿把 `pkg/` 当作公开 import。
+site 与文档站用 Vite alias `@wasm-zrender` → `crates/wasm-zrender/js`。`js/index.js` 再加载内部 `pkg/wasm_zrender.js`。请勿把 `pkg/` 当作公开 import。分章文档从 [`/zrender/docs/`](wasm-echarts-rs/site/zrender/docs/index.html) 进入（默认快速上手；侧栏进字体 / API / 差异 / 原理）。
 
 ```javascript
 import initWasm, { init, registerFont, Group, Rect, Text } from '@wasm-zrender';
@@ -201,7 +201,7 @@ import initWasm, { init, registerFont, Group, Rect, Text } from '@wasm-zrender';
 | `morph` / `parseSVG` | 最小实现：morph 返回终点 path；parseSVG 解析基本图形 |
 | `IncrementalDisplayable` | 按普通 Group 语义可构造（非增量图层） |
 
-**允许例外（仅此四条）**：字体必须 `registerFont`；动画只写终点；仅 canvas 离屏（无 SVG / hover layer / dirty rect）；`init(canvas)` 可自动 `putImageData`，`init(null)` 仍用 opts 宽高。详见 [zrender 文档](wasm-echarts-rs/site/zrender/docs/index.html) 与 [AGENT.md](AGENT.md)。
+**允许例外（仅此四条）**：字体必须 `registerFont`；动画只写终点；仅 canvas 离屏（无 SVG / hover layer / dirty rect）；`init(canvas)` 可自动 `putImageData`，`init(null)` 仍用 opts 宽高。详见 [zrender 文档](wasm-echarts-rs/site/zrender/docs/index.html)（`/zrender/docs/` 现为快速上手，侧栏进字体 / API / 差异 / 原理）与 [AGENT.md](AGENT.md)。仓库起因与 rust-zrender / wasm-zrender / wasm-echarts 定位在站点[首页](wasm-echarts-rs/site/index.html)。
 
 ### `init` 的两种用法
 
@@ -280,7 +280,7 @@ const rgba = zr.refresh();
 
 **Wasmer / 原生 Rust** 宿主可直接调用 `rust_zrender::register_font(bytes, RegisterFontOptions { ... })`，无需 JS。
 
-site 文档站提供辅助模块 `site/src/zrender/fonts.js`（`loadFontFromUrl` / `ensureDefaultFont`），默认字体位于 `site/public/fonts/NotoSansSC-Regular.ttf`。text 示例见 [zrender/examples/text.html](wasm-echarts-rs/site/zrender/examples/text.html)。
+site 文档站提供辅助模块 `site/src/zrender/fonts.js`（`loadFontFromUrl` / `ensureDefaultFont`），默认字体位于 `site/public/fonts/NotoSansSC-Regular.ttf`。字体专章见 [fonts.html](wasm-echarts-rs/site/zrender/docs/fonts.html)；text 示例见 [zrender/examples/text.html](wasm-echarts-rs/site/zrender/examples/text.html)。
 
 未注册字体时渲染 `Text` 会报错 `no default font found`。
 
@@ -303,9 +303,11 @@ npm run dev
 
 浏览器打开：
 
-- 首页：http://127.0.0.1:5173/
-- echarts 实例：http://127.0.0.1:5173/echarts/examples/
-- zrender 实例：http://127.0.0.1:5173/zrender/examples/
+- 首页（起因 + 三层定位）：http://127.0.0.1:5173/
+- wasm-zrender 文档（快速上手）：http://127.0.0.1:5173/zrender/docs/
+- wasm-zrender 实例：http://127.0.0.1:5173/zrender/examples/
+- wasm-echarts 文档：http://127.0.0.1:5173/echarts/docs/
+- wasm-echarts 实例：http://127.0.0.1:5173/echarts/examples/
 
 ### 2. 在页面中接入（`@wasm-echarts`）
 
