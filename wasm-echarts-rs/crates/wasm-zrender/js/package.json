@@ -3,6 +3,9 @@
   "type": "module",
   "description": "zrender 对齐的 JS facade：原型链 + 委托 wasm-bindgen",
   "version": "0.1.0",
+  "scripts": {
+    "test": "node --test native-deferred.test.mjs && node tool/selftest.js"
+  },
   "main": "index.js",
   "exports": {
     ".": "./index.js",
