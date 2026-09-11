@@ -126,7 +126,7 @@ a:hover {
   max-width: 820px;
 }
 
-/* —— wasm-zrender 文档：左侧目录 · 右侧正文 —— */
+/* —— 文档：左侧目录 · 右侧正文（zrender / echarts 共用） —— */
 html:has(.docs-layout),
 body:has(.docs-layout) {
   height: 100%;

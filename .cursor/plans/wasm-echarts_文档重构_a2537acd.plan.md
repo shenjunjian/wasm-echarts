@@ -4,7 +4,7 @@ overview: 按 wasm-zrender 多页文档骨架，把现有单页四块拆成带�
 todos:
   - id: docs-shell-echarts
     content: 泛化 docs-shell.js：按 /echarts/docs 切换 kicker 与 ECHARTS_DOC_NAV
-    status: pending
+    status: completed
   - id: ch-start-fonts
     content: 写快速上手 / 字体引用；/echarts/docs/ 默认落在快速上手
     status: pending

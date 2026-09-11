@@ -8,8 +8,9 @@
 </head>
 <body>
   <header class="site-header"></header>
-
-  <main class="page page-narrow">
+  <div class="docs-layout">
+    <aside class="docs-sidebar"></aside>
+    <main class="docs-main">
     <h1>wasm-echarts 文档</h1>
     <p class="lead">
       公开 JS API 对齐官方 ECharts canvas 用法（<code>init</code> / <code>setOption</code>）。
@@ -441,7 +442,8 @@ await chart.setOption(option); // 含 formatter / renderItem 等函数时不要�
         </tbody>
       </table>
     </div>
-  </main>
-  <script type="module" src="/src/shared/site-header.js"></script>
+    </main>
+  </div>
+  <script type="module" src="/src/shared/docs-shell.js"></script>
 </body>
 </html>
