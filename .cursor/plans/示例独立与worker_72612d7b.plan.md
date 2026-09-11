@@ -13,7 +13,7 @@ todos:
     status: completed
   - id: docs-agent
     content: AGENT.md 写清独立示例写法、useWorker、function option 限制、option 不用 SAB、仅回图可用 SAB
-    status: pending
+    status: completed
 isProject: false
 ---
 

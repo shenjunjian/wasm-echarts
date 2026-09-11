@@ -21,8 +21,9 @@ Rust / WebAssembly workspace：用纯 Rust 重写 zrender 离屏 canvas 渲染�
 | echarts API 规范对齐 | `wasm-echarts_api_对齐_1d164d7d.plan.md` | 公开入口对齐官方 core.ts（波次 0–5 已落地）；入口签名以该计划为权威 |
 | echarts Canvas 全量对齐 | `echarts_canvas_全量对齐_3ceaa41e.plan.md` | SVG/DOM 例外以外的 canvas 语义、`getZr` 共享 Storage、22 种图与 canvas 组件。**第 0–8.9 波 YAML 已全部 completed**；视觉缺口以源码与下文「未实现」为准 |
 | 折线缺口补齐 | `折线缺口补齐_96423c21.plan.md` | **已废弃**，并入 canvas 全量对齐 |
+| 示例独立与 Worker | `示例独立与worker_72612d7b.plan.md` | 去掉 `runOfficialExample` 代管；facade `opts.useWorker`；option 不用 SAB，仅回图可用 SAB |
 
-zrender API 规范对齐规划的 YAML todo 已全部 completed。wasm-echarts 公开入口（`init`/`setOption`/`on`）以 API 对齐计划与源码为准；canvas 全量对齐计划 YAML 已全部 completed，视觉缺口以**源码与下文「未实现」**为准。其它规划 YAML 里部分 todo 仍可能标 `pending`，以**源码为准**。下文「规划对照」会标明实际完成度。
+zrender API 规范对齐规划的 YAML todo 已全部 completed。wasm-echarts 公开入口（`init`/`setOption`/`on`）以 API 对齐计划与源码为准；canvas 全量对齐计划 YAML 已全部 completed，视觉缺口以**源码与下文「未实现」**为准。示例独立与 Worker 规划 YAML 已全部 completed。其它规划 YAML 里部分 todo 仍可能标 `pending`，以**源码为准**。下文「规划对照」会标明实际完成度。
 
 只读参考源码（仓库根目录，禁止改）：`zrender-master/`、`echarts-master/`。
 
@@ -117,6 +118,7 @@ wasm-zrender  ✗ 不依赖  wasm-echarts
 - 动画：不播中间帧；`setOption` / `animation` / `universalTransition` / line grow / ripple 直接终态（第 7 波：`UniversalTransition` 只跳终态，不插值）。`lazyUpdate` 可同步执行（等价立刻 flush）。
 - 离屏：仅 canvas；`init(canvas)` 自动 `putImageData`。无 SVG（`renderToSVGString` / `getSvgDataURL` / `zr.painter.getSvgDom` 只 `console.warn`）。
 - 宿主：`init(canvas, theme?, opts?)`；`init(null, null, { width, height, devicePixelRatio })` 允许离屏（官方客户端无 dom 会抛错）。
+- Worker：可选非官方 `opts.useWorker`（默认 `false`，同线程同步 `setOption`）。Worker 持 WASM；主线程 blit / 事件 / tooltip。含 `formatter` / `renderItem` 等函数的 option 不能进 Worker；option（含 TypedArray）一律 `postMessage`，不用 SAB。SAB 只用于 Worker → 主线程回传 RGBA（需 COOP/COEP）。
 - `use(...)`：**导出且签名对齐**，但不按需加载。实现只 `console.info` 提示：已开发的模块都在 WASM 里，不必 `use`。调用可忽略参数并立即返回。
 - Loading：`showLoading` / `hideLoading` **导出**；不播官方旋转动画（静态半透明遮罩 + 文案，或空操作）。
 - DOM 组件：toolbox **DataView** 浮层、SaveAsImage 的 DOM 下载条不做。Tooltip 维持现有 string DOM（官方默认即 DOM）。
@@ -139,7 +141,7 @@ wasm-zrender  ✗ 不依赖  wasm-echarts
 公开文档（`site/echarts/docs/index.html`、根 README、本文件）必须始终有这四块，实现变更时同步改：
 
 1. **与官方一致的公开 API**：可按官方文档调用的方法与签名。
-2. **与官方不一致 / 例外**：`use` 提示语义、`init(null)`、无 SVG、动画终态、字体、`lazyUpdate` 同步、Loading 无旋转、DataView DOM 等。
+2. **与官方不一致 / 例外**：`use` 提示语义、`init(null)`、无 SVG、动画终态、字体、`lazyUpdate` 同步、Loading 无旋转、DataView DOM、`opts.useWorker`（函数 option 限制、option 不用 SAB、仅回图可用 SAB）等。
 3. **多出来的非官方 API**：`refresh`、`findHover` / `handlePointerMove` 等 WASM hatch；写清用途、何时该用、何时不该当官方 API。
 4. **已实现 / 未实现**：图表类型、组件、`dispatchAction` type、option 字段生效范围。未实现的官方方法仍尽量导出同名，内部 `console.warn`，在此表标「未实现」并按 canvas 全量对齐计划补齐。
 
@@ -157,6 +159,9 @@ site 示例 JS（创建 canvas；`echarts.init` / `setOption`）
         │
         ├── wasm-zrender：init / Group / Rect / … / refresh / findHover
         └── wasm-echarts：js/ facade init / setOption / dispose；native 为内部 handle
+                │
+                ├── 默认：主线程 EChartsInstance
+                └── opts.useWorker：Worker 持实例；option postMessage；RGBA 经 SAB/Transferable 回主线程 blit
                 │
                 ▼
         rust-zrender::ZRenderer
@@ -178,7 +183,8 @@ site 示例 JS（创建 canvas；`echarts.init` / `setOption`）
 | 层 | Rust / WASM | site 示例 JS |
 |----|-------------|--------------|
 | option 解析 | `OptionValue`，函数保留为 `js_sys::Function` | 原样传入用户 option |
-| 布局 / 坐标 / 绘制 | cartesian、ChartView、Painter | — |
+| 布局 / 坐标 / 绘制 | cartesian、ChartView、Painter | —；`useWorker` 时这段在 Worker 线程跑 |
+| Worker 回图 | RGBA 写入 SAB（或 Transferable） | facade `putImageData`；option 不走 SAB |
 | 命中检测 | Path winding + stroke 距离；Image/Text bbox | facade 绑指针并转坐标 |
 | tooltip / 高亮 | formatter 得 string；hover / axisPointer / 拖拽变化才改 state 并 refresh | facade 内建 string tooltip DOM；`on('click')` |
 | resize | 重算 layout + 全量 refresh | 示例按需调用 `resize` |
@@ -589,19 +595,19 @@ chart-map, chart-lines, chart-parallel, chart-custom
 
 | 导出 / 方法 | 签名 |
 |-------------|------|
-| `init` | `init(canvas, theme?, opts?)`；`init(null, null, { width, height, devicePixelRatio })` 允许离屏 |
+| `init` | `init(canvas, theme?, opts?)`；`init(null, null, { width, height, devicePixelRatio })` 允许离屏。非官方 `opts.useWorker` 见例外 |
 | `dispose` | `dispose(chart \| canvas \| id)` |
 | `getInstanceByDom` / `getInstanceById` | 按 canvas / id 取回实例 |
 | `version` | `'6.1.0'` |
 | `use` | 导出且签名对齐；只 `console.info`，不加载模块 |
-| `setOption` | `setOption(option)` / `setOption(option, notMerge, lazyUpdate?)` / `setOption(option, { notMerge, replaceMerge, silent, lazyUpdate })` |
+| `setOption` | `setOption(option)` / `setOption(option, notMerge, lazyUpdate?)` / `setOption(option, { notMerge, replaceMerge, silent, lazyUpdate })`。默认同线程同步；`useWorker` 时返回 Promise |
 | `getOption` | 把已合并 option 转回普通 JSON；函数字段保留为原 Function |
 | `resize` | `resize()` 无参读 canvas；`resize({ width, height, devicePixelRatio })`；`'auto'` 回退到 canvas；亦接受 native `resize(w, h, dpr)` |
 | `clear` | `setOption({ series: [] }, true)` |
 | `getWidth` / `getHeight` / `getDevicePixelRatio` / `isDisposed` / `dispose` | 实例方法 |
 | `dispatchAction` | 已接线 type：`highlight` / `downplay` / `select` / `unselect` / `toggleSelect` / `dataZoom` / `showTip` / `hideTip` / `legendToggleSelect` / `legendSelect` / `legendUnSelect` / `restore` / `timelineChange` / `timelinePlayChange` / `takeGlobalCursor` / `brush` / `brushEnd` / `expandAxisBreak` / `collapseAxisBreak` / `toggleAxisBreak`；`registerAction` 登记的自定义 type 也会调用 |
 | `getDom` / `getId` | `init` 后可取 |
-| `getZr` | `getZr()` 返回与 ChartView 共用 Storage 的 wasm-zrender 实例（同一份 WASM，不是第二份 `wasm-zrender/pkg`）；可 `add` / `on` / `configLayer`。无 SVG painter / hover layer；动画终态 |
+| `getZr` | `getZr()` 返回与 ChartView 共用 Storage 的 wasm-zrender 实例（同一份 WASM，不是第二份 `wasm-zrender/pkg`）；可 `add` / `on` / `configLayer`。无 SVG painter / hover layer；动画终态。`useWorker` 时不可用（见例外） |
 | `showLoading` / `hideLoading` | 静态半透明遮罩 + 文案；不播旋转动画 |
 | `getDataURL` / `renderToCanvas` / `getRenderedCanvas` | 离屏 RGBA → PNG/JPEG 数据 URL / 画到 canvas；`getRenderedCanvas` 等价 `renderToCanvas`；`type: 'svg'` 不支持 |
 | `containPixel` | cartesian 多 grid；finder 可指定 `gridIndex` / `seriesIndex` / 轴 |
@@ -639,6 +645,11 @@ chart-map, chart-lines, chart-parallel, chart-custom
 | LabelLayout | 终态 AABB `hideOverlap` / `moveOverlap`（shiftX/Y、shuffleX/Y）与 `dx`/`dy`；不是官方完整 LabelManager / OBB |
 | AxisBreak | `axis.breaks` 折叠比例尺 + 轴上折线标记；`expandAxisBreak` 等改 `isExpanded` 后终态重绘，无展开动画 |
 | ScatterJitter | `axis.jitter` 终态错开；`jitterOverlap: true` 用稳定哈希而非 `Math.random` |
+| `opts.useWorker` | **非官方**。默认 `false`：同线程同步 `setOption`。`true` 时 Worker 持 `EChartsInstance`，主线程只 blit / 指针 / tooltip DOM。无 `Worker` 时 `console.warn` 并回退主线程。不要自己 `new Worker`。画廊仅 `bar-large` / `scatter-large` / `candlestick-large` / `parallel-nutrients` 打开 |
+| Worker 函数 option | `formatter` / `renderItem` / `itemStyle.color` 等函数不能结构化克隆。含函数的 option **必须**默认主线程 `init`；WASM 须与定义这些函数的 JS 在同一 realm。`setOption` / `dispatchAction` 遇到函数会抛错并提示走主线程 |
+| Worker `setOption` | 返回 Promise（`await chart.setOption(option)`）。option（含 `series.data` / `dataset.source` 里的 TypedArray）一律 `postMessage` 克隆，**不用 SharedArrayBuffer** |
+| Worker `getZr()` | ZRender 在 Worker 里；主线程 `getZr()` 只 `console.warn` 并返回 `undefined` |
+| SharedArrayBuffer | **option 方向一律不用 SAB**。SAB 只用于 Worker → 主线程回传 RGBA（可双缓冲）。站点需 Cross-Origin Isolation：`Cross-Origin-Opener-Policy: same-origin` + `Cross-Origin-Embedder-Policy: require-corp`（Vite `server` / `preview` 已配）。不可用时回图 fallback Transferable `ArrayBuffer`。同线程 `init(canvas)` 不强制 SAB |
 
 #### 3. 多出来的非官方 API
 
@@ -654,7 +665,8 @@ chart-map, chart-lines, chart-parallel, chart-custom
 | `getTooltipContent` | `get_tooltip_content` | 自绘 tooltip；`init(canvas)` 时 facade 已内建 string DOM |
 | `benchmarkRender` | `benchmark_render` | 渲染耗时 |
 | `hasOption` / `optionHasFunctions` | `has_option` / `option_has_functions` | 状态查询 |
-| `registerFont` / `clearFonts` | `registerFont` / `clearFonts` | WASM 字体例外；轴标签 / series label 渲染前必调；已有实例热更新 fontdb |
+| `registerFont` / `clearFonts` | `registerFont` / `clearFonts` | WASM 字体例外；轴标签 / series label 渲染前必调；已有实例热更新 fontdb；`useWorker` 时同一份 bytes 会 `postMessage` 进 Worker |
+| `opts.useWorker` | `ChartWorkerBridge` / `chart.worker.js` | 把实例放到 Worker；开发者仍写 `init` / `setOption` / `on`，不必自己 `new Worker` |
 
 #### 4. 已实现 / 未实现
 
@@ -700,6 +712,7 @@ chart-map, chart-lines, chart-parallel, chart-custom
 | brush | canvas 框选矩形，松开后 `select` 落入点 |
 | thumbnail | cartesian 缩略 + 窗口拖动改 dataZoom |
 | 指针 / tooltip | `init(canvas)` 绑 mousemove/click/leave/wheel（mousemove 合入 rAF）；hover 未变不上屏；内建 string tooltip DOM；`on`/`off` 发出 `click`/`mouseover`/`mouseout`/`globalout` |
+| Worker | 可选 `opts.useWorker`：Worker 持实例，主线程 blit/事件/tooltip；option `postMessage`（不用 SAB）；回图优先 SAB（需 COOP/COEP） |
 | showTip / hideTip | `dispatchAction({ type: 'showTip', seriesIndex, dataIndex })` 或 `{ x, y }`；`hideTip` 关 DOM，不改 hover |
 | `getZr` / 命名空间 | `getZr()` 返回与 ChartView 共用 Storage 的 wasm-zrender 实例（同一份 WASM）；`graphic`（含 `LinearGradient`/`Rect`）/`util`/`time`/`format`/`number`/`helper`/`matrix`/`vector`/`color`/`env`；`throttle`。无 SVG painter / hover layer；动画终态 |
 | Loading / 导出图 | `showLoading` 静态遮罩；`getDataURL` / `renderToCanvas`（canvas PNG/JPEG） |
@@ -718,7 +731,7 @@ Components：geo roam / SVG 地图源。aria 写 DOM 属性非绘制，可后置
 
 Actions：geo roam 等。
 
-其它：完整 SeriesData。`smoothMonotone` 未接。pie label 不是官方完整 `avoidLabelOverlap` / `alignTo`。scatter `large` 仍每点一个 Path（跳过状态与 label，不是 IncrementalDisplayable）。bar 未接 `large`（50 万柱会卡死主线程）。`UniversalTransition` 只终态。
+其它：完整 SeriesData。`smoothMonotone` 未接。pie label 不是官方完整 `avoidLabelOverlap` / `alignTo`。scatter `large` 仍每点一个 Path（跳过状态与 label，不是 IncrementalDisplayable）。bar 未接 `large`（50 万柱无增量绘制；画廊示例走 `useWorker` 避免主线程无响应）。`UniversalTransition` 只终态。
 
 **名字在 option 里出现但未按官方做：** `smoothMonotone`；色板不是官方 palette 全套；pie 完整标签避让 / `padAngle` / `alignTo`；bar `showBackground`、polar `roundCap`、`realtimeSort` 动画（只终态）；parallel `progressive`；rich text 标签当普通 Text。
 
@@ -726,9 +739,9 @@ Actions：geo roam 等。
 
 | 示例 | 原因 |
 |------|------|
-| `bar-large` | 50 万柱 + `large: true`；bar 无增量/采样绘制，主线程卡死，probe 40s timeout |
-| `candlestick-large` | 20 万 OHLC；无增量/采样绘制，主线程卡死，probe 40s timeout |
-| `parallel-nutrients` | 官网 `nutrients.json` 约 1.4 万行；parallel 每条数据一条 Path、未接 `progressive: 500`，主线程卡死，probe 40s timeout |
+| `bar-large` | 50 万柱 + `large: true`；bar 无增量/采样绘制。示例已 `useWorker`，主线程不再卡死；Worker 内仍是同步长任务，probe 40s 仍可能 timeout |
+| `candlestick-large` | 20 万 OHLC；无增量/采样绘制。示例已 `useWorker`，主线程不再卡死；Worker 内仍是同步长任务，probe 40s 仍可能 timeout |
+| `parallel-nutrients` | 官网 `nutrients.json` 约 1.4 万行；parallel 每条数据一条 Path、未接 `progressive: 500`。示例已 `useWorker`，主线程不再卡死；Worker 内仍是同步长任务，probe 40s 仍可能 timeout |
 | `scatter-clustering` / `scatter-clustering-process` / `scatter-exponential-regression` / `scatter-linear-regression` / `scatter-polynomial-regression` / `scatter-logarithmic-regression` | 依赖官网统计插件 `echarts-stat` 全局 `ecStat`；本宿主未注入 |
 | `bar-histogram` | 同上，缺全局 `ecStat` |
 | `heatmap-bmap` | 依赖百度地图扩展 `bmap`；`getModel` 已导出只 warn 并返回 `undefined`，表面错误变为 `getComponent` of undefined。即便返回模型也会因无 bmap 失败（`effectScatter-bmap` 的 `setOption` 不抛，probe 判 `ok`、底图空） |
@@ -755,7 +768,10 @@ SVG 地图源仍未实现（`geo-svg-*` / `geo-beef-cuts` 等 probe 判 `ok` 因
 | `index.js` | 官方命名导出；`default` 仍是 `initWasm`；`version = '6.1.0'`；另导出 `registerFont` / 命名空间 / `throttle` / `parseGeoJSON` / 扩展注册 |
 | `echarts.js` | `init` / `dispose` / `use`；`connect` / `registerTheme` / `registerMap` / `parseGeoJSON` / `registerTransform` / 扩展注册再导出；命名空间与 `throttle` 再导出 |
 | `extension.js` | `registerPreprocessor` / `Processor` / `Layout` / `Visual` / `Action` / `CoordinateSystem` / `CustomSeries` / `PRIORITY` / `setPlatformAPI` |
-| `instance.js` | camelCase 实例；`getZr`（wasm-zrender，无 SVG painter）/ `showLoading` / `getDataURL` / `getRenderedCanvas` / `appendData` / `setTheme` / `containPixel`；缺实现的官方方法 `console.warn`；指针与 tooltip |
+| `instance.js` | camelCase 实例；`getZr`（wasm-zrender，无 SVG painter）/ `showLoading` / `getDataURL` / `getRenderedCanvas` / `appendData` / `setTheme` / `containPixel`；缺实现的官方方法 `console.warn`；指针与 tooltip；`useWorker` 时委托 `ChartWorkerBridge` |
+| `worker-protocol.js` | 主线程 / Worker 消息名；option 含函数检测；SAB 探测。option 方向不用 SAB |
+| `worker-bridge.js` | 主线程 Worker 桥：创建 module Worker、RPC、SAB/Transferable blit、字体与地图同步。开发者不必 `new Worker` |
+| `chart.worker.js` | Worker 内 `initWasm` + `EChartsInstance`；option 只收 `postMessage`；RGBA 优先写 SAB，否则 Transferable |
 | `graphic.js` / `util.js` / `number.js` / `time.js` / `format.js` / `helper.js` / `env.js` / `throttle.js` | `export/api.ts` 命名空间与 `throttle` |
 | `native.js` | 加载 `pkg/wasm_echarts.js` 并 `setNative` 注入 wasm-zrender |
 | `wasm_echarts.js` | 兼容旧路径 `@wasm-echarts/wasm_echarts.js` |
@@ -867,7 +883,7 @@ SVG 地图源仍未实现（`geo-svg-*` / `geo-beef-cuts` 等 probe 判 `ok` 因
 
 #### site 示例
 
-每个 `site/echarts/examples/*.js` 都是完整独立脚本。导入 `@wasm-echarts` 的 `init` / `registerFont`：`await initWasm()` → `fetch` + `registerFont` → `init(canvas)` + `setOption`。轴标签 / series label / title / legend 走 cosmic-text，**未注册字体时 `refresh` 会 panic `no default font found`**。多字体示例 `fonts.js` 连续 registerFont 多份文件，再在 `title.textStyle` / `subtextStyle` / `legend.textStyle` / `nameTextStyle` / `axisLabel` 上设不同 `fontFamily`。有 canvas 时自动上屏并绑指针。交互合集 `interactive.js` 调 `use()`（只 `console.info`）并用 `on('click')` + `dispatchAction('toggleSelect')`；tooltip / hover / wheel 由 facade 消化。`merge.js` 对照深合并与 `notMerge: true`，并走 dispose 后再 init。不要把 `EChartsInstance` / `set_option` / `handlePointerMove` 当公开 API。文档四块在 `site/echarts/docs/index.html`。可选辅助 `site/src/echarts/fonts.js`（`ensureDefaultFont`）默认拉取 `/fonts/NotoSansSC-Regular.ttf`。Windows 本机可把 `C:\Windows\Fonts\msyh.ttc`、`simsun.ttc`、`simkai.ttf` 复制到 `site/public/fonts/`（微软字体不要提交 git）。
+每个 `site/echarts/examples/*.js` 都是完整独立脚本，**自己** `initWasm` → 字体 → `init(canvas)` → `setOption`，不再经 `runOfficialExample` 代管。自写示例导入 `{ init, registerFont }`；官网同步示例导入 `* as echarts`，option 正文原样嵌入。[`official-env.js`](wasm-echarts-rs/site/src/echarts/official-env.js) 只提供 `ROOT_PATH` / `CDN_PATH` / `$` / `app` / `sizeCanvas` / `showPreviewError`，**不创建图表**。轴标签 / series label / title / legend 走 cosmic-text，**未注册字体时 `refresh` 会 panic `no default font found`**。多字体示例 `fonts.js` 连续 registerFont 多份文件，再在 `title.textStyle` / `subtextStyle` / `legend.textStyle` / `nameTextStyle` / `axisLabel` 上设不同 `fontFamily`。有 canvas 时自动上屏并绑指针。交互合集 `interactive.js` 调 `use()`（只 `console.info`）并用 `on('click')` + `dispatchAction('toggleSelect')`；tooltip / hover / wheel 由 facade 消化。`merge.js` 对照深合并与 `notMerge: true`，并走 dispose 后再 init。大数据卡死例（`bar-large` / `scatter-large` / `candlestick-large` / `parallel-nutrients`）用 `init(canvas, null, { useWorker: true })` 并 `await setOption`；其余走默认主线程。不要把 `EChartsInstance` / `set_option` / `handlePointerMove` 当公开 API，也不要在示例里自己 `new Worker`。文档四块在 `site/echarts/docs/index.html`。可选辅助 `site/src/echarts/fonts.js`（`ensureDefaultFont`）默认拉取 `/fonts/NotoSansSC-Regular.ttf`。Windows 本机可把 `C:\Windows\Fonts\msyh.ttc`、`simsun.ttc`、`simkai.ttf` 复制到 `site/public/fonts/`（微软字体不要提交 git）。
 
 浏览器测试 `crates/wasm-echarts/tests/web.rs` 目前几乎是占位（`1+1=2`）。Rust 单测在 `option` / `model` / `interaction` / `pie` 等模块内。
 
@@ -913,6 +929,15 @@ chart.setOption({
 
 `init(canvas)` 后 `setOption` 会自动 `putImageData`，不必再调 `refresh`。离屏用 `init(null, null, { width, height })`，再 `chart.refresh()` 拿 RGBA。有 canvas 时 facade 绑定指针：hover 高亮、string tooltip DOM、legend/toolbox/timeline 点击、slider/brush 拖拽、wheel inside dataZoom；用户 `chart.on('click', handler)` 即可。指针移动时若 hover / axisPointer / 拖拽画面没变，跳过整图 `refresh`（tooltip 仍随鼠标走）。
 
+大数据、会卡死主线程时开 Worker（仍不必自己管 Worker）。`setOption` 返回 Promise；option 必须可结构化克隆（**不要**把 `formatter` / `renderItem` 等函数塞进去）：
+
+```javascript
+const chart = init(canvas, null, { useWorker: true });
+await chart.setOption(option);
+```
+
+Worker 路径硬规范：option（含 TypedArray）一律 `postMessage`，**不用 SAB**；SAB 只用于 Worker → 主线程回图，站点需 COOP/COEP（见 Vite 配置）。不可用时回图 fallback Transferable `ArrayBuffer`。`getZr()` 在此模式下不可用。
+
 ### 编译产物在哪里
 
 ```
@@ -936,8 +961,8 @@ import initWasm, { init, registerFont } from '@wasm-echarts';
 ```
 
 再 `await initWasm()` → `registerFont` → `init(canvas)` + `setOption`。native `EChartsInstance` 仍从 facade 再导出，仅兼容旧路径，不要当公开 API。
-3. 每个实例是独立完整脚本：`site/echarts/examples/line.js` 等同名 HTML 成对出现（`<canvas id="canvas">`）；自写示例内联 `fetch` + `registerFont`（与 zrender `text.js` 相同）
-4. 画廊 `gallery.js` 用 Vite `?raw` / `import.meta.glob` 读这些 `.js` 作为左侧源码，iframe 加载同目录 HTML 预览。echarts 画廊是二级菜单：第一层为图形类别，第二层为该类别下的示例。分组顺序与自写条目在 [`official-gallery-meta.js`](wasm-echarts-rs/site/src/echarts/official-gallery-meta.js)；官网同步条目来自 `official-{category}-catalog.js`（无 catalog 且无自写示例的类不出现空菜单）。已同步：折线 40、柱状 46、饼图 19、散点 36、K 线 10、盒须 4、热力 7、象形柱 8、仪表盘 12、雷达 5、漏斗 4、和弦 4、旭日 7、树图 7、矩形树 7、关系图 13、桑基 7、主题河流 2、日历 9、矩阵 14、平行坐标 4、地图 25、地理 1、路径图 5、自定义系列 20、数据集 9、图形组件 5。官网同步脚本自己 `initWasm` → `ensureDefaultFont` → `echarts.init(canvas)` → `setOption`；[`official-env.js`](wasm-echarts-rs/site/src/echarts/official-env.js) 只提供 `ROOT_PATH` / `CDN_PATH` / `$`（含 `get` / `getJSON` / `getScript` / `when`）与 `app` / `sizeCanvas` / `showPreviewError`，**不创建图表、不补齐未实现 echarts API**，报错显示在预览层。数据文件在 `public/echarts-official/`。按类拉取：`node scripts/sync-official-examples.mjs --category scatter --local-dir <echarts-examples 根目录>`（`--local-dir` / `ECHARTS_EXAMPLES_DIR` 优先读本地 `public/`，避免官网大文件超时；已同步条目改模板用 `--rewrite-existing`）；探测：`node scripts/probe-official-examples.mjs`（看 canvas 是否画出像素与 `.preview-error`；省略 `--category` 即全量；`--out file.json` 写报告；需已启动 Vite；单例超过 40s 判 timeout 并换浏览器进程）。旧文件名 `sync-official-line-examples.mjs` / `probe-official-line.mjs` 转发到 `--category line`。交互合集下挂 interactive / merge / bench。zrender 画廊仍用扁平 `examples`。
+3. 每个实例是独立完整脚本：`site/echarts/examples/line.js` 等同名 HTML 成对出现（`<canvas id="canvas">`）；自写示例内联 `fetch` + `registerFont`（与 zrender `text.js` 相同）。**不再**经 `runOfficialExample` 代管。
+4. 画廊 `gallery.js` 用 Vite `?raw` / `import.meta.glob` 读这些 `.js` 作为左侧源码，iframe 加载同目录 HTML 预览。echarts 画廊是二级菜单：第一层为图形类别，第二层为该类别下的示例。分组顺序与自写条目在 [`official-gallery-meta.js`](wasm-echarts-rs/site/src/echarts/official-gallery-meta.js)；官网同步条目来自 `official-{category}-catalog.js`（无 catalog 且无自写示例的类不出现空菜单）。已同步：折线 40、柱状 46、饼图 19、散点 36、K 线 10、盒须 4、热力 7、象形柱 8、仪表盘 12、雷达 5、漏斗 4、和弦 4、旭日 7、树图 7、矩形树 7、关系图 13、桑基 7、主题河流 2、日历 9、矩阵 14、平行坐标 4、地图 25、地理 1、路径图 5、自定义系列 20、数据集 9、图形组件 5。官网同步脚本自己 `initWasm` → `ensureDefaultFont` → `echarts.init(canvas)` → `setOption`（大数据卡死例为 `echarts.init(canvas, null, { useWorker: true })` 并 `await setOption`）；[`official-env.js`](wasm-echarts-rs/site/src/echarts/official-env.js) 只提供 `ROOT_PATH` / `CDN_PATH` / `$`（含 `get` / `getJSON` / `getScript` / `when`）与 `app` / `sizeCanvas` / `showPreviewError`，**不创建图表、不补齐未实现 echarts API**，报错显示在预览层。数据文件在 `public/echarts-official/`。按类拉取：`node scripts/sync-official-examples.mjs --category scatter --local-dir <echarts-examples 根目录>`（`--local-dir` / `ECHARTS_EXAMPLES_DIR` 优先读本地 `public/`，避免官网大文件超时；已同步条目改模板用 `--rewrite-existing`）；探测：`node scripts/probe-official-examples.mjs`（看 canvas 是否画出像素与 `.preview-error`；省略 `--category` 即全量；`--out file.json` 写报告；需已启动 Vite；单例超过 40s 判 timeout 并换浏览器进程）。旧文件名 `sync-official-line-examples.mjs` / `probe-official-line.mjs` 转发到 `--category line`。交互合集下挂 interactive / merge / bench。zrender 画廊仍用扁平 `examples`。
 5. 页面：自写 line / fonts / bar / pie / scatter / interactive / merge / bench，外加已同步的官网 catalog（折线 40 + 柱状 46 + 饼图 19 + 散点 36 + K 线 10 + 盒须 4 + 热力 7 + 象形柱 8 + 仪表盘 12 + 雷达 5 + 漏斗 4 + 和弦 4 + 旭日 7 + 树图 7 + 矩形树 7 + 关系图 13 + 桑基 7 + 主题河流 2 + 日历 9 + 矩阵 14 + 平行坐标 4 + 地图 25 + 地理 1 + 路径图 5 + 自定义系列 20 + 数据集 9 + 图形组件 5）。第 8.9 波去重全量 probe 281/296 `ok`。
 
 ---
@@ -954,7 +979,7 @@ import initWasm, { init, registerFont } from '@wasm-echarts';
 site/
 ├── index.html                 # 首页：缘由、限制、双产品入口
 ├── package.json               # vite、shiki；不声明 wasm npm 依赖
-├── vite.config.js             # 多页 HTML 入口 + alias + wasm MIME
+├── vite.config.js             # 多页 HTML 入口 + alias + wasm MIME + COOP/COEP（Worker 回图 SAB）
 ├── public/                    # 静态资源（字体等，按本地/部署准备）
 ├── src/
 │   ├── shared/                # 布局 CSS、画廊 UI、源码高亮
@@ -981,7 +1006,7 @@ site/
 
 - 首页不做 API 长文、不嵌 canvas
 - 实例画廊：左侧菜单 + 源码（即该示例 `.js` 全文），右侧 iframe 预览。echarts 为二级菜单（类别 → 示例）；zrender 为扁平列表
-- 每个示例 JS 自包含：导入、构图、绘制、交互都写在同一个文件里
+- 每个示例 JS 自包含：导入、构图、绘制、交互都写在同一个文件里。官网同步页自己 `init`/`setOption`，不经 `runOfficialExample`
 
 #### 实例清单
 
@@ -1009,7 +1034,7 @@ site/
 | 折线图 | fonts | 多 `registerFont` + title / legend / 轴名称 `fontFamily` |
 | 折线图 | 官网 40 条 | 同步 [echarts 折线示例](https://echarts.apache.org/examples/zh/index.html#chart-type-line)；缺能力则预览报错，不在示例里补实现 |
 | 柱状图 | bar | ChartView bar |
-| 柱状图 | 官网 46 条 | 同步 `#chart-type-bar`；probe 64/65 ok（bar+pie 合计），`bar-large` 超时见上文 |
+| 柱状图 | 官网 46 条 | 同步 `#chart-type-bar`；`bar-large` 走 `useWorker`（主线程不再卡死；bar 仍无增量绘制，probe 仍可能 timeout） |
 | 饼图 | pie | ChartView pie |
 | 饼图 | 官网 19 条 | 同步 `#chart-type-pie`；catalog 一经生成即自动进画廊 |
 | 散点图 | scatter | ChartView scatter |
@@ -1064,6 +1089,11 @@ npm run preview      # 预览构建结果
 ```javascript
 const repoRoot = resolve(root, '..'); // wasm-echarts-rs/
 
+const COOP_COEP_HEADERS = {
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Embedder-Policy': 'require-corp',
+};
+
 resolve: {
   alias: {
     '@wasm-zrender': resolve(repoRoot, 'crates/wasm-zrender/js'),
@@ -1072,6 +1102,10 @@ resolve: {
 },
 server: {
   fs: { allow: [repoRoot] },  // 允许开发服务器读 site 目录以外的 js/ 与 pkg/
+  headers: COOP_COEP_HEADERS, // Cross-Origin Isolation，Worker 回图才能用 SAB
+},
+preview: {
+  headers: COOP_COEP_HEADERS,
 },
 assetsInclude: ['**/*.wasm'],
 optimizeDeps: {

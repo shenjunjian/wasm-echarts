@@ -149,6 +149,9 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 - `lazyUpdate` / `silent` 同步 flush。
 - default export 是 wasm-bindgen `initWasm`，不是 echarts 命名空间对象。
 - tooltip 为 facade 内建简单 string HTML，不是官方 TooltipView。
+- `opts.useWorker` 为非官方开关（默认 `false`）。`true` 时 Worker 持实例，主线程只 blit / 事件 / tooltip；无 Worker 时 warn 并回退主线程。不要自己 `new Worker`。
+- Worker 仅支持可结构化克隆的 option：`formatter` / `renderItem` 等函数必须走默认主线程。`useWorker` 时 `setOption` 返回 Promise；`getZr()` 不可用。
+- **option 方向一律不用 SharedArrayBuffer**（含 TypedArray 数据）。SAB 只用于 Worker → 主线程回传 RGBA，站点需 `COOP: same-origin` + `COEP: require-corp`；不可用时 fallback Transferable。同线程路径不强制 SAB。
 
 #### 3. 多出来的非官方 API
 
@@ -161,11 +164,12 @@ wasm-echarts-rs/crates/wasm-echarts/pkg/
 | `applyDataZoomWheel` / `getTooltipContent` / `benchmarkRender` | 非官方；滚轮已绑定、tooltip 已内建 DOM、bench |
 | `registerFont` / `clearFonts` | WASM 字体例外；轴标签 / series label 渲染前必调 |
 | `hasOption` / `optionHasFunctions` | 状态查询（非官方） |
+| `opts.useWorker` | 把实例放到 Worker；开发者仍写 `init` / `setOption` / `on` |
 
 #### 4. 已实现 / 未实现
 
-- **已实现（部分生效）**：官方 `export/charts.ts` 23 种图（含 chord）canvas 终态；`custom` `renderItem` + `api.coord`/`size`/`style`；line / bar / pie / scatter 的 canvas option 族（含 polar 与 y 类目横画）；多 cartesian（grid / 轴 / time / log / `breaks` / `jitter`）；polar / radar / singleAxis / parallel / calendar / matrix / geo 坐标系；dataset / transform / encode / stack / sampling；`option.media` 按宽高切 option；`labelLayout` 终态避让；`getZr` 共用 Storage；`graphic`/`util`/`time` 等命名空间与 `throttle`；legend 点击筛选、title 布局、mark*、`option.graphic`、visualMap、dataZoom slider + inside、十字 axisPointer、`tooltip.trigger: 'axis'`、brush、timeline、toolbox canvas 按钮、thumbnail；`registerTransform` 与扩展注册真表（`registerPreprocessor` / `Processor` / `Layout` / `Visual` / `Action` / `CoordinateSystem` / `CustomSeries`）；`showLoading` 静态遮罩；`getDataURL`/`renderToCanvas`；`connect`/`registerTheme`/`registerMap`/`parseGeoJSON`；`appendData`/`containPixel`；`axisLabel.formatter`；series label；CallbackDataParams；`convertToPixel` 含非 cartesian finder；`on`/`off` 指针事件；内建 string tooltip；`showTip`/`hideTip`；hover / toggleSelect。
-- **未实现（不是永久例外）**：已导出只 `console.warn` 的有 `registerLocale` / `convertToLayout` / `getVisual` / `renderToSVGString` / `getSvgDataURL` / `getModel`。`smoothMonotone`、完整 SeriesData、pie 完整 `avoidLabelOverlap` / `padAngle`、bar `large`（官网 `bar-large` 50 万柱会卡死）、scatter 统计插件 `ecStat`、`candlestick-large`（20 万 OHLC 卡死）、`heatmap-bmap` 无百度地图扩展、treemap 大树 / `levels` 色映射 WASM panic、`parallel-nutrients` 约 1.4 万条折线无 `progressive` 会卡死、`lines-ny` 分片 bin 未同步，见 [AGENT.md](AGENT.md) 与 [echarts 文档](wasm-echarts-rs/site/echarts/docs/index.html)。未识别的 `series.type` 会 warn，不再静默忽略。官网 27 类 catalog 去重 296 条已进画廊；第 8.9 波全量 probe **281/296 ok**。
+- **已实现（部分生效）**：官方 `export/charts.ts` 23 种图（含 chord）canvas 终态；`custom` `renderItem` + `api.coord`/`size`/`style`；line / bar / pie / scatter 的 canvas option 族（含 polar 与 y 类目横画）；多 cartesian（grid / 轴 / time / log / `breaks` / `jitter`）；polar / radar / singleAxis / parallel / calendar / matrix / geo 坐标系；dataset / transform / encode / stack / sampling；`option.media` 按宽高切 option；`labelLayout` 终态避让；`getZr` 共用 Storage；`graphic`/`util`/`time` 等命名空间与 `throttle`；legend 点击筛选、title 布局、mark*、`option.graphic`、visualMap、dataZoom slider + inside、十字 axisPointer、`tooltip.trigger: 'axis'`、brush、timeline、toolbox canvas 按钮、thumbnail；`registerTransform` 与扩展注册真表（`registerPreprocessor` / `Processor` / `Layout` / `Visual` / `Action` / `CoordinateSystem` / `CustomSeries`）；`showLoading` 静态遮罩；`getDataURL`/`renderToCanvas`；`connect`/`registerTheme`/`registerMap`/`parseGeoJSON`；`appendData`/`containPixel`；`axisLabel.formatter`；series label；CallbackDataParams；`convertToPixel` 含非 cartesian finder；`on`/`off` 指针事件；内建 string tooltip；`showTip`/`hideTip`；hover / toggleSelect；可选 `useWorker`（大数据示例）。
+- **未实现（不是永久例外）**：已导出只 `console.warn` 的有 `registerLocale` / `convertToLayout` / `getVisual` / `renderToSVGString` / `getSvgDataURL` / `getModel`。`smoothMonotone`、完整 SeriesData、pie 完整 `avoidLabelOverlap` / `padAngle`、bar `large`（无增量绘制；画廊 `bar-large` 走 `useWorker` 避免主线程卡死）、scatter 统计插件 `ecStat`、`candlestick-large` / `parallel-nutrients`（同样走 `useWorker`，Worker 内仍是长任务）、`heatmap-bmap` 无百度地图扩展、treemap 大树 / `levels` 色映射 WASM panic、`lines-ny` 分片 bin 未同步，见 [AGENT.md](AGENT.md) 与 [echarts 文档](wasm-echarts-rs/site/echarts/docs/index.html)。未识别的 `series.type` 会 warn，不再静默忽略。官网 27 类 catalog 去重 296 条已进画廊；第 8.9 波全量 probe **281/296 ok**。每个 `examples/*.js` 自己 `init`/`setOption`，不经 `runOfficialExample`。
 
 native `EChartsInstance`（`wasm_echarts.d.ts`）是内部 handle，不要从 site 直接 `new`。
 
