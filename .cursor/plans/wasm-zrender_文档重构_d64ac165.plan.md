@@ -4,7 +4,7 @@ overview: 把项目起因与 rust-zrender / wasm-zrender / wasm-echarts 定位�
 todos:
   - id: homepage-nav
     content: 改写 site/index.html：起因介绍 + 三层定位；去掉产品卡片；全站顶栏挂 wasm-zrender / wasm-echarts
-    status: pending
+    status: completed
   - id: docs-shell
     content: 新增 docs-shell.js + layout.css 侧栏布局（当前页高亮、移动端折叠、徽章）；顶栏与首页同一套产品菜单
     status: pending

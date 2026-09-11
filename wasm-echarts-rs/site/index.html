@@ -7,70 +7,112 @@
   <link rel="stylesheet" href="/src/shared/layout.css" />
 </head>
 <body>
-  <header class="site-header">
-    <a class="brand" href="/">wasm-echarts</a>
-  </header>
+  <header class="site-header"></header>
 
   <main class="page page-narrow">
     <h1>WebAssembly 图表渲染</h1>
     <p class="lead">
-      用 Rust 重写 zrender 渲染内核，并在浏览器侧提供 wasm-zrender 与 wasm-echarts 两个 WASM 产物。
+      用 WASM 实现 ECharts 的 canvas 能力，把渲染内核做成可带到其他语言平台的 Rust 库。
+      宿主只负责把终态图像贴上 canvas，或拿走像素。
     </p>
 
     <section>
-      <h2>项目缘由</h2>
+      <h2>起因介绍</h2>
       <div class="doc-section">
         <p>
-          官方 ECharts 的 canvas 渲染依赖 JavaScript 与 zrender。本项目将<strong>渲染层</strong>迁移到 Rust，
-          通过 wasm-bindgen 暴露给浏览器，目标包括：
+          官方 ECharts 的 canvas 渲染依赖 JavaScript 与 zrender。本仓库把<strong>渲染层</strong>迁到 Rust，
+          经 wasm-bindgen 交给浏览器或其他 WASM 宿主。目标不是再做一个「带 rAF 循环的前端图表库」，而是：
         </p>
         <ul>
-          <li><strong>性能</strong>：几何计算、绘制指令生成在 WASM 中执行，减少 JS 主线程开销</li>
-          <li><strong>可测试性</strong>：底层 <code>rust-zrender</code> 为纯 Rust crate，可用 <code>cargo test</code> 做像素级回归</li>
-          <li><strong>分层架构</strong>：<code>rust-zrender</code>（引擎）+ <code>wasm-zrender</code>（底层 API）+ <code>wasm-echarts</code>（图表 option 管线），职责清晰、可独立集成</li>
-          <li><strong>兼容路径</strong>：echarts 侧尽量对齐 <code>init</code> / <code>setOption</code> / 事件与交互语义，便于从官方 API 平滑迁移</li>
+          <li>用 WASM 覆盖 ECharts 的 canvas 绘制能力，公开 API 尽量与官方一致</li>
+          <li>把内核做成纯 Rust 库（<code>rust-zrender</code>），便于 <code>cargo test</code> 像素回归，以及未来到 Wasmer 等非浏览器平台</li>
+          <li>浏览器只把离屏画好的 RGBA 写回 canvas（或把图像交给外部），WASM 不直接操作 DOM 2D context</li>
         </ul>
+        <p>
+          因此<strong>不做动画中间帧</strong>：要的是一帧终态图像，而不是 <code>requestAnimationFrame</code> 循环。
+          <code>setOption</code>、图元 <code>animate</code> / <code>when().start()</code> 都直接落到最后一组目标属性。
+        </p>
+      </div>
+    </section>
+
+    <section>
+      <h2>三层定位</h2>
+      <div class="doc-section">
+        <p>三个 crate 职责不重叠。文档站从顶栏进入 wasm-zrender / wasm-echarts。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>层</th>
+              <th>路径</th>
+              <th>给谁用</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>rust-zrender</strong></td>
+              <td><code>crates/rust-zrender</code></td>
+              <td>纯 Rust 引擎；无 wasm-bindgen；可 <code>cargo test</code> / 未来 Wasmer</td>
+            </tr>
+            <tr>
+              <td><strong>wasm-zrender</strong></td>
+              <td><code>crates/wasm-zrender</code></td>
+              <td>对齐官方 zrender 图元 API；文档站与「直接构图」用户</td>
+            </tr>
+            <tr>
+              <td><strong>wasm-echarts</strong></td>
+              <td><code>crates/wasm-echarts</code></td>
+              <td>对齐官方 <code>init</code> / <code>setOption</code>；内部用同一份 <code>ZRenderer</code>，不经第二份 zrender wasm</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="layer-map" role="img" aria-label="site 分别导入 wasm-zrender 与 wasm-echarts 的 js facade，再经各自 pkg 到达同一份 rust-zrender">
+          <div class="layer-map-row">
+            <span class="layer-chip">site</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip">wasm-zrender/js</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip">pkg/</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip is-engine">rust-zrender</span>
+          </div>
+          <div class="layer-map-row">
+            <span class="layer-chip">site</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip">wasm-echarts/js</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip">pkg/</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip is-engine">rust-zrender</span>
+          </div>
+          <p class="layer-map-note">
+            wasm-zrender 与 wasm-echarts 为 sibling，共用同一份 <code>ZRenderer</code>。
+            echarts 页不得再加载 <code>wasm-zrender/pkg</code>。
+          </p>
+        </div>
+
+        <p>
+          从顶栏进入
+          <a href="/zrender/docs/">wasm-zrender 文档</a>
+          或
+          <a href="/echarts/docs/">wasm-echarts 文档</a>。
+        </p>
       </div>
     </section>
 
     <section>
       <h2>已知限制</h2>
       <div class="notice">
-        <p>明确不做、以及尚未落地的 canvas 能力（按计划补齐）：</p>
+        <p>刻意不做、以及尚未补齐的 canvas 能力（其余按计划对齐，不是永久砍掉）：</p>
         <ul>
-          <li>不支持 SVG 渲染模式；仅 canvas（WASM 出 RGBA → JS 写 ImageData）</li>
-          <li>无动画中间帧 / morph；setOption 后为即时全量重绘</li>
+          <li>仅 canvas：无 SVG painter / hover layer / dirty rect；WASM 出 RGBA，JS 再 <code>putImageData</code></li>
+          <li>无动画中间帧 / morph；<code>setOption</code> 与图元动画都是即时终态</li>
           <li>toolbox DataView 浮层、SaveAsImage DOM 下载条不做；<code>showLoading</code> 不播旋转动画</li>
-          <li>tooltip 以字符串 DOM 为主；其余 canvas 图表/组件见 echarts 文档「未实现」表，按全量对齐计划补齐</li>
-          <li>与官方 ECharts 的差异、非官方 hatch、已实现/未实现见各产品文档四块</li>
+          <li>tooltip 以字符串 DOM 为主；图表与组件缺口见 wasm-echarts 文档「未实现」表</li>
         </ul>
-        <p style="margin: 0.75rem 0 0;">
-          详细 API 与差异说明见各产品文档页。
-        </p>
-      </div>
-    </section>
-
-    <section>
-      <h2>产品入口</h2>
-      <div class="card-grid">
-        <article class="card">
-          <h3>wasm-zrender</h3>
-          <p>底层 2D 渲染：图元、文本、命中检测、emphasis 状态。适合验证 rust-zrender 能力与集成 WASM 薄封装。</p>
-          <div class="card-actions">
-            <a class="btn btn-primary" href="./zrender/docs/">文档</a>
-            <a class="btn" href="./zrender/examples/">实例</a>
-          </div>
-        </article>
-        <article class="card">
-          <h3>wasm-echarts</h3>
-          <p>图表 option 管线：line / bar / pie / scatter、hover / select / dataZoom / tooltip 等交互。</p>
-          <div class="card-actions">
-            <a class="btn btn-primary" href="./echarts/docs/">文档</a>
-            <a class="btn" href="./echarts/examples/">实例</a>
-          </div>
-        </article>
       </div>
     </section>
   </main>
+  <script type="module" src="/src/shared/site-header.js"></script>
 </body>
 </html>
