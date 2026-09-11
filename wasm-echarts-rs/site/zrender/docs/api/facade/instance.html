@@ -12,7 +12,245 @@
     <aside class="docs-sidebar"></aside>
     <main class="docs-main">
       <h1>ZRender 实例</h1>
-      <p class="lead">add / refresh / resize / 事件与图层相关方法。</p>
+      <p class="lead">
+        <code>init</code> 返回的 facade 包装 native handle。
+        图元用 <code>add</code> 挂上；绑了 canvas 时多数变更会自动上屏。
+      </p>
+
+      <div class="doc-section">
+        <h3><code>add</code> / <code>remove</code> / <code>clear</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>增删根节点。有 DOM 时随后 <code>putImageData</code>。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>方法</th>
+              <th>参数</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>add(el)</code></td>
+              <td>Element / Shape / Group</td>
+              <td>挂到根；返回 <code>this</code></td>
+            </tr>
+            <tr>
+              <td><code>remove(el)</code></td>
+              <td>已添加的图元</td>
+              <td>从根卸下</td>
+            </tr>
+            <tr>
+              <td><code>clear()</code></td>
+              <td>—</td>
+              <td>清空本实例图元</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>zr.add(new Rect({ shape: { x: 8, y: 8, width: 80, height: 40 }, style: { fill: '#5470c6' } }));
+zr.remove(rect);
+zr.clear();</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>refresh()</code> / <code>flush()</code> <span class="doc-badge doc-badge-official">官方</span> <span class="doc-badge doc-badge-extra">补充</span></h3>
+        <p>
+          官方返回 <code>void</code>。这里同步离屏绘制并返回 RGBA 字节数组（长度
+          <code>width × height × 4</code>）。<code>flush</code> 与 <code>refresh</code> 相同。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>返回</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>像素缓冲</td>
+              <td><code>Uint8Array</code></td>
+              <td>行优先 RGBA；离屏路径用它 <code>putImageData</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>const rgba = zr.refresh();
+ctx.putImageData(
+  new ImageData(new Uint8ClampedArray(rgba), zr.width(), zr.height()),
+  0, 0,
+);</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>width()</code> / <code>height()</code> / <code>dpr()</code> <span class="doc-badge doc-badge-extra">补充</span></h3>
+        <p>
+          简写 getter。官方常用 <code>getWidth()</code> / <code>getHeight()</code>（同样导出，语义相同）。
+        </p>
+        <pre>const w = zr.width();
+const h = zr.getHeight();
+const dpr = zr.dpr();</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>resize(opts)</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>按 <code>width</code> / <code>height</code> / <code>dpr</code>（或 <code>devicePixelRatio</code>）重建离屏缓冲。规则与 <code>init</code> 的 opts 相同。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>参数</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>opts.width</code></td>
+              <td><code>number</code></td>
+              <td>默认 300</td>
+            </tr>
+            <tr>
+              <td><code>opts.height</code></td>
+              <td><code>number</code></td>
+              <td>默认 150</td>
+            </tr>
+            <tr>
+              <td><code>opts.dpr</code></td>
+              <td><code>number</code></td>
+              <td>默认 1</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>zr.resize({ width: 640, height: 400, dpr: 2 });</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>findHover(x, y)</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>在逻辑坐标上做命中（kurbo，不靠浏览器 <code>isPointInPath</code>）。未命中返回 <code>undefined</code>。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>参数 / 返回</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>x</code> <code>y</code></td>
+              <td><code>number</code></td>
+              <td>逻辑坐标</td>
+            </tr>
+            <tr>
+              <td>返回</td>
+              <td><code>{ target, topTarget }</code></td>
+              <td><code>HoverResult</code>；顶层与命中目标</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>const hit = zr.findHover(40, 40);
+if (hit) console.log(hit.target.type);</pre>
+        <p>对照 <a href="/zrender/examples/hit.html">hit 示例</a>。</p>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>on</code> / <code>off</code> / <code>trigger</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>实例级事件。有 canvas 时 facade 绑定 pointer，再转成 zrender 事件名。无 DOM 时用 <code>zr.handler.dispatch</code>。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>方法</th>
+              <th>参数</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>on(event, handler)</code></td>
+              <td><code>string</code>, <code>Function</code></td>
+              <td>注册；<code>js_sys::Function</code> 存在 registry</td>
+            </tr>
+            <tr>
+              <td><code>off(event?, handler?)</code></td>
+              <td>事件名可选；handler 可选</td>
+              <td>不传 handler 则清该事件全部监听</td>
+            </tr>
+            <tr>
+              <td><code>trigger(event, packet?)</code></td>
+              <td><code>string</code>, 任意</td>
+              <td>手动派发</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>zr.on('click', (e) => console.log(e.target));
+zr.off('click');</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>setBackgroundColor</code> / <code>getBackgroundColor</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>CSS 颜色字符串；<code>null</code> / <code>undefined</code> 清掉背景。绑 canvas 时立刻上屏。</p>
+        <pre>zr.setBackgroundColor('#f5f5f5');
+zr.getBackgroundColor(); // '#f5f5f5'</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>setCursorStyle(cursorStyle)</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>有 canvas 时写 <code>canvas.style.cursor</code>。空值当 <code>'default'</code>。</p>
+        <pre>zr.setCursorStyle('pointer');</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>configLayer(zLevel, config)</code> <span class="doc-badge doc-badge-degraded">降级</span></h3>
+        <p>
+          官方用来配分层 canvas。这里没有独立 layer：调用后只触发一次
+          <code>paint_if_bound</code>（有 DOM 就上屏），忽略 <code>zLevel</code> / <code>config</code>。
+        </p>
+        <pre>zr.configLayer(1, { motionBlur: true });</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>painter</code> <span class="doc-badge doc-badge-degraded">降级</span></h3>
+        <p>
+          占位对象：<code>type === 'canvas'</code>，<code>getViewportRoot()</code> 返回绑定的 canvas。
+          <code>getSvgDom()</code> 只 <code>console.warn</code> 并返回 <code>null</code>（无 SVG painter）。
+        </p>
+        <pre>zr.painter.getType(); // 'canvas'
+zr.painter.getSvgDom(); // null，并 warn</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>handler</code> / <code>animation</code> / <code>id</code> / <code>dispose</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <table>
+          <thead>
+            <tr>
+              <th>成员</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>id</code></td>
+              <td>实例数字 id，给 <code>getInstance</code></td>
+            </tr>
+            <tr>
+              <td><code>handler</code></td>
+              <td>见 <a href="./animation.html">动画与事件</a>；无 DOM 时 <code>dispatch</code></td>
+            </tr>
+            <tr>
+              <td><code>animation</code></td>
+              <td>无帧循环；<code>on('frame')</code> 空操作</td>
+            </tr>
+            <tr>
+              <td><code>dispose()</code></td>
+              <td>从实例表删除并释放 native</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        上一章 <a href="./lifecycle.html">生命周期</a>
+        · 下一章
+        <a href="./element.html">Element / Displayable / Path / Group</a>
+      </p>
     </main>
   </div>
   <script type="module" src="/src/shared/docs-shell.js"></script>

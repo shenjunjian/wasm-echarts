@@ -12,7 +12,192 @@
     <aside class="docs-sidebar"></aside>
     <main class="docs-main">
       <h1>生命周期</h1>
-      <p class="lead">init / dispose / getInstance / registerFont 等顶层函数。</p>
+      <p class="lead">
+        顶层函数：先 <code>await initWasm()</code>，再 <code>init</code>。
+        有文字时必须先 <code>registerFont</code>。
+      </p>
+
+      <div class="doc-section">
+        <h3><code>init(dom?, opts?)</code> <span class="doc-badge doc-badge-official">官方</span> <span class="doc-badge doc-badge-extra">补充</span></h3>
+        <p>
+          创建 <code>ZRender</code> 实例。尺寸只来自 <code>opts</code>（不读 DOM 的 CSS 宽高）。
+          <code>dom</code> 可为 canvas、内含 canvas 的容器，或 <code>null</code>（离屏；官方客户端无 DOM 会抛错）。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>参数</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>dom</code></td>
+              <td><code>HTMLCanvasElement | HTMLElement | null</code></td>
+              <td>绑 canvas 则指针事件 + 自动 <code>putImageData</code>；<code>null</code> 纯离屏</td>
+            </tr>
+            <tr>
+              <td><code>opts.width</code></td>
+              <td><code>number</code></td>
+              <td>默认 <code>300</code>；必须 &gt; 0</td>
+            </tr>
+            <tr>
+              <td><code>opts.height</code></td>
+              <td><code>number</code></td>
+              <td>默认 <code>150</code>；必须 &gt; 0</td>
+            </tr>
+            <tr>
+              <td><code>opts.dpr</code> / <code>devicePixelRatio</code></td>
+              <td><code>number</code></td>
+              <td>默认 <code>1</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>const zr = init(canvas, { width: 480, height: 360, dpr: 1 });
+const offscreen = init(null, { width: 480, height: 360 });</pre>
+        <p>
+          绑了 canvas 时，把 <code>canvas.width</code> / <code>canvas.height</code> 设成与 opts 一致；上屏不改位图尺寸。
+          对照
+          <a href="/zrender/examples/bounding_box.html">Bounding Box</a>、
+          <a href="/zrender/examples/hello_world.html">Hello World</a>。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>dispose(zr)</code> / <code>disposeAll()</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>
+          <code>dispose</code> 释放单个实例（也可用 <code>zr.dispose()</code>）。
+          <code>disposeAll</code> 清空全部实例与元素表，并解绑指针。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>参数</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>zr</code></td>
+              <td>facade <code>ZRender</code> 或 native handle</td>
+              <td>优先调实例 <code>dispose</code>；否则按 handle <code>id</code> 从注册表删除</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>dispose(zr);
+disposeAll();</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>getInstance(id)</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>按实例 <code>id</code> 取回已包装的 facade；缓存没有再包一层 native handle。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>参数</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>id</code></td>
+              <td><code>number</code></td>
+              <td><code>zr.id</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>const again = getInstance(zr.id);</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>version</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>字符串常量 <code>'6.1.0'</code>，对齐官方 zrender 版本号。</p>
+        <pre>import { version } from '@wasm-zrender';
+console.log(version); // '6.1.0'</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>registerPainter(name, Ctor)</code> <span class="doc-badge doc-badge-degraded">降级</span></h3>
+        <p>
+          只把 painter 记进 Map。后端固定离屏 canvas，不会按名字切换 SVG / 其它 painter。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>参数</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>name</code></td>
+              <td><code>string</code></td>
+              <td>painter 名，例如 <code>'canvas'</code></td>
+            </tr>
+            <tr>
+              <td><code>Ctor</code></td>
+              <td>任意</td>
+              <td>仅存储，不会实例化</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>registerPainter('canvas', function CanvasPainter() {});</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>registerFont(data, opts?)</code> <span class="doc-badge doc-badge-extra">补充</span></h3>
+        <p>
+          向全局 fontdb 注入 TTF / OTF / WOFF。未注册时含 Text 的 <code>refresh</code> 会
+          <code>no default font found</code>。完整规则见
+          <a href="../../fonts.html">字体引用</a>。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>参数</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>data</code></td>
+              <td><code>Uint8Array</code></td>
+              <td>字体文件 bytes</td>
+            </tr>
+            <tr>
+              <td><code>opts.familyName</code></td>
+              <td><code>string?</code></td>
+              <td>覆盖族名；不传则读 name table</td>
+            </tr>
+            <tr>
+              <td><code>opts.sansSerif</code></td>
+              <td><code>string[]?</code></td>
+              <td>把 CSS <code>sans-serif</code> 映射到这些族名</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>registerFont(bytes, {
+  familyName: 'Noto Sans SC',
+  sansSerif: ['Noto Sans SC'],
+});</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>clearFonts()</code> <span class="doc-badge doc-badge-extra">补充</span></h3>
+        <p>清空已注册字体，主要用于测试；会热更新已有实例的 fontdb。</p>
+        <pre>clearFonts();</pre>
+      </div>
+
+      <p>
+        上一章 <a href="./">总览与约定</a>
+        · 下一章
+        <a href="./instance.html">ZRender 实例</a>
+      </p>
     </main>
   </div>
   <script type="module" src="/src/shared/docs-shell.js"></script>

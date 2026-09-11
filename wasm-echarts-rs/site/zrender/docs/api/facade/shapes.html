@@ -12,7 +12,292 @@
     <aside class="docs-sidebar"></aside>
     <main class="docs-main">
       <h1>图元（Shape / Text / Image）</h1>
-      <p class="lead">各 Shape 的 shape 字段、Text / Image 与 IncrementalDisplayable。</p>
+      <p class="lead">
+        各 Shape 的 <code>shape</code> 字段以 <code>bridge/shape.rs</code> 为准。
+        默认 style：Line 等描边图元 stroke 无 fill；Text 默认 fill <code>#000</code>。
+      </p>
+
+      <div class="notice">
+        <p>
+          描边默认（<code>stroke: '#000'</code>、<code>fill: null</code>）的类型：
+          <code>Line</code>、<code>Polyline</code>、<code>BezierCurve</code>、<code>Arc</code>、
+          <code>Rose</code>、<code>Trochoid</code>。其余 Path 默认填充 <code>#000</code>、无描边。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3>Rect / Circle / Ellipse / Ring <span class="doc-badge doc-badge-official">官方</span></h3>
+        <table>
+          <thead>
+            <tr>
+              <th>类</th>
+              <th><code>shape</code> 字段</th>
+              <th>默认</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>Rect</code></td>
+              <td><code>x</code> <code>y</code> <code>width</code> <code>height</code> <code>r</code></td>
+              <td><code>r</code> 为圆角，数字或数组</td>
+            </tr>
+            <tr>
+              <td><code>Circle</code></td>
+              <td><code>cx</code> <code>cy</code> <code>r</code></td>
+              <td>全 0</td>
+            </tr>
+            <tr>
+              <td><code>Ellipse</code></td>
+              <td><code>cx</code> <code>cy</code> <code>rx</code> <code>ry</code></td>
+              <td>全 0</td>
+            </tr>
+            <tr>
+              <td><code>Ring</code></td>
+              <td><code>cx</code> <code>cy</code> <code>r</code> <code>r0</code></td>
+              <td>内半径 <code>r0</code> 默认 0</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>new Rect({
+  shape: { x: 8, y: 8, width: 80, height: 40, r: [4, 8, 4, 8] },
+  style: { fill: '#5470c6' },
+});</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3>Sector / Arc <span class="doc-badge doc-badge-official">官方</span></h3>
+        <table>
+          <thead>
+            <tr>
+              <th>类</th>
+              <th>字段</th>
+              <th>默认</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>Sector</code></td>
+              <td><code>cx</code> <code>cy</code> <code>r</code> <code>r0</code> <code>startAngle</code> <code>endAngle</code> <code>clockwise</code> <code>cornerRadius</code> <code>percent</code></td>
+              <td><code>r0=0</code>；<code>endAngle=2π</code>；<code>clockwise=true</code>；<code>percent=1</code></td>
+            </tr>
+            <tr>
+              <td><code>Arc</code></td>
+              <td><code>cx</code> <code>cy</code> <code>r</code> <code>startAngle</code> <code>endAngle</code> <code>clockwise</code></td>
+              <td>同 Sector 的角；描边默认</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>new Sector({
+  shape: { cx: 80, cy: 80, r: 60, r0: 20, startAngle: 0, endAngle: Math.PI, clockwise: true },
+});</pre>
+        <p>对照 <a href="/zrender/examples/sector.html">sector</a>。</p>
+      </div>
+
+      <div class="doc-section">
+        <h3>Line / Polyline / Polygon / BezierCurve <span class="doc-badge doc-badge-official">官方</span></h3>
+        <table>
+          <thead>
+            <tr>
+              <th>类</th>
+              <th>字段</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>Line</code></td>
+              <td><code>x1</code> <code>y1</code> <code>x2</code> <code>y2</code> <code>percent</code></td>
+              <td><code>percent</code> 默认 1；描边无 fill</td>
+            </tr>
+            <tr>
+              <td><code>Polyline</code></td>
+              <td><code>points</code> <code>percent</code> <code>smooth</code> <code>smoothConstraint</code></td>
+              <td><code>points</code> 为 <code>[x,y][]</code></td>
+            </tr>
+            <tr>
+              <td><code>Polygon</code></td>
+              <td><code>points</code> <code>smooth</code> <code>smoothConstraint</code></td>
+              <td>闭合；<code>smooth</code> 默认 0</td>
+            </tr>
+            <tr>
+              <td><code>BezierCurve</code></td>
+              <td><code>x1 y1 x2 y2 cpx1 cpy1</code> 可选 <code>cpx2 cpy2</code> <code>percent</code></td>
+              <td>二次或三次；描边默认</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>new Line({ shape: { x1: 0, y1: 0, x2: 80, y2: 40 } });
+new Polygon({ shape: { points: [[0, 0], [40, 0], [20, 30]], smooth: 0.3 } });</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3>Star / Isogon / Heart / Droplet / Rose / Trochoid <span class="doc-badge doc-badge-official">官方</span></h3>
+        <table>
+          <thead>
+            <tr>
+              <th>类</th>
+              <th>字段</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>Star</code></td>
+              <td><code>cx</code> <code>cy</code> <code>n</code>（默认 3）<code>r</code> 可选 <code>r0</code></td>
+            </tr>
+            <tr>
+              <td><code>Isogon</code></td>
+              <td><code>x</code> <code>y</code> <code>r</code> <code>n</code></td>
+            </tr>
+            <tr>
+              <td><code>Heart</code> / <code>Droplet</code></td>
+              <td><code>cx</code> <code>cy</code> <code>width</code> <code>height</code></td>
+            </tr>
+            <tr>
+              <td><code>Rose</code></td>
+              <td><code>cx</code> <code>cy</code> <code>r</code>（数组）<code>k</code> <code>n</code>（默认 1）；描边默认</td>
+            </tr>
+            <tr>
+              <td><code>Trochoid</code></td>
+              <td><code>cx cy r r0 d location</code>（<code>location</code> 默认 <code>'out'</code>）；描边默认</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>new Star({ shape: { cx: 60, cy: 60, n: 5, r: 40, r0: 18 }, style: { fill: '#fac858' } });</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3>Path / CompoundPath <span class="doc-badge doc-badge-official">官方</span></h3>
+        <table>
+          <thead>
+            <tr>
+              <th>类</th>
+              <th>字段</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>Path</code></td>
+              <td><code>shape.pathData</code></td>
+              <td>SVG path 字符串</td>
+            </tr>
+            <tr>
+              <td><code>CompoundPath</code></td>
+              <td><code>shape.paths</code></td>
+              <td>子 path 数组：带 <code>type</code>+<code>shape</code>，或直接 <code>pathData</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>new Path({ shape: { pathData: 'M0 0 L40 0 L20 30 Z' } });</pre>
+        <p>对照 <a href="/zrender/examples/shapes.html">shapes</a>。</p>
+      </div>
+
+      <div class="doc-section">
+        <h3>Text <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>
+          默认 <code>style.fill = '#000'</code>。渲染前必须
+          <a href="../../fonts.html">registerFont</a>。引擎当前解析的文本字段：
+          <code>fill</code> / <code>textFill</code>、<code>fontSize</code>（默认 12）、
+          <code>fontFamily</code>（默认 <code>sans-serif</code>）、
+          <code>align</code> / <code>textAlign</code>、
+          <code>verticalAlign</code> / <code>baseline</code>。RichText / <code>textContent</code> 后置。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>字段</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>style.text</code></td>
+              <td>字符串内容</td>
+            </tr>
+            <tr>
+              <td><code>style.x</code> <code>style.y</code></td>
+              <td>文本锚点（与元素 <code>x/y</code> 叠加）</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>new Text({
+  style: { text: 'wasm-zrender', x: 24, y: 48, fontSize: 18, fontFamily: 'Noto Sans SC' },
+});</pre>
+        <p>对照 <a href="/zrender/examples/text.html">text</a>。</p>
+      </div>
+
+      <div class="doc-section">
+        <h3>Image / TSpan <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>
+          Image 的 <code>style.image</code> 须是已 decode 的
+          <code>HTMLImageElement</code> / <code>HTMLCanvasElement</code>，或带
+          <code>imageWidth</code> / <code>imageHeight</code> 的 <code>Uint8Array</code>。
+          URL 字符串同步路径会失败。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>字段</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>style.x</code> <code>y</code> <code>width</code> <code>height</code></td>
+              <td>绘制矩形；宽高可省略（用源尺寸）</td>
+            </tr>
+            <tr>
+              <td><code>style.sx sy sWidth sHeight</code></td>
+              <td>源裁剪</td>
+            </tr>
+            <tr>
+              <td><code>TSpan</code></td>
+              <td>存在构造；富文本自动布局后置</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>new Image({
+  style: { image: imgEl, x: 0, y: 0, width: 80, height: 80 },
+});</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3>IncrementalDisplayable <span class="doc-badge doc-badge-degraded">降级</span></h3>
+        <p>
+          facade 可构造，语义是普通 Group（绑 <code>native.Group</code>），不是增量图层。
+          pkg 的同名类构造抛错。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>方法</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>addDisplayable(el, notPersistent?)</code></td>
+              <td>持久或临时列表，并 <code>add</code> 到 Group</td>
+            </tr>
+            <tr>
+              <td><code>clearDisplayables</code> / <code>clearTemporalDisplayables</code></td>
+              <td>卸下子节点（含官方拼写 <code>clearDisplaybles</code>）</td>
+            </tr>
+            <tr>
+              <td><code>getCursor</code> / <code>innerAfterBrush</code></td>
+              <td>游标只在 JS 侧走动，不改变绘制策略</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>const inc = new IncrementalDisplayable();
+inc.addDisplayable(new Rect({ shape: { x: 0, y: 0, width: 10, height: 10 } }));</pre>
+      </div>
+
+      <p>
+        上一章 <a href="./element.html">Element 系</a>
+        · 下一章
+        <a href="./style.html">样式与几何</a>
+      </p>
     </main>
   </div>
   <script type="module" src="/src/shared/docs-shell.js"></script>

@@ -12,7 +12,216 @@
     <aside class="docs-sidebar"></aside>
     <main class="docs-main">
       <h1>动画与事件</h1>
-      <p class="lead">Animator 终态语义，Handler.dispatch 与指针绑定。</p>
+      <p class="lead">
+        不播中间帧：<code>when().start()</code> 立刻写入最后一组目标。
+        有 canvas 时绑定指针；mousemove 默认不上屏。
+      </p>
+
+      <div class="notice">
+        <p>
+          这是允许例外，不是未实现清单里的「以后再做」。
+          仓库要的是一帧终态图像，不是 rAF 循环。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>el.animate(path?, looping?)</code> <span class="doc-badge doc-badge-degraded">降级</span></h3>
+        <p>返回 JS <code>Animator</code>。<code>path</code> 为 <code>'shape'</code> / <code>'style'</code> 或空（整元素 <code>attr</code>）。<code>looping</code> 会记下但终态下无循环。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>参数</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>path</code></td>
+              <td><code>string?</code></td>
+              <td>属性路径</td>
+            </tr>
+            <tr>
+              <td><code>looping</code></td>
+              <td><code>boolean?</code></td>
+              <td>忽略播放，仅保存</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>circle.animate('shape')
+  .when(400, { cx: 200 })
+  .when(800, { cx: 320 })
+  .start();
+// 立刻停在 cx = 320</pre>
+        <p>对照 <a href="/zrender/examples/animation.html">animation</a>。</p>
+      </div>
+
+      <div class="doc-section">
+        <h3>Animator 链 <span class="doc-badge doc-badge-degraded">降级</span></h3>
+        <p><code>when</code> 只保留最后一帧。<code>start</code> 写入目标后立刻 <code>during(target, 1)</code> 与 <code>done</code>。<code>delay</code> / <code>stop</code> 空操作。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>方法</th>
+              <th>参数</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>when(time, props)</code></td>
+              <td>毫秒被忽略；props 对象</td>
+              <td>覆盖上一组终态</td>
+            </tr>
+            <tr>
+              <td><code>during(cb)</code></td>
+              <td><code>(target, percent)</code></td>
+              <td><code>start</code> 时 <code>percent === 1</code></td>
+            </tr>
+            <tr>
+              <td><code>done(cb)</code></td>
+              <td><code>()</code></td>
+              <td><code>start</code> 末尾调用</td>
+            </tr>
+            <tr>
+              <td><code>delay(time)</code></td>
+              <td>忽略</td>
+              <td>返回 this</td>
+            </tr>
+            <tr>
+              <td><code>start(easing?)</code></td>
+              <td>easing 忽略</td>
+              <td>立刻终态</td>
+            </tr>
+            <tr>
+              <td><code>stop()</code></td>
+              <td>—</td>
+              <td>空</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>el.animate()
+  .when(200, { x: 100 })
+  .during((target, p) => console.log(p))
+  .done(() => console.log('done'))
+  .start();</pre>
+        <p>对照 <a href="/zrender/examples/particles.html">particles</a>。</p>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>animateTo(target, cfg?)</code> <span class="doc-badge doc-badge-degraded">降级</span></h3>
+        <p>立刻 <code>attr(target)</code>，再调 <code>cfg.during(this, 1)</code> 与 <code>cfg.done</code>。没有缓动时间。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>参数</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>target</code></td>
+              <td><code>object</code></td>
+              <td>要写入的属性</td>
+            </tr>
+            <tr>
+              <td><code>cfg.during</code> / <code>cfg.done</code></td>
+              <td><code>Function?</code></td>
+              <td>同步回调</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>el.animateTo({ x: 80, y: 40 }, { done() {} });</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>zr.animation</code> <span class="doc-badge doc-badge-degraded">降级</span></h3>
+        <p>无帧循环。<code>on('frame')</code> / <code>off</code> 空操作。不要靠它做每帧 tick。</p>
+        <pre>zr.animation.on('frame', () => {});</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3>指针绑定 <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>
+          <code>init(canvas)</code> 绑定 <code>pointerdown/move/up/cancel</code>，转成 zrender 事件。
+          <code>add</code> / <code>attr</code> / 非 mousemove 事件后自动 <code>putImageData</code>。
+          <strong>mousemove 本身不上屏</strong>（避免每帧整幅 RGBA 拷贝）；拖拽改位置时会刷。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>宿主</th>
+              <th>行为</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>有 canvas</td>
+              <td>DOM 指针 → 命中 → <code>on</code> 回调</td>
+            </tr>
+            <tr>
+              <td><code>init(null)</code></td>
+              <td>无监听；用 <code>handler.dispatch</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>zr.on('click', (e) => console.log(e.target && e.target.type));
+el.on('mousedown', () => el.setStyle({ fill: '#ee6666' }));</pre>
+        <p>对照 <a href="/zrender/examples/hit.html">hit</a>、<a href="/zrender/examples/bounding_box.html">bounding_box</a>（拖拽）。</p>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>zr.handler.dispatch(name, event)</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>
+          官方 Handler 也有 <code>dispatch</code>。无 DOM / 测试时用它注入指针（wasm 离屏宿主靠这一条）。
+          坐标读 <code>zrX</code>/<code>zrY</code>，否则 <code>offsetX</code>/<code>offsetY</code>。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>参数</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>name</code></td>
+              <td><code>string</code></td>
+              <td>如 <code>'click'</code> <code>'mousemove'</code> <code>'mousedown'</code></td>
+            </tr>
+            <tr>
+              <td><code>event</code></td>
+              <td><code>{ zrX, zrY }</code></td>
+              <td>逻辑坐标</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>zr.handler.dispatch('click', { zrX: 40, zrY: 40 });</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>handler.setCursorStyle</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>与 <code>zr.setCursorStyle</code> 相同，写到绑定 canvas 的 CSS cursor。</p>
+        <pre>zr.handler.setCursorStyle('move');</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3>图元 <code>on</code> / <code>off</code> / <code>trigger</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>回调存在 native registry，命中后 <code>call1</code>。无 canvas 时同样可用 <code>trigger</code> 或 <code>handler.dispatch</code> 走到目标。</p>
+        <pre>rect.on('click', () => rect.useState('emphasis'));
+rect.trigger('click');
+rect.off('click');</pre>
+      </div>
+
+      <p>
+        上一章 <a href="./tools.html">工具模块</a>
+        · 下一步
+        <a href="../pkg/">pkg 导出 API</a>
+        ·
+        <a href="../../differences.html">与官方差异</a>
+      </p>
     </main>
   </div>
   <script type="module" src="/src/shared/docs-shell.js"></script>

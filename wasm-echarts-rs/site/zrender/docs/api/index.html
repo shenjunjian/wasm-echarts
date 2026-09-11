@@ -12,7 +12,62 @@
     <aside class="docs-sidebar"></aside>
     <main class="docs-main">
       <h1>API 参考</h1>
-      <p class="lead">默认走 JS facade（@wasm-zrender）；pkg 是 wasm-bindgen handle，单独成章。</p>
+      <p class="lead">
+        默认走 JS facade（<code>@wasm-zrender</code>）。
+        <code>pkg/</code> 是 wasm-bindgen handle，单独成章。
+      </p>
+
+      <div class="doc-section">
+        <h3>两层入口</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>层</th>
+              <th>导入</th>
+              <th>给谁用</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><a href="./facade/">JS facade</a></td>
+              <td><code>import initWasm, { init, Rect } from '@wasm-zrender'</code></td>
+              <td>业务代码。有原型链、工具命名空间、官方签名。</td>
+            </tr>
+            <tr>
+              <td><a href="./pkg/">pkg 导出</a></td>
+              <td>不要从业务直接 <code>import '../pkg/wasm_zrender.js'</code></td>
+              <td>调试、echarts 注入 native、或绕过原型链。</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          每条 API 带徽章：<span class="doc-badge doc-badge-official">官方</span>
+          对齐 <code>zrender-master</code> 的 <code>export.ts</code> /
+          <code>zrender.ts</code> / <code>Element.ts</code>；
+          <span class="doc-badge doc-badge-extra">补充</span> 是 wasm-zrender 多出来的；
+          <span class="doc-badge doc-badge-degraded">降级</span> 签名在、语义弱于官方。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3>JS facade 分页</h3>
+        <ul>
+          <li><a href="./facade/">总览与约定</a> — 导入、<code>default</code>、<code>_bindNative</code></li>
+          <li><a href="./facade/lifecycle.html">生命周期</a> — <code>init</code> / <code>dispose</code> / <code>registerFont</code></li>
+          <li><a href="./facade/instance.html">ZRender 实例</a> — <code>add</code> / <code>refresh</code> / 事件</li>
+          <li><a href="./facade/element.html">Element 系</a> — 变换、state、Group、Path.extend</li>
+          <li><a href="./facade/shapes.html">图元</a> — Shape / Text / Image 字段</li>
+          <li><a href="./facade/style.html">样式与几何</a> — 渐变、Pattern、Point、包围盒</li>
+          <li><a href="./facade/tools.html">工具模块</a> — <code>matrix</code> / <code>vector</code> / <code>color</code> 等</li>
+          <li><a href="./facade/animation.html">动画与事件</a> — Animator 终态、<code>Handler.dispatch</code></li>
+        </ul>
+      </div>
+
+      <p>
+        返回 <a href="../fonts.html">字体引用</a>
+        · 下一步
+        <a href="./facade/">JS facade API</a>
+      </p>
     </main>
   </div>
   <script type="module" src="/src/shared/docs-shell.js"></script>

@@ -12,7 +12,316 @@
     <aside class="docs-sidebar"></aside>
     <main class="docs-main">
       <h1>样式与几何</h1>
-      <p class="lead">渐变、Pattern，以及 Point / BoundingRect。</p>
+      <p class="lead">
+        Path 的 fill / stroke 可以是颜色字符串、渐变或 Pattern。
+        几何类 <code>Point</code> / <code>BoundingRect</code> / <code>OrientedBoundingRect</code> 对齐官方。
+      </p>
+
+      <div class="doc-section">
+        <h3>Path style 字段 <span class="doc-badge doc-badge-official">官方</span></h3>
+        <table>
+          <thead>
+            <tr>
+              <th>字段</th>
+              <th>默认</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>fill</code> / <code>stroke</code></td>
+              <td>见图元默认</td>
+              <td>颜色、<code>'none'</code>、渐变、Pattern</td>
+            </tr>
+            <tr>
+              <td><code>lineWidth</code></td>
+              <td><code>1</code></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td><code>opacity</code> / <code>fillOpacity</code> / <code>strokeOpacity</code></td>
+              <td><code>1</code></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td><code>lineDash</code></td>
+              <td>—</td>
+              <td>数组或字符串（<code>'dashed'</code> 等，按 <code>lineWidth</code> 展开）</td>
+            </tr>
+            <tr>
+              <td><code>lineDashOffset</code></td>
+              <td><code>0</code></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td><code>lineCap</code> / <code>lineJoin</code></td>
+              <td><code>butt</code> / <code>miter</code></td>
+              <td><code>round</code> / <code>square</code>；<code>round</code> / <code>bevel</code></td>
+            </tr>
+            <tr>
+              <td><code>miterLimit</code></td>
+              <td><code>10</code></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td><code>strokeFirst</code></td>
+              <td><code>false</code></td>
+              <td>先描边再填充</td>
+            </tr>
+            <tr>
+              <td><code>shadowBlur</code> / <code>shadowOffsetX/Y</code> / <code>shadowColor</code></td>
+              <td>0 / <code>rgba(0,0,0,0.3)</code></td>
+              <td>blur 与 offset 全 0 则无阴影</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>CSS filter、conic gradient 后置。</p>
+        <pre>rect.setStyle({
+  fill: '#5470c6',
+  stroke: '#333',
+  lineWidth: 2,
+  lineDash: 'dashed',
+  shadowBlur: 8,
+  shadowOffsetY: 4,
+});</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>LinearGradient</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <table>
+          <thead>
+            <tr>
+              <th>参数</th>
+              <th>类型</th>
+              <th>默认</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>x, y, x2, y2</code></td>
+              <td><code>number</code></td>
+              <td><code>0, 0, 1, 0</code>（NaN 时回落到这些）</td>
+            </tr>
+            <tr>
+              <td><code>colorStops</code></td>
+              <td><code>{ offset, color }[]</code></td>
+              <td>可空，再用 <code>addColorStop</code></td>
+            </tr>
+            <tr>
+              <td><code>globalCoord</code></td>
+              <td><code>boolean</code></td>
+              <td><code>false</code>（相对包围盒）</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>const g = new LinearGradient(0, 0, 1, 0, [
+  { offset: 0, color: '#5470c6' },
+  { offset: 1, color: '#91cc75' },
+]);
+g.addColorStop(0.5, '#fac858');
+rect.setStyle({ fill: g });</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>RadialGradient</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p><code>r0</code> 为内半径（官方有、vl-convert 缺，引擎已补）。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>参数</th>
+              <th>默认</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>x, y, r</code></td>
+              <td><code>0.5, 0.5, 0.5</code></td>
+            </tr>
+            <tr>
+              <td><code>colorStops</code></td>
+              <td>可选</td>
+            </tr>
+            <tr>
+              <td><code>globalCoord</code></td>
+              <td><code>false</code></td>
+            </tr>
+            <tr>
+              <td><code>r0</code></td>
+              <td><code>0</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>const rg = new RadialGradient(0.5, 0.5, 0.5, [
+  { offset: 0, color: '#fff' },
+  { offset: 1, color: '#5470c6' },
+], false, 0.15);
+circle.setStyle({ fill: rg });</pre>
+        <p>对照 <a href="/zrender/examples/hello_world.html">hello_world</a>。</p>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>Pattern</code> <span class="doc-badge doc-badge-official">官方</span> <span class="doc-badge doc-badge-extra">补充</span></h3>
+        <p>
+          构造：<code>new Pattern(image, repeat?)</code>。<code>repeat</code> 默认
+          <code>'repeat'</code>。图像源与 Image 图元相同。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>成员</th>
+              <th>徽章</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>image</code> / <code>repeat</code></td>
+              <td><span class="doc-badge doc-badge-official">官方</span></td>
+              <td>canvas / img / 已解码像素</td>
+            </tr>
+            <tr>
+              <td><code>x y scaleX scaleY rotation</code></td>
+              <td><span class="doc-badge doc-badge-official">官方</span></td>
+              <td>图案变换</td>
+            </tr>
+            <tr>
+              <td><code>imageData</code> <code>imageWidth</code> <code>imageHeight</code></td>
+              <td><span class="doc-badge doc-badge-extra">补充</span></td>
+              <td>裸 RGBA + 尺寸；<code>Uint8Array</code> 必带宽高</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>const pat = new Pattern(canvasEl, 'repeat');
+rect.setStyle({ fill: pat });</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>Point</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>值对象。实例方法会改自身；静态方法（facade 挂上）操作任意 <code>{x,y}</code>。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>构造 / 方法</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>new Point(x?, y?)</code></td>
+              <td>默认 <code>0, 0</code></td>
+            </tr>
+            <tr>
+              <td><code>set</code> <code>copy</code> <code>clone</code> <code>equal</code></td>
+              <td>赋值与比较</td>
+            </tr>
+            <tr>
+              <td><code>add</code> <code>sub</code> <code>scale</code> <code>scaleAndAdd</code> <code>negate</code> <code>normalize</code></td>
+              <td>向量运算</td>
+            </tr>
+            <tr>
+              <td><code>len</code> <code>lenSquare</code> <code>dot</code> <code>distance</code> <code>distanceSquare</code></td>
+              <td>度量</td>
+            </tr>
+            <tr>
+              <td><code>transform(m)</code></td>
+              <td>3×2 矩阵</td>
+            </tr>
+            <tr>
+              <td><code>Point.set/copy/add/…</code></td>
+              <td>静态，对 PointLike</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>const p = new Point(3, 4);
+p.len(); // 5
+Point.add(p, p, new Point(1, 0));</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>BoundingRect</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <table>
+          <thead>
+            <tr>
+              <th>方法</th>
+              <th>参数</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>new BoundingRect(x, y, width, height)</code></td>
+              <td>四个 number</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td><code>union</code> / <code>copy</code> / <code>clone</code> / <code>plain</code></td>
+              <td>另一矩形 / —</td>
+              <td><code>plain</code> 返回普通对象</td>
+            </tr>
+            <tr>
+              <td><code>contain(x, y)</code> / <code>intersect(other, opt?)</code></td>
+              <td>点 / 矩形</td>
+              <td><code>opt.touchThreshold</code></td>
+            </tr>
+            <tr>
+              <td><code>applyTransform(m)</code></td>
+              <td>3×2</td>
+              <td>就地变换</td>
+            </tr>
+            <tr>
+              <td><code>isFinite</code> / <code>isZero</code></td>
+              <td>—</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td><code>create(rectLike)</code> / <code>set(obj, x, y, w, h)</code></td>
+              <td>静态</td>
+              <td>facade 还补了 <code>calculateTransform(out, a, b)</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>const a = new BoundingRect(0, 0, 10, 10);
+a.contain(5, 5); // true
+const m = BoundingRect.calculateTransform([], a, new BoundingRect(0, 0, 20, 20));</pre>
+        <p>对照 <a href="/zrender/examples/bounding_box.html">bounding_box</a>。</p>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>OrientedBoundingRect</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <table>
+          <thead>
+            <tr>
+              <th>方法</th>
+              <th>参数</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>new OrientedBoundingRect(rect, transform?)</code></td>
+              <td>矩形 + 可选 3×2</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td><code>fromBoundingRect(rect, transform?)</code></td>
+              <td>就地重建</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td><code>intersect(other, mtv?, opt?)</code></td>
+              <td>可选最小平移向量</td>
+              <td>重叠时把 mtv 写成 <code>{x,y}</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>const obb = new OrientedBoundingRect({ x: 0, y: 0, width: 10, height: 4 }, [1, 0, 0, 1, 0, 0]);</pre>
+      </div>
+
+      <p>
+        上一章 <a href="./shapes.html">图元</a>
+        · 下一章
+        <a href="./tools.html">工具模块</a>
+      </p>
     </main>
   </div>
   <script type="module" src="/src/shared/docs-shell.js"></script>

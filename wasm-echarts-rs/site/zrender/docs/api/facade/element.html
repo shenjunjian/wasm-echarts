@@ -12,7 +12,318 @@
     <aside class="docs-sidebar"></aside>
     <main class="docs-main">
       <h1>Element / Displayable / Path / Group</h1>
-      <p class="lead">变换、attr、state、clipPath 与 Group 子树。</p>
+      <p class="lead">
+        原型链对齐官方：Shape → Path → Displayable → Element；Group 直接 extends Element。
+      </p>
+
+      <div class="doc-section">
+        <h3>变换与通用属性 <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>读写走 JS getter/setter，再 <code>_syncNative</code>。<code>skewX/Y</code>、<code>anchorX/Y</code> 后置。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>属性</th>
+              <th>默认</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>x</code> <code>y</code></td>
+              <td><code>0</code></td>
+              <td>平移；也可用 <code>position = [x, y]</code></td>
+            </tr>
+            <tr>
+              <td><code>scaleX</code> <code>scaleY</code></td>
+              <td><code>1</code></td>
+              <td>缩放</td>
+            </tr>
+            <tr>
+              <td><code>rotation</code></td>
+              <td><code>0</code></td>
+              <td>弧度</td>
+            </tr>
+            <tr>
+              <td><code>originX</code> <code>originY</code></td>
+              <td><code>0</code></td>
+              <td>变换原点</td>
+            </tr>
+            <tr>
+              <td><code>name</code></td>
+              <td><code>''</code></td>
+              <td>给 <code>childOfName</code></td>
+            </tr>
+            <tr>
+              <td><code>ignore</code> / <code>silent</code></td>
+              <td><code>false</code></td>
+              <td>不绘制 / 不响应命中</td>
+            </tr>
+            <tr>
+              <td><code>draggable</code></td>
+              <td><code>false</code></td>
+              <td><code>true</code> 或 <code>'horizontal'</code> / <code>'vertical'</code></td>
+            </tr>
+            <tr>
+              <td><code>id</code> / <code>type</code></td>
+              <td>—</td>
+              <td>只读，来自 native</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>rect.x = 24;
+rect.position = [24, 16];
+rect.rotation = Math.PI / 8;</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>attr(key, value)</code> / <code>attr(obj)</code> <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>双参数与对象两种写法。<code>clipPath</code> 走 <code>setClipPath</code> / <code>removeClipPath</code>。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>参数</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>keyOrObj</code></td>
+              <td><code>string | object</code></td>
+              <td>属性名或补丁对象</td>
+            </tr>
+            <tr>
+              <td><code>value</code></td>
+              <td>任意</td>
+              <td>仅 <code>attr(key, value)</code> 时使用</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>el.attr('x', 10);
+el.attr({ y: 20, silent: true });</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>hide</code> / <code>show</code> / clipPath <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p><code>hide</code>/<code>show</code> 即改 <code>ignore</code>。clip 对 Group 子树也生效。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>方法</th>
+              <th>参数</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>setClipPath(clip)</code></td>
+              <td>图元</td>
+              <td>把 clip 的 native handle 交给引擎</td>
+            </tr>
+            <tr>
+              <td><code>getClipPath()</code></td>
+              <td>—</td>
+              <td>返回 JS 侧保存的 clip</td>
+            </tr>
+            <tr>
+              <td><code>removeClipPath()</code></td>
+              <td>—</td>
+              <td>清除</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>circle.setClipPath(new Heart({ shape: { cx: 40, cy: 40, width: 60, height: 70 } }));
+el.hide();
+el.show();</pre>
+        <p>对照 <a href="/zrender/examples/clip_path.html">clip_path</a>。</p>
+      </div>
+
+      <div class="doc-section">
+        <h3>state <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>
+          JS 侧保存 <code>states</code> / <code>currentStates</code>，合并后再 <code>setStyle</code> /
+          <code>setShape</code> / <code>attrKV</code>。首次 <code>useStates</code> 会快照 normal。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>方法</th>
+              <th>参数</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>ensureState(name)</code></td>
+              <td><code>string</code></td>
+              <td>没有则建空对象并返回</td>
+            </tr>
+            <tr>
+              <td><code>getState(name)</code></td>
+              <td><code>string</code></td>
+              <td>取已登记的 state</td>
+            </tr>
+            <tr>
+              <td><code>useState(name, keep?)</code></td>
+              <td>名 + 是否叠加</td>
+              <td>空名等价 <code>clearStates</code></td>
+            </tr>
+            <tr>
+              <td><code>useStates(names)</code></td>
+              <td><code>string[]</code></td>
+              <td>按序 merge</td>
+            </tr>
+            <tr>
+              <td><code>clearStates()</code></td>
+              <td>—</td>
+              <td>恢复 normal</td>
+            </tr>
+            <tr>
+              <td><code>removeState</code> / <code>toggleState</code></td>
+              <td>名 / 名+enable</td>
+              <td>从当前列表删或加</td>
+            </tr>
+            <tr>
+              <td><code>hasState()</code></td>
+              <td>—</td>
+              <td><code>currentStates.length &gt; 0</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>rect.ensureState('emphasis').style = { fill: '#ee6666' };
+rect.useState('emphasis');</pre>
+        <p>对照 <a href="/zrender/examples/state.html">state 示例</a>。</p>
+      </div>
+
+      <div class="doc-section">
+        <h3>Displayable <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>
+          增加 <code>z</code> / <code>z2</code> / <code>zlevel</code> / <code>invisible</code> 与
+          <code>setStyle</code>。<code>attr('style', patch)</code> 走 <code>setStyle</code>。
+          <code>new Displayable()</code> 不建 native。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>方法</th>
+              <th>参数</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>setStyle(key, value)</code> / <code>setStyle(obj)</code></td>
+              <td>同 <code>attr</code></td>
+              <td>合并进 <code>this.style</code> 再同步 native</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>rect.setStyle('fill', '#91cc75');
+rect.setStyle({ stroke: '#333', lineWidth: 2 });</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3>Path <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p><code>new Path(opts)</code> 才建 native。<code>setShape</code> 双参数；<code>setStateStyle</code> 委托 native。</p>
+        <pre>path.setShape('x', 10);
+path.setShape({ width: 80, height: 40 });</pre>
+        <h4><code>Path.extend(defaultProps)</code> <span class="doc-badge doc-badge-degraded">降级</span></h4>
+        <p>
+          可定义子类。若提供 <code>buildPath(ctx, shape)</code>，用 JS
+          <code>PathRecorder</code> 录成 SVG <code>shape.pathData</code>，再交给通用 Path。
+          不走官方完整 PathProxy。
+        </p>
+        <pre>const Diamond = Path.extend({
+  type: 'diamond',
+  shape: { x: 0, y: 0, w: 40, h: 40 },
+  buildPath(ctx, shape) {
+    ctx.moveTo(shape.x, shape.y);
+    ctx.lineTo(shape.x + shape.w, shape.y + shape.h / 2);
+    ctx.closePath();
+  },
+});</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3>Group 子树 <span class="doc-badge doc-badge-official">官方</span> <span class="doc-badge doc-badge-facade">仅 facade</span></h3>
+        <p>
+          <code>new Group(opts)</code> 立即建 native。子树列表在 JS
+          （<code>_children</code>）；pkg 的 Group 没有这些方法。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>方法</th>
+              <th>参数</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>add(child)</code></td>
+              <td>图元</td>
+              <td>已有 parent 会先卸下</td>
+            </tr>
+            <tr>
+              <td><code>addBefore(child, next)</code></td>
+              <td>新节点、已有兄弟</td>
+              <td><code>next.parent</code> 必须是 this</td>
+            </tr>
+            <tr>
+              <td><code>replace</code> / <code>replaceAt</code></td>
+              <td>旧/新 或 新+index</td>
+              <td>替换子节点</td>
+            </tr>
+            <tr>
+              <td><code>remove</code> / <code>removeAll</code></td>
+              <td>子 / —</td>
+              <td>卸下并清 <code>parent</code></td>
+            </tr>
+            <tr>
+              <td><code>children()</code></td>
+              <td>—</td>
+              <td>浅拷贝数组</td>
+            </tr>
+            <tr>
+              <td><code>childrenRef()</code></td>
+              <td>—</td>
+              <td>内部数组引用</td>
+            </tr>
+            <tr>
+              <td><code>childAt(i)</code> / <code>childOfName(name)</code> / <code>childCount()</code></td>
+              <td>下标 / 名 / —</td>
+              <td>查找</td>
+            </tr>
+            <tr>
+              <td><code>eachChild(cb, ctx?)</code></td>
+              <td><code>(child, i)</code></td>
+              <td>只扫直接子节点</td>
+            </tr>
+            <tr>
+              <td><code>traverse(cb, ctx?)</code></td>
+              <td><code>(child) → stop?</code></td>
+              <td>深度优先；回调返回真则不进该 Group</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>const g = new Group({ x: 10 });
+g.add(new Circle({ shape: { cx: 20, cy: 20, r: 10 } }));
+g.eachChild((child) => child.silent = true);</pre>
+        <p>对照 <a href="/zrender/examples/shapes.html">shapes</a>、<a href="/zrender/examples/bounding_box.html">bounding_box</a>。</p>
+      </div>
+
+      <div class="doc-section">
+        <h3>事件与包围盒 <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p><code>on</code> / <code>off</code> / <code>trigger</code> 委托 native。<code>getBoundingRect()</code> 返回 native <code>BoundingRect</code>。</p>
+        <pre>el.on('click', () => el.setStyle({ fill: '#ee6666' }));
+const box = el.getBoundingRect();</pre>
+      </div>
+
+      <p>
+        上一章 <a href="./instance.html">ZRender 实例</a>
+        · 下一章
+        <a href="./shapes.html">图元</a>
+      </p>
     </main>
   </div>
   <script type="module" src="/src/shared/docs-shell.js"></script>

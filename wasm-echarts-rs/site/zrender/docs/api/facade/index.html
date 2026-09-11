@@ -12,7 +12,148 @@
     <aside class="docs-sidebar"></aside>
     <main class="docs-main">
       <h1>总览与约定</h1>
-      <p class="lead">导入方式、default 即 initWasm、构造时 super() 不建 native。</p>
+      <p class="lead">
+        公开面是 <code>crates/wasm-zrender/js/index.js</code>。
+        <code>default</code> 是 wasm-bindgen 的 <code>initWasm</code>；命名导出才是 zrender API。
+      </p>
+
+      <div class="doc-section">
+        <h3>导入</h3>
+        <p>
+          文档站 Vite alias <code>@wasm-zrender</code> 指向 <code>js/</code>。
+          入口会先加载 <code>native.js</code>，把 standalone <code>pkg/</code> 注入
+          <code>native-core.js</code>，图元构造才能拿到 native 类。
+        </p>
+        <pre>import initWasm, { init, Rect, Group } from '@wasm-zrender';
+
+await initWasm();
+const zr = init(canvas, { width: 480, height: 360 });</pre>
+        <p>
+          不要直接 <code>import</code> <code>pkg/wasm_zrender.js</code>。
+          echarts 页不要再加载这份 zrender wasm，见
+          <a href="../pkg/">pkg 导出</a>（echarts 用自己的 <code>setNative</code>）。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>default</code> 即 <code>initWasm</code> <span class="doc-badge doc-badge-extra">补充</span></h3>
+        <p>
+          与 wasm-bindgen <code>--target web</code> 一致：默认导出是异步加载
+          <code>.wasm</code> 的函数。官方 zrender 没有这一步；这是 WASM 宿主必需。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>参数</th>
+              <th>类型</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>module_or_path?</code></td>
+              <td><code>string | URL | Request | Response | BufferSource</code></td>
+              <td>可选。不传则按打包路径加载 <code>wasm_zrender_bg.wasm</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>import initWasm from '@wasm-zrender';
+await initWasm();</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3>构造约定：<code>super()</code> 不建 native</h3>
+        <p>
+          facade 的 <code>Element</code> / <code>Displayable</code> / <code>Path</code> 基类
+          <code>constructor</code> 只初始化 JS 字段。真正的 wasm handle 由叶子类
+          <code>_bindNative(new native.Rect(opts))</code> 挂上。
+        </p>
+        <ul>
+          <li><code>new Path(opts)</code> 才创建 native；子类只 <code>super()</code>。</li>
+          <li><code>new Displayable()</code> 可作原型祖先，不创建 native。rust / pkg 的
+            <code>Displayable</code> 构造会抛「抽象基类」。</li>
+          <li>叶子构造后若传入 <code>opts</code>，再 <code>this.attr(opts)</code>，保证 getter
+            （<code>x</code> / <code>shape</code> / <code>style</code>）与 native 同步。</li>
+        </ul>
+        <pre>new Rect({ shape: { x: 0, y: 0, width: 40, height: 20 } })
+  instanceof Path;       // true
+new Circle() instanceof Displayable; // true
+new Group() instanceof Element;      // true</pre>
+        <p>
+          可对照
+          <a href="/zrender/examples/shapes.html">shapes 示例</a>。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3>opts 公共字段 <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>图元构造 / <code>attr</code> 都认这些字段（解析在 <code>bridge/opts.rs</code>）。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>字段</th>
+              <th>类型</th>
+              <th>默认</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>x</code> <code>y</code> 或 <code>position</code></td>
+              <td><code>number</code> / <code>[x, y]</code></td>
+              <td><code>0</code></td>
+            </tr>
+            <tr>
+              <td><code>scaleX</code> <code>scaleY</code></td>
+              <td><code>number</code></td>
+              <td><code>1</code></td>
+            </tr>
+            <tr>
+              <td><code>rotation</code></td>
+              <td><code>number</code>（弧度）</td>
+              <td><code>0</code></td>
+            </tr>
+            <tr>
+              <td><code>originX</code> <code>originY</code></td>
+              <td><code>number</code></td>
+              <td><code>0</code></td>
+            </tr>
+            <tr>
+              <td><code>z</code> <code>z2</code> <code>zlevel</code></td>
+              <td><code>number</code></td>
+              <td><code>0</code></td>
+            </tr>
+            <tr>
+              <td><code>silent</code> <code>ignore</code> <code>invisible</code></td>
+              <td><code>boolean</code></td>
+              <td><code>false</code></td>
+            </tr>
+            <tr>
+              <td><code>name</code></td>
+              <td><code>string</code></td>
+              <td><code>''</code></td>
+            </tr>
+            <tr>
+              <td><code>draggable</code></td>
+              <td><code>boolean | 'horizontal' | 'vertical'</code></td>
+              <td><code>false</code></td>
+            </tr>
+            <tr>
+              <td><code>style</code> / <code>shape</code></td>
+              <td><code>object</code></td>
+              <td>见图元页</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          <code>skewX/Y</code>、<code>anchorX/Y</code> 后置，不要当已对齐。
+        </p>
+      </div>
+
+      <p>
+        返回 <a href="../">API 参考</a>
+        · 下一步
+        <a href="./lifecycle.html">生命周期</a>
+      </p>
     </main>
   </div>
   <script type="module" src="/src/shared/docs-shell.js"></script>

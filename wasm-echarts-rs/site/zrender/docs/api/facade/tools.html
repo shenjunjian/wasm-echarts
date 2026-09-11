@@ -12,7 +12,302 @@
     <aside class="docs-sidebar"></aside>
     <main class="docs-main">
       <h1>工具模块</h1>
-      <p class="lead">matrix / vector / color / path / util，以及降级的 morph 等。</p>
+      <p class="lead">
+        实现在 <code>js/tool/</code>，按官方签名重写。
+        pkg 里的同名导出是空对象占位，不要从 pkg 调。
+      </p>
+
+      <div class="doc-section">
+        <h3><code>matrix</code> <span class="doc-badge doc-badge-official">官方</span> <span class="doc-badge doc-badge-facade">仅 facade</span></h3>
+        <p>3×2 仿射矩阵，布局 <code>[a, b, c, d, tx, ty]</code>。多数函数写 <code>out</code> 并返回它。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>函数</th>
+              <th>签名</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>create</code></td>
+              <td><code>() → [1,0,0,1,0,0]</code></td>
+            </tr>
+            <tr>
+              <td><code>identity</code> <code>copy</code> <code>clone</code></td>
+              <td><code>(out, m?)</code></td>
+            </tr>
+            <tr>
+              <td><code>mul</code></td>
+              <td><code>(out, m1, m2)</code></td>
+            </tr>
+            <tr>
+              <td><code>translate</code></td>
+              <td><code>(out, a, [tx, ty])</code></td>
+            </tr>
+            <tr>
+              <td><code>rotate</code></td>
+              <td><code>(out, a, rad, pivot?)</code></td>
+            </tr>
+            <tr>
+              <td><code>scale</code></td>
+              <td><code>(out, a, [sx, sy])</code></td>
+            </tr>
+            <tr>
+              <td><code>invert</code></td>
+              <td><code>(out, a)</code>；不可逆返回 <code>null</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>import { matrix } from '@wasm-zrender';
+const m = matrix.create();
+matrix.translate(m, m, [10, 20]);
+matrix.scale(m, m, [2, 2]);</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>vector</code> <span class="doc-badge doc-badge-official">官方</span> <span class="doc-badge doc-badge-facade">仅 facade</span></h3>
+        <p>二维向量 <code>[x, y]</code>。别名：<code>length</code>=<code>len</code>，<code>dist</code>=<code>distance</code>。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>函数</th>
+              <th>签名</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>create</code> <code>set</code> <code>copy</code> <code>clone</code></td>
+              <td><code>create(x?, y?)</code> 默认 <code>[0,0]</code></td>
+            </tr>
+            <tr>
+              <td><code>add</code> <code>sub</code> <code>mul</code> <code>div</code></td>
+              <td><code>(out, v1, v2)</code></td>
+            </tr>
+            <tr>
+              <td><code>scale</code> <code>scaleAndAdd</code> <code>negate</code> <code>normalize</code> <code>lerp</code></td>
+              <td>标量或插值</td>
+            </tr>
+            <tr>
+              <td><code>len</code> <code>lenSquare</code> <code>dot</code> <code>distance</code> <code>distanceSquare</code></td>
+              <td>度量</td>
+            </tr>
+            <tr>
+              <td><code>min</code> <code>max</code> <code>applyTransform</code></td>
+              <td><code>applyTransform(out, v, m)</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>import { vector } from '@wasm-zrender';
+const out = vector.create();
+vector.add(out, [1, 2], [3, 4]); // [4, 6]</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>color</code> <span class="doc-badge doc-badge-official">官方</span> <span class="doc-badge doc-badge-facade">仅 facade</span></h3>
+        <table>
+          <thead>
+            <tr>
+              <th>函数</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>parse(str, rgbaArr?)</code></td>
+              <td>CSS 颜色 → <code>[r,g,b,a]</code></td>
+            </tr>
+            <tr>
+              <td><code>stringify(arr, type)</code></td>
+              <td><code>type</code> 为 <code>rgb</code> / <code>rgba</code> / <code>hsla</code>…</td>
+            </tr>
+            <tr>
+              <td><code>lift</code> / <code>liftColor</code> / <code>toHex</code> / <code>modifyAlpha</code> / <code>modifyHSL</code></td>
+              <td>变亮变暗、改通道</td>
+            </tr>
+            <tr>
+              <td><code>lerp</code> / <code>fastLerp</code>（<code>fastMapToColor</code>）</td>
+              <td>色标插值</td>
+            </tr>
+            <tr>
+              <td><code>lum</code> / <code>random</code></td>
+              <td>亮度；随机色</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>import { color } from '@wasm-zrender';
+color.parse('#5470c6'); // [84, 112, 198, 1]
+color.lift('#000', 0.2);</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>path</code> <span class="doc-badge doc-badge-official">官方</span> <span class="doc-badge doc-badge-facade">仅 facade</span></h3>
+        <p>落到 <code>Path</code> + <code>shape.pathData</code>。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>函数</th>
+              <th>参数</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>createFromString(str, opts?)</code></td>
+              <td>SVG d + 图元 opts</td>
+              <td>返回 Path 实例</td>
+            </tr>
+            <tr>
+              <td><code>extendFromString(str, defaultOpts?)</code></td>
+              <td>同上</td>
+              <td>返回可 <code>new</code> 的子类</td>
+            </tr>
+            <tr>
+              <td><code>mergePath(pathEls, opts?)</code></td>
+              <td>Path 数组</td>
+              <td>拼接各 <code>pathData</code></td>
+            </tr>
+            <tr>
+              <td><code>clonePath(source, opts?)</code></td>
+              <td><code>opts.bakeTransform</code></td>
+              <td>拷 shape/style；默认也拷变换</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>import { path } from '@wasm-zrender';
+const p = path.createFromString('M0 0 L20 0 L10 20 Z', { style: { fill: '#91cc75' } });
+zr.add(p);</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>util</code> <span class="doc-badge doc-badge-official">官方</span> <span class="doc-badge doc-badge-facade">仅 facade</span></h3>
+        <p>类型判断、clone/merge、数组工具、guid。实现按签名重写，不粘贴官方源码。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>分组</th>
+              <th>导出</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>类型</td>
+              <td><code>isArray</code> <code>isFunction</code> <code>isString</code> <code>isStringSafe</code> <code>isNumber</code> <code>isObject</code> <code>isBuiltInObject</code> <code>isTypedArray</code> <code>isDom</code> <code>isGradientObject</code> <code>isImagePatternObject</code> <code>isRegExp</code> <code>eqNaN</code> <code>isArrayLike</code> <code>isPrimitive</code></td>
+            </tr>
+            <tr>
+              <td>对象</td>
+              <td><code>clone</code> <code>merge</code> <code>mergeAll</code> <code>extend</code> <code>defaults</code> <code>keys</code> <code>hasOwn</code> <code>assignProps</code> <code>createHashMap</code> <code>createObject</code> <code>setAsPrimitive</code></td>
+            </tr>
+            <tr>
+              <td>数组 / 函数</td>
+              <td><code>each</code> <code>map</code> <code>reduce</code> <code>filter</code> <code>find</code> <code>indexOf</code> <code>slice</code> <code>concatArray</code> <code>bind</code> <code>curry</code> <code>retrieve</code> <code>retrieve2</code> <code>retrieve3</code></td>
+            </tr>
+            <tr>
+              <td>其它</td>
+              <td><code>guid</code> <code>logError</code> <code>assert</code> <code>trim</code> <code>normalizeCssArray</code> <code>inherits</code> <code>mixin</code> <code>createCanvas</code> <code>disableUserSelect</code> <code>noop</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>import { util } from '@wasm-zrender';
+util.merge({ a: 1 }, { b: 2 }, true);</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>morph</code> <span class="doc-badge doc-badge-degraded">降级</span></h3>
+        <p>签名齐全，不做真实形变。动画例外：立刻终态。<code>morphPath</code> 直接返回终点 path，并调用 <code>during(1)</code> / <code>done</code>。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>函数</th>
+              <th>实际行为</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>morphPath(from, to, opts?)</code></td>
+              <td>返回 <code>to</code></td>
+            </tr>
+            <tr>
+              <td><code>combineMorph</code> / <code>separateMorph</code></td>
+              <td>空 <code>fromIndividuals</code>，count 来自终点列表</td>
+            </tr>
+            <tr>
+              <td><code>alignBezierCurves</code></td>
+              <td>原样返回 <code>[array1, array2]</code></td>
+            </tr>
+            <tr>
+              <td><code>centroid(array)</code></td>
+              <td>多边形质心（有实现）</td>
+            </tr>
+            <tr>
+              <td><code>isMorphing</code> / <code>isCombineMorphing</code></td>
+              <td>看 <code>__morphT</code> / <code>__isCombineMorphing</code></td>
+            </tr>
+            <tr>
+              <td><code>defaultDividePath</code></td>
+              <td>返回 <code>[]</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>import { morph } from '@wasm-zrender';
+morph.morphPath(fromPath, toPath, { done() { /* 立刻 */ } });</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>parseSVG</code> <span class="doc-badge doc-badge-degraded">降级</span></h3>
+        <p>
+          能解析 <code>g</code> / <code>path</code> / 基础图形（rect、circle、ellipse、line、polygon、polyline）。
+          defs 渐变、text、clip 后置。非法 SVG 抛 <code>Illegal svg</code>。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>参数 / 返回</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>xml</code></td>
+              <td>字符串或 DOM</td>
+            </tr>
+            <tr>
+              <td><code>opt.width</code> <code>height</code> <code>ignoreViewBox</code> <code>ignoreRootClip</code></td>
+              <td>可选</td>
+            </tr>
+            <tr>
+              <td>返回</td>
+              <td><code>{ root, width, height, viewBoxRect, viewBoxTransform, named }</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>import { parseSVG } from '@wasm-zrender';
+const { root } = parseSVG('&lt;svg&gt;&lt;circle cx="8" cy="8" r="6" fill="#91cc75"/&gt;&lt;/svg&gt;');
+zr.add(root);</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>showDebugDirtyRect</code> <span class="doc-badge doc-badge-degraded">降级</span></h3>
+        <p>离屏无 dirty rect。签名保留，空操作。</p>
+        <pre>import { showDebugDirtyRect } from '@wasm-zrender';
+showDebugDirtyRect(zr, { autoHideDelay: 500 });</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3><code>setPlatformAPI</code> <span class="doc-badge doc-badge-degraded">降级</span></h3>
+        <p>
+          官方用来换宿主实现。WASM 仍不读系统字体；这里只覆盖
+          <code>createCanvas</code> / <code>measureText</code> / <code>loadImage</code> / <code>getTime</code>
+          （给 <code>util</code> 等 JS 工具用），不改变 cosmic-text 渲染。
+        </p>
+        <pre>import { setPlatformAPI } from '@wasm-zrender';
+setPlatformAPI({ getTime: () => 0 });</pre>
+      </div>
+
+      <p>
+        上一章 <a href="./style.html">样式与几何</a>
+        · 下一章
+        <a href="./animation.html">动画与事件</a>
+      </p>
     </main>
   </div>
   <script type="module" src="/src/shared/docs-shell.js"></script>

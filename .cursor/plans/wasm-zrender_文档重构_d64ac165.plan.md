@@ -13,7 +13,7 @@ todos:
     status: completed
   - id: ch-api-facade
     content: 按源码写 JS facade API 分页：参数表 + 官方/补充/降级徽章 + 短示例
-    status: pending
+    status: completed
   - id: ch-api-pkg
     content: 写 pkg 导出 API 分页：与 facade 对照、空壳 tool、不要直接用的符号
     status: pending
