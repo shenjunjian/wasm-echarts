@@ -81,9 +81,9 @@ async function main() {
     'vintage.js': 1982
   };
   const waterMarkText = 'ECHARTS';
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  canvas.width = canvas.height = 100;
+  const waterMarkCanvas = document.createElement('canvas');
+  const ctx = waterMarkCanvas.getContext('2d');
+  waterMarkCanvas.width = waterMarkCanvas.height = 100;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.globalAlpha = 0.08;
@@ -94,7 +94,7 @@ async function main() {
   option = {
     backgroundColor: {
       type: 'pattern',
-      image: canvas,
+      image: waterMarkCanvas,
       repeat: 'repeat'
     },
     tooltip: {},
