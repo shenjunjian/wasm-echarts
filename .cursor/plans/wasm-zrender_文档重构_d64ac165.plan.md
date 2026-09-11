@@ -10,7 +10,7 @@ todos:
     status: completed
   - id: ch-start-fonts
     content: 写快速上手 / 字体引用；/zrender/docs/ 默认落在快速上手（不再放起因介绍）
-    status: pending
+    status: completed
   - id: ch-api-facade
     content: 按源码写 JS facade API 分页：参数表 + 官方/补充/降级徽章 + 短示例
     status: pending
