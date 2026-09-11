@@ -12,7 +12,294 @@
     <aside class="docs-sidebar"></aside>
     <main class="docs-main">
       <h1>底层原理</h1>
-      <p class="lead">rust-zrender 用了哪些 crate、相对 vl-convert 补了什么、JS 与 WASM 怎么过桥。</p>
+      <p class="lead">
+        给能读 JS、想搞懂 WASM 的前端：引擎用了哪些 crate、相对 vl-convert 补了什么、
+        普通数据 / 函数 / 图像怎么过桥。三层定位见 <a href="/">站点首页</a>。
+      </p>
+
+      <div class="doc-section">
+        <h3>从 facade 到 RGBA</h3>
+        <div class="layer-map" role="img" aria-label="业务代码经 JS facade、pkg handle、rust-zrender 得到 RGBA 再贴上 canvas">
+          <div class="layer-map-row">
+            <span class="layer-chip">业务 / site</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip">js/index.js</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip">pkg handle</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip is-engine">rust-zrender</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip">RGBA</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip">putImageData</span>
+          </div>
+          <p class="layer-map-note">
+            wasm-echarts 与 wasm-zrender 是 sibling，共用同一份 <code>ZRenderer</code>，
+            echarts 页不得再加载 <code>wasm-zrender/pkg</code>。
+          </p>
+        </div>
+      </div>
+
+      <div class="doc-section">
+        <h3>rust-zrender 依赖</h3>
+        <p>
+          路径 <code>crates/rust-zrender</code>。纯 Rust 引擎，无 wasm-bindgen，可
+          <code>cargo test</code>。浏览器入口在 wasm-zrender 的 facade / pkg。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>crate</th>
+              <th>为什么用</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>vl-convert-canvas2d</code></td>
+              <td>离屏 Canvas2D（tiny-skia + cosmic-text）。Painter 真正落笔的地方</td>
+            </tr>
+            <tr>
+              <td><code>tiny-skia</code></td>
+              <td>补官方有、vl-convert 无的<strong>阴影</strong>（<code>shadowBlur</code> / <code>Offset</code> / <code>Color</code>）</td>
+            </tr>
+            <tr>
+              <td><code>kurbo</code></td>
+              <td>路径 winding / stroke <strong>命中</strong>。不靠浏览器 <code>isPointInPath</code></td>
+            </tr>
+            <tr>
+              <td><code>csscolorparser</code></td>
+              <td>CSS 颜色字符串（含阴影色）</td>
+            </tr>
+            <tr>
+              <td><code>thiserror</code></td>
+              <td><code>BackendError</code> / <code>FontRegistryError</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="doc-section">
+        <h3>相对 vl-convert 的补齐</h3>
+        <p>
+          官方 canvas 有、vl-convert 没有的能力，写在
+          <code>crates/rust-zrender/src/canvas/backend/</code> 与 <code>contain/</code>。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>补齐</th>
+              <th>位置</th>
+              <th>行为</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>阴影</td>
+              <td><code>backend/shadow.rs</code></td>
+              <td>tiny-skia 画路径 → box blur → offset，再合成进 RGBA</td>
+            </tr>
+            <tr>
+              <td>命中</td>
+              <td><code>contain/path.rs</code></td>
+              <td>填充走 winding；描边走 kurbo stroke 距离；带 transform。Handler 反向扫 displayList，clip 链过滤</td>
+            </tr>
+            <tr>
+              <td>径向渐变 <code>r0</code></td>
+              <td><code>canvas/helper.rs</code></td>
+              <td>映射到 <code>RadialGradientParams.r0</code>；<code>global: false</code> 时按包围盒缩放</td>
+            </tr>
+            <tr>
+              <td><code>lineDash</code> 字符串</td>
+              <td><code>graphic/style.rs</code></td>
+              <td><code>'dashed'</code> / <code>'dotted'</code> / <code>'solid'</code> 对照官方 <code>dashStyle.ts</code>；另有 lineCap / lineJoin / miterLimit</td>
+            </tr>
+            <tr>
+              <td>Pattern 变换</td>
+              <td><code>helper.rs</code> + 样式</td>
+              <td><code>x</code> / <code>y</code> / <code>scaleX</code> / <code>scaleY</code> / <code>rotation</code></td>
+            </tr>
+            <tr>
+              <td>字体热更新</td>
+              <td><code>font_registry.rs</code></td>
+              <td><code>registerFont</code> 后把全局 fontdb 同步到<strong>已创建</strong>的实例（<code>update_font_database</code>）</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>仍未做：conic gradient、CSS filter。见 <a href="./differences.html">与官方差异</a>。</p>
+      </div>
+
+      <div class="doc-section">
+        <h3>绘制管线</h3>
+        <p>
+          <code>ZRenderer</code> 把 Storage + Painter + Handler 合成一个实例。
+          <code>refresh()</code> 全量重画，同步返回 RGBA。
+        </p>
+        <div class="layer-map" role="img" aria-label="Storage 生成 displayList，Painter brush 后取出 RGBA">
+          <div class="layer-map-row">
+            <span class="layer-chip">Element 树</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip">displayList</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip">Painter / brush</span>
+            <span class="layer-arrow" aria-hidden="true">→</span>
+            <span class="layer-chip">get_rgba()</span>
+          </div>
+          <p class="layer-map-note">
+            DFS 展平 Group / Path / Image / Text，再按 <code>zlevel</code> / <code>z</code> / <code>z2</code> timsort。
+            多 zlevel 时各 Layer 离屏合成。clip 链在 brush 前 <code>clip()</code>。
+          </p>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>步骤</th>
+              <th>源码</th>
+              <th>做什么</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>场景图</td>
+              <td><code>storage/</code></td>
+              <td>节点池 + 根列表；<code>ChildRef</code> 为 Group / Path / Image / Text</td>
+            </tr>
+            <tr>
+              <td>排序</td>
+              <td><code>storage/timsort.rs</code></td>
+              <td>对齐官方 displayList 稳定排序</td>
+            </tr>
+            <tr>
+              <td>落笔</td>
+              <td><code>canvas/brush.rs</code>、<code>image_brush.rs</code>、<code>text_brush.rs</code></td>
+              <td>fill / stroke / clip / transform / alpha；文字走 cosmic-text</td>
+            </tr>
+            <tr>
+              <td>取像素</td>
+              <td><code>CanvasBackend::get_rgba</code></td>
+              <td><code>Vec&lt;u8&gt;</code>，宽 × 高 × 4</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="doc-section">
+        <h3>JS ↔ WASM：三种过桥</h3>
+        <p>wasm-zrender 的桥在 <code>crates/wasm-zrender/src/bridge/</code> 与 <code>handler.rs</code>。WASM 不直接操作页面 2D context。</p>
+
+        <h4>1. 普通数据</h4>
+        <p>
+          JS object 解成 Rust 结构，再写入 Storage。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>文件</th>
+              <th>解析什么</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>bridge/opts.rs</code></td>
+              <td><code>init</code> 的 <code>width</code> / <code>height</code> / <code>dpr</code>；元素变换、silent、name、draggable、ecData</td>
+            </tr>
+            <tr>
+              <td><code>bridge/shape.rs</code></td>
+              <td>各 Shape 的 <code>shape</code> 字段（<code>Rect.r</code>、<code>Sector.r0</code> 等）</td>
+            </tr>
+            <tr>
+              <td><code>bridge/fill_stroke.rs</code></td>
+              <td>纯色字符串、线性 / 径向渐变、<code>Pattern</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>zr.add(new Rect({
+  shape: { x: 8, y: 8, width: 80, height: 40, r: 4 },
+  style: { fill: '#5470c6', lineDash: 'dashed' },
+}));
+// opts.rs + shape.rs + fill_stroke.rs → Path → Storage</pre>
+
+        <h4>2. 函数</h4>
+        <p>
+          <code>on</code> / <code>off</code> / <code>trigger</code> 把 <code>js_sys::Function</code> 存在 registry
+          （实例级在 <code>HANDLER_REGISTRY</code>，图元级在 <code>ELEMENT_REGISTRY</code>）。
+          命中或 <code>trigger</code> 后 <code>call1</code>，参数是带 <code>zrX</code> / <code>zrY</code> / <code>target</code> 的 packet。
+        </p>
+        <pre>rect.on('click', (e) => {
+  console.log(e.zrX, e.zrY, e.target);
+});
+zr.handler.dispatch('click', { zrX: 40, zrY: 40 });</pre>
+        <p>
+          有 canvas 时绑定 pointer；<strong>mousemove 默认不上屏</strong>（避免每帧整幅 RGBA 拷贝）。
+          拖拽走 <code>element_set_position</code>，非 move 事件才 <code>paint_if_bound</code>。
+        </p>
+
+        <h4>3. 图像</h4>
+        <p>Pattern / Image 需要已解码的 RGBA。同步路径只认这几种源：</p>
+        <table>
+          <thead>
+            <tr>
+              <th>源</th>
+              <th>要求</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>Uint8Array</code></td>
+              <td>必须带 <code>imageWidth</code> / <code>imageHeight</code>；长度 = 宽 × 高 × 4</td>
+            </tr>
+            <tr>
+              <td><code>HTMLCanvasElement</code></td>
+              <td><code>getImageData</code> 抠像素</td>
+            </tr>
+            <tr>
+              <td><code>HTMLImageElement</code></td>
+              <td>先画到临时 canvas 再 <code>getImageData</code>；<code>naturalWidth === 0</code> 则失败（未 decode）</td>
+            </tr>
+            <tr>
+              <td>URL 字符串</td>
+              <td>同步路径失败（<code>unsupported pattern image source</code>）。先 <code>new Image()</code> 等 load</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>const pat = new Pattern(canvasEl, 'repeat');
+rect.setStyle({ fill: pat });
+
+// 无 DOM 时用裸像素：
+el.setStyle({
+  fill: {
+    imageData: rgbaBytes,
+    imageWidth: 16,
+    imageHeight: 16,
+    repeat: 'repeat',
+  },
+});</pre>
+      </div>
+
+      <div class="doc-section">
+        <h3>回图</h3>
+        <p>
+          <code>zr.refresh()</code> / <code>flush()</code> → Rust <code>Vec&lt;u8&gt;</code> → JS <code>Uint8Array</code>。
+          绑了 canvas 时，<code>add</code> / <code>attr</code> / 非 mousemove 事件会走
+          <code>paint_if_bound</code>：同一份 RGBA 做成 <code>ImageData</code> 再 <code>putImageData</code>。
+        </p>
+        <pre>const rgba = zr.refresh();
+ctx.putImageData(
+  new ImageData(new Uint8ClampedArray(rgba), zr.width(), zr.height()),
+  0,
+  0,
+);</pre>
+        <p>
+          对照
+          <a href="/zrender/examples/hello_world.html">Hello World</a>（离屏回图）、
+          <a href="/zrender/examples/hit.html">hit</a>（指针命中）。
+        </p>
+      </div>
+
+      <p>
+        上一章 <a href="./differences.html">与官方差异</a>
+        · 返回
+        <a href="./">快速上手</a>
+      </p>
     </main>
   </div>
   <script type="module" src="/src/shared/docs-shell.js"></script>

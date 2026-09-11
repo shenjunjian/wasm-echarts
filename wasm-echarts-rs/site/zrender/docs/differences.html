@@ -12,7 +12,253 @@
     <aside class="docs-sidebar"></aside>
     <main class="docs-main">
       <h1>与官方差异</h1>
-      <p class="lead">允许例外、已对齐、降级后置、补充 API 分表列出。</p>
+      <p class="lead">
+        公开表面对齐官方 <code>export.ts</code> / <code>zrender.ts</code> / <code>Element.ts</code>。
+        做不到的不改名糊弄：例外、未实现、补充分表列出。
+      </p>
+
+      <div class="notice">
+        <p>
+          <strong>允许例外只有四条。</strong>
+          <code>skewX</code>、<code>textContent</code>、<code>morph</code> 形变、增量图层等是后置未做，
+          不要写成「本仓库允许不一致」。徽章含义见侧栏。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3>允许例外 <span class="doc-badge doc-badge-degraded">降级</span></h3>
+        <p>仓库目标是一帧终态图像，这四条是刻意取舍，不是以后再补的缺口。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>例外</th>
+              <th>官方</th>
+              <th>wasm-zrender</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>字体</td>
+              <td><code>ctx.font</code> 走系统 / 网页字体</td>
+              <td>必须 <code>registerFont</code>。未注册含 Text 的 <code>refresh</code> 会 <code>no default font found</code>。见 <a href="./fonts.html">字体引用</a></td>
+            </tr>
+            <tr>
+              <td>动画</td>
+              <td>rAF 播中间帧</td>
+              <td><code>animate</code> / <code>animateTo</code> / <code>when().start()</code> 立刻写入<strong>最后一组</strong>目标。见 <a href="./api/facade/animation.html">动画与事件</a></td>
+            </tr>
+            <tr>
+              <td>离屏</td>
+              <td>DOM canvas / SVG painter / hover layer / dirty rect</td>
+              <td>仅 canvas 离屏。WASM 不操作 DOM 2D context；<code>refresh</code> / <code>flush</code> 同步返回 RGBA。无 SVG、无 hover 层、无脏矩形</td>
+            </tr>
+            <tr>
+              <td>宿主</td>
+              <td>客户端 <code>init</code> 需要 DOM</td>
+              <td><code>init(canvas)</code> 绑指针并自动 <code>putImageData</code>；<code>init(null, { width, height })</code> 纯离屏，尺寸只来自 opts。无 DOM 时用 <code>zr.handler.dispatch</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="doc-section">
+        <h3>已对齐 <span class="doc-badge doc-badge-official">官方</span></h3>
+        <p>可按官方文档调用。细节与参数表在 <a href="./api/facade/">JS facade API</a>。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>范围</th>
+              <th>对齐内容</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>入口</td>
+              <td><code>init</code> / <code>dispose</code> / <code>disposeAll</code> / <code>getInstance</code> / <code>version</code>（<code>'6.1.0'</code>）/ <code>registerPainter</code>（只记进 Map）</td>
+            </tr>
+            <tr>
+              <td>类型与工具</td>
+              <td><code>export.ts</code> 图元与样式类；<code>matrix</code> / <code>vector</code> / <code>color</code> / <code>path</code> / <code>util</code> 按官方签名（实现在 <code>js/tool/</code>）</td>
+            </tr>
+            <tr>
+              <td>原型链</td>
+              <td><code>Rect instanceof Path instanceof Displayable instanceof Element</code>；Group 亦 <code>instanceof Element</code></td>
+            </tr>
+            <tr>
+              <td>变换</td>
+              <td>主属性 <code>x</code> <code>y</code> <code>scaleX</code> <code>scaleY</code> <code>rotation</code> <code>originX</code> <code>originY</code>；<code>attr</code> / <code>setShape</code> / <code>setStyle</code> 对象与 <code>key, value</code></td>
+            </tr>
+            <tr>
+              <td>Group</td>
+              <td><code>new Group(opts)</code>；<code>children</code> / <code>childAt</code> / <code>childOfName</code> / <code>childCount</code> / <code>eachChild</code> / <code>traverse</code> / <code>addBefore</code> / <code>replace</code></td>
+            </tr>
+            <tr>
+              <td>Shape 默认</td>
+              <td><code>Sector.r0</code> / <code>clockwise</code> / <code>cornerRadius</code>；<code>Rect.r</code>；Line 默认 stroke 无 fill；Text 默认 fill <code>#000</code></td>
+            </tr>
+            <tr>
+              <td>实例</td>
+              <td><code>add</code> / <code>remove</code> / <code>clear</code> / <code>resize</code> / <code>findHover</code> / <code>setBackgroundColor</code> / <code>setCursorStyle</code> / <code>trigger</code></td>
+            </tr>
+            <tr>
+              <td>元素</td>
+              <td><code>hide</code> / <code>show</code>；<code>on</code> / <code>off</code> / <code>trigger</code>；<code>clipPath</code> / <code>getClipPath</code> / <code>removeClipPath</code>（Group clip 对子树生效）</td>
+            </tr>
+            <tr>
+              <td>state</td>
+              <td><code>useState</code> / <code>useStates</code> / <code>getState</code> / <code>ensureState</code> / <code>clearStates</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="doc-section">
+        <h3>降级 / 后置（未实现） <span class="doc-badge doc-badge-degraded">降级</span></h3>
+        <p>
+          <strong>后置</strong> = 还没做，不要写进「已对齐」。
+          <strong>降级</strong> = 签名在，语义弱于官方。两者都不是允许例外。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>条目</th>
+              <th>类别</th>
+              <th>现状</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>skewX</code> / <code>skewY</code>、<code>anchorX</code> / <code>anchorY</code></td>
+              <td>后置</td>
+              <td>变换主属性已对齐；这两对还没有</td>
+            </tr>
+            <tr>
+              <td><code>textContent</code> 自动布局、RichText</td>
+              <td>后置</td>
+              <td>Text / TSpan 是单 run；不跟父图元自动排版</td>
+            </tr>
+            <tr>
+              <td>真实 <code>morph</code></td>
+              <td>后置</td>
+              <td><code>morphPath</code> 直接返回终点 path，并立刻 <code>during(1)</code> / <code>done</code></td>
+            </tr>
+            <tr>
+              <td><code>IncrementalDisplayable</code> 增量图层</td>
+              <td>后置</td>
+              <td>facade 绑 <code>Group</code>，当普通容器；pkg 构造抛错</td>
+            </tr>
+            <tr>
+              <td><code>Path.extend</code> 完整 PathProxy</td>
+              <td>降级</td>
+              <td><code>buildPath</code> 用 JS <code>PathRecorder</code> 录成 <code>shape.pathData</code>，不走官方 PathProxy</td>
+            </tr>
+            <tr>
+              <td>conic gradient、CSS filter</td>
+              <td>后置</td>
+              <td>离屏后端没有这两项</td>
+            </tr>
+            <tr>
+              <td><code>configLayer(zLevel, config)</code></td>
+              <td>降级</td>
+              <td>无独立 layer canvas；忽略参数，有 DOM 时只触发一次上屏</td>
+            </tr>
+            <tr>
+              <td><code>zr.painter</code></td>
+              <td>降级</td>
+              <td><code>type === 'canvas'</code>；<code>getSvgDom()</code> warn 并返回 <code>null</code></td>
+            </tr>
+            <tr>
+              <td><code>registerPainter</code></td>
+              <td>降级</td>
+              <td>只记进 JS Map，不切后端</td>
+            </tr>
+            <tr>
+              <td><code>parseSVG</code></td>
+              <td>降级</td>
+              <td>能解析 <code>g</code> / <code>path</code> / 基础图形；defs 渐变、text、clip 后置</td>
+            </tr>
+            <tr>
+              <td><code>showDebugDirtyRect</code></td>
+              <td>降级</td>
+              <td>空操作（无 dirty rect）</td>
+            </tr>
+            <tr>
+              <td><code>setPlatformAPI</code></td>
+              <td>降级</td>
+              <td>只覆盖 JS 工具用的 <code>createCanvas</code> / <code>measureText</code> 等，不改 cosmic-text 渲染</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          工具与图元细节见
+          <a href="./api/facade/tools.html">工具模块</a>、
+          <a href="./api/facade/element.html">Element</a>、
+          <a href="./api/facade/instance.html">ZRender 实例</a>。
+        </p>
+      </div>
+
+      <div class="doc-section">
+        <h3>补充 API <span class="doc-badge doc-badge-extra">补充</span></h3>
+        <p>wasm-zrender 多出来的，或同名但语义多了一截。不要当成浏览器 zrender 的官方方法来用。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>API</th>
+              <th>用途</th>
+              <th>何时不该当官方用</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>registerFont</code> / <code>clearFonts</code></td>
+              <td>向全局 fontdb 注入 / 清空字体 bytes；会热更新已有实例</td>
+              <td>官方没有这两项。业务必须自己 fetch 字体</td>
+            </tr>
+            <tr>
+              <td><code>refresh()</code> / <code>flush()</code> 返回 RGBA</td>
+              <td>同步重绘，返回 <code>Uint8Array</code> 像素</td>
+              <td>官方是 <code>void</code>。绑了 canvas 时多数变更会自动 <code>putImageData</code>，不必每次手写回图</td>
+            </tr>
+            <tr>
+              <td><code>init(null, { width, height })</code></td>
+              <td>纯离屏，不绑 DOM</td>
+              <td>官方客户端无 DOM 会抛错。尺寸只来自 opts（默认 300×150，<code>dpr</code> 默认 1）</td>
+            </tr>
+            <tr>
+              <td><code>Pattern.imageData</code> / <code>imageWidth</code> / <code>imageHeight</code></td>
+              <td>裸 RGBA + 尺寸；<code>Uint8Array</code> 必带宽高</td>
+              <td>官方 Pattern 吃 Image / Canvas。URL 未 decode 时同步路径失败</td>
+            </tr>
+            <tr>
+              <td><code>zr.width()</code> / <code>height()</code> / <code>dpr()</code></td>
+              <td>读离屏位图尺寸</td>
+              <td>官方用 <code>getWidth</code> / <code>getHeight</code>（这里也有）。简写是 hatch</td>
+            </tr>
+            <tr>
+              <td><code>zr.handler.dispatch</code></td>
+              <td>无 DOM 时注入指针事件（<code>zrX</code> / <code>zrY</code>）</td>
+              <td>签名是官方 Handler 的；在本仓库里主要服务 <code>init(null)</code> 与测试，不要指望 hover layer</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre>import initWasm, { init, registerFont, Rect } from '@wasm-zrender';
+
+await initWasm();
+registerFont(fontBytes, { familyName: 'Noto Sans SC' });
+
+const zr = init(null, { width: 480, height: 360 });
+zr.add(new Rect({
+  shape: { x: 8, y: 8, width: 80, height: 40 },
+  style: { fill: '#5470c6' },
+}));
+const rgba = zr.refresh(); // 补充：官方 refresh 不返回像素</pre>
+      </div>
+
+      <p>
+        上一章 <a href="./api/pkg/unused.html">空壳与不要直接用的符号</a>
+        · 下一步
+        <a href="./internals.html">底层原理</a>
+      </p>
     </main>
   </div>
   <script type="module" src="/src/shared/docs-shell.js"></script>

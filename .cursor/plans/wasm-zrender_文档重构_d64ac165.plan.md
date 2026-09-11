@@ -19,7 +19,7 @@ todos:
     status: completed
   - id: ch-diff-internals
     content: 写与官方差异三表 + 底层原理（crates / 补齐 / JS-WASM 交互）
-    status: pending
+    status: completed
   - id: sync-entry
     content: 更新产品页顶栏、AGENT.md 文档树与 zrender 五章硬规则、README 链接
     status: pending
