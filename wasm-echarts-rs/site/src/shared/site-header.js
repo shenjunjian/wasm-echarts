@@ -6,14 +6,12 @@ const PRODUCTS = [
   {
     id: 'zrender',
     label: 'wasm-zrender',
-    href: '/zrender/docs/',
     docs: '/zrender/docs/',
     examples: '/zrender/examples/',
   },
   {
     id: 'echarts',
     label: 'wasm-echarts',
-    href: '/echarts/docs/',
     docs: '/echarts/docs/',
     examples: '/echarts/examples/',
   },
@@ -133,9 +131,9 @@ export function mountSiteHeader(root = document.querySelector('header.site-heade
       <button type="button" class="site-nav-product" aria-expanded="false" aria-haspopup="true" aria-controls="${menuId}">
         ${item.label}
       </button>
-      <div class="site-nav-menu" id="${menuId}" role="menu">
-        <a href="${item.docs}" role="menuitem"${docsActive ? ' class="is-active" aria-current="page"' : ''}>文档</a>
-        <a href="${item.examples}" role="menuitem"${examplesActive ? ' class="is-active" aria-current="page"' : ''}>实例</a>
+      <div class="site-nav-menu" id="${menuId}">
+        <a href="${item.docs}"${docsActive ? ' class="is-active" aria-current="page"' : ''}>文档</a>
+        <a href="${item.examples}"${examplesActive ? ' class="is-active" aria-current="page"' : ''}>实例</a>
       </div>
     </div>`;
   }).join('');
