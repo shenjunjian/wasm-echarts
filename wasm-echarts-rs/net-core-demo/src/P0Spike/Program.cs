@@ -65,14 +65,13 @@ internal static class Program
     private static void RenderZrender(string outPath)
     {
         using var zrender = WasmZrenderModule.Load();
-        using var zr = zrender.Init(JsVal.Obj(("width", 320), ("height", 200), ("devicePixelRatio", 1)));
-        var rectPtr = zrender.RectNew(JsVal.From(new
+        using var zr = zrender.Init(new { width = 320, height = 200, devicePixelRatio = 1 });
+        var rect = zrender.Rect(new
         {
             shape = new { x = 40, y = 30, width = 240, height = 140 },
             style = new { fill = "#d94c4c" },
-        }));
-        var id = zrender.RectId(rectPtr);
-        zr.Add(JsVal.Obj(("id", id)));
+        });
+        zr.Add(rect);
 
         var rgba = zr.Refresh();
         const int width = 320;

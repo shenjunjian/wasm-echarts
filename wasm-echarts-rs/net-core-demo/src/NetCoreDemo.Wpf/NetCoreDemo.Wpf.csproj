@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <ApplicationTitle>wasm-echarts NetCore Demo</ApplicationTitle>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WasmCharts.Runtime\WasmCharts.Runtime.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AvalonEdit" Version="6.3.1.120" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\..\crates\wasm-echarts\pkg\wasm_echarts_bg.wasm"
+          Link="wasm\wasm_echarts_bg.wasm"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\crates\wasm-zrender\pkg\wasm_zrender_bg.wasm"
+          Link="wasm\wasm_zrender_bg.wasm"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\site\public\fonts\NotoSansSC-Regular.ttf"
+          Link="fonts\NotoSansSC-Regular.ttf"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

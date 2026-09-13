@@ -7,7 +7,7 @@ todos:
     status: completed
   - id: p1-runtime-wpf
     content: P1：WasmCharts.Runtime（JsVal/字体/高层 API）+ WPF 顶栏/二级菜单/源码+预览壳
-    status: pending
+    status: completed
   - id: p2-zrender-demos
     content: P2：对齐站点 11 个 wasm-zrender demo（含 hit/bounding_box 鼠标）
     status: pending

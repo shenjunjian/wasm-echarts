@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/NetCoreDemo.Wpf/NetCoreDemo.Wpf.csproj" />
     <Project Path="src/P0Spike/P0Spike.csproj" />
     <Project Path="src/WasmCharts.Runtime/WasmCharts.Runtime.csproj" />
   </Folder>

@@ -119,7 +119,16 @@ internal sealed class WasmSession : IDisposable
     public int NewClass(string export, params ValueBox[] args)
     {
         var ret = CallMany(export, args);
-        ThrowIfError(ret, ptrIndex: 0, errIndex: 1, flagIndex: 2);
+        if (ret.Length >= 3)
+        {
+            ThrowIfError(ret, ptrIndex: 0, errIndex: 1, flagIndex: 2);
+        }
+
+        if (ret.Length == 0)
+        {
+            throw new WasmHostException($"WASM export '{export}' returned no value");
+        }
+
         return ToI32(ret[0]);
     }
 
@@ -233,33 +242,42 @@ internal sealed class WasmSession : IDisposable
 
 internal static class AssetPaths
 {
-    public static string FindWasmEcharts() => Find("crates", "wasm-echarts", "pkg", "wasm_echarts_bg.wasm");
+    public static string FindWasmEcharts() => Find(
+        ["wasm", "wasm_echarts_bg.wasm"],
+        ["crates", "wasm-echarts", "pkg", "wasm_echarts_bg.wasm"]);
 
-    public static string FindWasmZrender() => Find("crates", "wasm-zrender", "pkg", "wasm_zrender_bg.wasm");
+    public static string FindWasmZrender() => Find(
+        ["wasm", "wasm_zrender_bg.wasm"],
+        ["crates", "wasm-zrender", "pkg", "wasm_zrender_bg.wasm"]);
 
-    public static string FindFont(string fileName) => Find("site", "public", "fonts", fileName);
+    public static string FindFont(string fileName) => Find(
+        ["fonts", fileName],
+        ["site", "public", "fonts", fileName]);
 
-    private static string Find(params string[] relative)
+    private static string Find(params string[][] relatives)
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null)
         {
-            var candidate = Path.Combine(new[] { dir.FullName }.Concat(relative).ToArray());
-            if (File.Exists(candidate))
+            foreach (var relative in relatives)
             {
-                return candidate;
-            }
+                var candidate = Path.Combine(new[] { dir.FullName }.Concat(relative).ToArray());
+                if (File.Exists(candidate))
+                {
+                    return candidate;
+                }
 
-            var nested = Path.Combine(new[] { dir.FullName, "wasm-echarts-rs" }.Concat(relative).ToArray());
-            if (File.Exists(nested))
-            {
-                return nested;
+                var nested = Path.Combine(new[] { dir.FullName, "wasm-echarts-rs" }.Concat(relative).ToArray());
+                if (File.Exists(nested))
+                {
+                    return nested;
+                }
             }
 
             dir = dir.Parent;
         }
 
-        throw new FileNotFoundException("asset not found: " + Path.Combine(relative));
+        throw new FileNotFoundException("asset not found: " + Path.Combine(relatives[0]));
     }
 }
 
