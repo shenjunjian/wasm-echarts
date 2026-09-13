@@ -4,7 +4,7 @@ overview: 在 wasm-echarts-rs/net-core-demo 用 .NET 10 WPF + Wasmtime 直接加
 todos:
   - id: p0-spike
     content: P0：Wasmtime 实例化两份 pkg wasm，codegen wbg 导入，跑通 set_option/add + refresh 出 RGBA
-    status: pending
+    status: completed
   - id: p1-runtime-wpf
     content: P1：WasmCharts.Runtime（JsVal/字体/高层 API）+ WPF 顶栏/二级菜单/源码+预览壳
     status: pending

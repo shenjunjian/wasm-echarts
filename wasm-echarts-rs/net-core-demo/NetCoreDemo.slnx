@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/P0Spike/P0Spike.csproj" />
+    <Project Path="src/WasmCharts.Runtime/WasmCharts.Runtime.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/GenWbgImports/GenWbgImports.csproj" />
+  </Folder>
+</Solution>
